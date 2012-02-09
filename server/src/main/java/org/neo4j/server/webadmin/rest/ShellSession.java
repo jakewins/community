@@ -19,6 +19,8 @@
  */
 package org.neo4j.server.webadmin.rest;
 
+import java.rmi.RemoteException;
+
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.AbstractGraphDatabase;
@@ -32,8 +34,6 @@ import org.neo4j.shell.impl.AbstractClient;
 import org.neo4j.shell.impl.CollectingOutput;
 import org.neo4j.shell.impl.SameJvmClient;
 import org.neo4j.shell.impl.ShellServerExtension;
-
-import java.rmi.RemoteException;
 
 public class ShellSession implements ScriptSession
 {
@@ -64,11 +64,11 @@ public class ShellSession implements ScriptSession
     public Pair<String, String> evaluate( String script )
     {
         if ( script.equals( "init()" ) ) return Pair.of( "", client.getPrompt() );
-        if ( script.equals( "exit" ) || script.equals( "quit" ) ) return Pair.of( "No you don't", client.getPrompt() );
+        if ( script.equals( "exit" ) || script.equals( "quit" ) ) return Pair.of( "Sorry, can't do that.", client.getPrompt() );
         try
         {
             log.debug( script );
-            client.evaluate( removeFirstEnter( script ) );
+            client.evaluate( removeInitialNewline( script ) );
             return Pair.of( output.asString(), client.getPrompt() );
         }
         catch ( ShellException e )
@@ -79,7 +79,7 @@ public class ShellSession implements ScriptSession
         }
     }
 
-    private String removeFirstEnter( String script )
+    private String removeInitialNewline( String script )
     {
         return script != null && script.startsWith( "\n" ) ? script.substring( 1 ) : script;
     }
