@@ -20,35 +20,36 @@
 package org.neo4j.index.base;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.index.IndexImplementation;
-import org.neo4j.kernel.Config;
+import org.neo4j.kernel.GraphDatabaseSPI;
 
-public abstract class AbstractIndexImplementation extends IndexImplementation
+public abstract class AbstractIndexImplementation<DS extends IndexDataSource> implements IndexImplementation
 {
-    private GraphDatabaseService graphDb;
-    private IndexConnectionBroker<IndexBaseXaConnection> broker;
-    private IndexDataSource dataSource;
+    public interface Configuration
+    {
+        boolean read_only( boolean def );
+    }
     
-    protected AbstractIndexImplementation( GraphDatabaseService db, Config config )
+    private GraphDatabaseSPI graphDb;
+    private IndexConnectionBroker<IndexBaseXaConnection> broker;
+    private DS dataSource;
+    private final Configuration config;
+    
+    protected AbstractIndexImplementation( GraphDatabaseSPI db, Configuration config, DS dataSource )
     {
         this.graphDb = db;
-        boolean isReadOnly = config.isReadOnly();
-        Map<Object, Object> params = new HashMap<Object, Object>( config.getParams() );
-        params.put( "read_only", isReadOnly );
-        params.put( "ephemeral", config.isEphemeral() );
-        String dbStoreDir = (String) params.get( "store_dir" );
-        params.put( "index_store_dir", getIndexStoreDir( dbStoreDir, getDataSourceName() ) );
-        params.put( "index_store_db", getIndexStoreDb( dbStoreDir, getDataSourceName() ) );
-        this.dataSource = (IndexDataSource) config.getTxModule().registerDataSource(
-                getDataSourceName(), getDataSourceClass().getName(),
-                getDataSourceBranchId(), params, true );
-        this.broker = isReadOnly ?
-                new ReadOnlyConnectionBroker<IndexBaseXaConnection>( config.getTxModule().getTxManager() ) :
-                new ConnectionBroker( config.getTxModule().getTxManager(), dataSource );
+        this.dataSource = dataSource;
+        this.config = config;
+        this.broker = newBroker( db, dataSource );
+    }
+
+    private IndexConnectionBroker<IndexBaseXaConnection> newBroker( GraphDatabaseSPI db, DS dataSource )
+    {
+        return config.read_only( false ) ?
+                new ReadOnlyConnectionBroker<IndexBaseXaConnection>( db.getTxManager() ) :
+                new ConnectionBroker( db.getTxManager(), dataSource );
     }
     
     public IndexConnectionBroker<IndexBaseXaConnection> broker()
@@ -56,32 +57,40 @@ public abstract class AbstractIndexImplementation extends IndexImplementation
         return this.broker;
     }
     
-    public GraphDatabaseService graphDb()
+    public GraphDatabaseSPI graphDb()
     {
         return this.graphDb;
     }
     
-    public IndexDataSource dataSource()
+    public DS dataSource()
     {
         return this.dataSource;
     }
     
-    protected abstract Class<? extends IndexDataSource> getDataSourceClass();
-    
-    public static String getIndexBaseDir( String dbStoreDir, String dataSourceName )
+    public static String getIndexStoreDir( String dbStoreDir, String dataSourceName )
     {
         return new File( new File( dbStoreDir, "index" ), dataSourceName ).getAbsolutePath();
     }
 
-    public static String getIndexStoreDir( String dbStoreDir, String dataSourceName )
-    {
-        return getIndexBaseDir( dbStoreDir, dataSourceName );
-    }
-
-    public static String getIndexStoreDb( String dbStoreDir, String dataSourceName )
+    public static String getProviderStoreDb( String dbStoreDir, String dataSourceName )
     {
         return new File( getIndexStoreDir( dbStoreDir, dataSourceName ), "store.db" ).getAbsolutePath();
     }
     
-    protected abstract byte[] getDataSourceBranchId();
+    public void reset( DS dataSource )
+    {
+        this.dataSource = dataSource;
+        this.broker = newBroker( graphDb, dataSource );
+    }
+
+    public boolean matches( GraphDatabaseService gdb )
+    {
+        return this.graphDb().equals(gdb);
+    }
+    
+    @Override
+    public String getDataSourceName()
+    {
+        return dataSource.getName();
+    }
 }

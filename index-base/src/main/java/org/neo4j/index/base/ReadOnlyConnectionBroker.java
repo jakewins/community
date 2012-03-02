@@ -22,9 +22,8 @@ package org.neo4j.index.base;
 import javax.transaction.TransactionManager;
 
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 
-public class ReadOnlyConnectionBroker<T extends XaConnection> extends IndexConnectionBroker<T>
+public class ReadOnlyConnectionBroker<T extends IndexBaseXaConnection> extends IndexConnectionBroker<T>
 {
     public ReadOnlyConnectionBroker( TransactionManager transactionManager )
     {

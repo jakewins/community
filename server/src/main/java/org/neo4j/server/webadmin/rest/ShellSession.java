@@ -23,7 +23,7 @@ import java.rmi.RemoteException;
 
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Service;
-import org.neo4j.kernel.AbstractGraphDatabase;
+import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.KernelExtension;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.webadmin.console.ScriptSession;
@@ -45,7 +45,7 @@ public class ShellSession implements ScriptSession
 
     private static volatile ShellServer fallbackServer = null;
     
-    public ShellSession( AbstractGraphDatabase graph )
+    public ShellSession( GraphDatabaseSPI graph )
     {
         ShellServerExtension shell = (ShellServerExtension) Service.load( KernelExtension.class, "shell" );
         if ( shell == null ) throw new UnsupportedOperationException( "Shell server not found" );
@@ -66,7 +66,7 @@ public class ShellSession implements ScriptSession
         }
     }
 
-    private ShellServer getFallbackServer( AbstractGraphDatabase graph )
+    private ShellServer getFallbackServer( GraphDatabaseSPI graph )
     {
         if(fallbackServer  == null)
         {
@@ -87,11 +87,11 @@ public class ShellSession implements ScriptSession
     public Pair<String, String> evaluate( String script )
     {
         if ( script.equals( "init()" ) ) return Pair.of( "", client.getPrompt() );
-        if ( script.equals( "exit" ) || script.equals( "quit" ) ) return Pair.of( "No you don't", client.getPrompt() );
+        if ( script.equals( "exit" ) || script.equals( "quit" ) ) return Pair.of( "Sorry, can't do that.", client.getPrompt() );
         try
         {
             log.debug( script );
-            client.evaluate( removeFirstEnter( script ) );
+            client.evaluate( removeInitialNewline( script ) );
             return Pair.of( output.asString(), client.getPrompt() );
         }
         catch ( ShellException e )
@@ -102,7 +102,7 @@ public class ShellSession implements ScriptSession
         }
     }
 
-    private String removeFirstEnter( String script )
+    private String removeInitialNewline( String script )
     {
         return script != null && script.startsWith( "\n" ) ? script.substring( 1 ) : script;
     }

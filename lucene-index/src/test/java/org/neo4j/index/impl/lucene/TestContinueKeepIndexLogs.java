@@ -34,7 +34,7 @@ public class TestContinueKeepIndexLogs extends TestContinueKeepLogs
     @Override
     protected String dataSourceName()
     {
-        return LuceneDataSource.DEFAULT_NAME;
+        return LuceneDataSource.DATA_SOURCE_NAME;
     }
     
     @Override
@@ -48,6 +48,6 @@ public class TestContinueKeepIndexLogs extends TestContinueKeepLogs
     @Override
     protected File logDir( GraphDatabaseService db )
     {
-        return new File( getIndexStoreDir( ((AbstractGraphDatabase)db).getStoreDir(), LuceneDataSource.DEFAULT_NAME ) );
+        return new File( getIndexStoreDir( ((AbstractGraphDatabase)db).getStoreDir(), LuceneDataSource.DATA_SOURCE_NAME ) );
     }
 }

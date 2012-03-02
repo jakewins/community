@@ -23,20 +23,20 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.index.base.AbstractIndexImplementation;
-import org.neo4j.index.base.EntityType;
-import org.neo4j.index.base.IndexDataSource;
-import org.neo4j.index.base.IndexIdentifier;
-import org.neo4j.kernel.Config;
+import org.neo4j.kernel.GraphDatabaseSPI;
 
-public class LuceneIndexImplementation extends AbstractIndexImplementation
+public class LuceneIndexImplementation extends AbstractIndexImplementation<LuceneDataSource>
 {
+    public interface Configuration extends AbstractIndexImplementation.Configuration
+    {
+    }
+    
     static final String KEY_TYPE = "type";
     static final String KEY_ANALYZER = "analyzer";
     static final String KEY_TO_LOWER_CASE = "to_lower_case";
@@ -56,50 +56,22 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation
 
     final int lazynessThreshold;
 
-    public LuceneIndexImplementation( GraphDatabaseService db, Config config )
+    public LuceneIndexImplementation( GraphDatabaseSPI db, Configuration config, LuceneDataSource dataSource )
     {
-        super( db, config );
+        super( db, config, dataSource );
         this.lazynessThreshold = DEFAULT_LAZY_THRESHOLD;
-    }
-    
-    @Override
-    public LuceneDataSource dataSource()
-    {
-        return (LuceneDataSource) super.dataSource();
     }
 
     @Override
     public Index<Node> nodeIndex( String indexName, Map<String, String> config )
     {
-        LuceneDataSource ds = dataSource();
-        IndexIdentifier identifier = new IndexIdentifier( EntityType.NODE, indexName );
-        synchronized ( ds.indexes )
-        {
-            LuceneIndex index = ds.indexes.get( identifier );
-            if ( index == null )
-            {
-                index = new LuceneIndex.NodeIndex( this, identifier );
-                ds.indexes.put( identifier, index );
-            }
-            return index;
-        }
+        return dataSource().nodeIndex( indexName, graphDb(), this );
     }
 
     @Override
     public RelationshipIndex relationshipIndex( String indexName, Map<String, String> config )
     {
-        LuceneDataSource ds = dataSource();
-        IndexIdentifier identifier = new IndexIdentifier( EntityType.RELATIONSHIP, indexName );
-        synchronized ( ds.indexes )
-        {
-            LuceneIndex index = ds.indexes.get( identifier );
-            if ( index == null )
-            {
-                index = new LuceneIndex.RelationshipIndex( this, identifier );
-                ds.indexes.put( identifier, index );
-            }
-            return (RelationshipIndex) index;
-        }
+        return dataSource().relationshipIndex( indexName, graphDb(), this );
     }
 
     @Override
@@ -160,23 +132,5 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation
             return value1.equals( value2 );
         }
         return false;
-    }
-
-    @Override
-    public String getDataSourceName()
-    {
-        return LuceneDataSource.DEFAULT_NAME;
-    }
-
-    @Override
-    protected Class<? extends IndexDataSource> getDataSourceClass()
-    {
-        return LuceneDataSource.class;
-    }
-
-    @Override
-    protected byte[] getDataSourceBranchId()
-    {
-        return LuceneDataSource.DEFAULT_BRANCH_ID;
     }
 }

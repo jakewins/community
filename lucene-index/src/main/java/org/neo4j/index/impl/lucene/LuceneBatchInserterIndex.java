@@ -73,7 +73,7 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
     {
         this.inserter = inserter;
         String dbStoreDir = ((BatchInserterImpl) inserter).getStore();
-        String indexDir = AbstractIndexImplementation.getIndexStoreDir( dbStoreDir, LuceneDataSource.DEFAULT_NAME );
+        String indexDir = AbstractIndexImplementation.getIndexStoreDir( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME );
         File dir = LuceneDataSource.getFileDirectory( indexDir, identifier );
         this.createdNow = !dir.exists();
         this.identifier = identifier;

@@ -19,6 +19,9 @@
  */
 package org.neo4j.index.base;
 
+import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDir;
+import static org.neo4j.index.base.AbstractIndexImplementation.getProviderStoreDb;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,7 +31,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexProvider;
-import org.neo4j.kernel.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBackedXaDataSource;
@@ -37,6 +39,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaCommandFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.transaction.xaframework.XaContainer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransactionFactory;
@@ -48,6 +51,19 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransactionFactory;
  */
 public abstract class IndexDataSource extends LogBackedXaDataSource
 {
+    public interface Configuration extends LogBackedXaDataSource.Configuration
+    {
+        boolean read_only( boolean def );
+        
+        String store_dir();
+        
+        boolean allow_upgrade( boolean def );
+        
+        String index_provider_db( String def );
+        
+        String index_logical_log( String def );
+    }
+    
     private final XaContainer xaContainer;
     private final String storeDir;
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(); 
@@ -62,28 +78,26 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
      * @throws InstantiationException if the data source couldn't be
      * instantiated
      */
-    public IndexDataSource( Map<Object,Object> params ) 
-        throws InstantiationException
+    public IndexDataSource( byte[] branchId, String dataSourceName, Configuration config, IndexStore indexStore,
+            FileSystemAbstraction fileSystem, XaFactory xaFactory ) 
     {
-        super( params );
+        super( branchId, dataSourceName );
         try
         {
-            this.storeDir = (String) params.get( "index_store_dir" );
-            this.indexStore = (IndexStore) params.get( IndexStore.class );
+            this.storeDir = getIndexStoreDir( config.store_dir(), dataSourceName );
+            this.indexStore = indexStore;
             ensureDirectoryCreated( this.storeDir );
-            FileSystemAbstraction fileSystem = (FileSystemAbstraction) params.get( FileSystemAbstraction.class );
-            boolean allowUpgrade = Boolean.parseBoolean( (String) params.get( Config.ALLOW_STORE_UPGRADE ) );
-            this.store = new IndexProviderStore( new File( (String) params.get( "index_store_db" ) ), fileSystem,
-                    getVersion(), allowUpgrade );
-            boolean isReadOnly = params.containsKey( "read_only" ) ?
-                    (Boolean) params.get( "read_only" ) : false;
-            initializeBeforeLogicalLog( params );
+            boolean allowUpgrade = config.allow_upgrade( false );
+            this.store = new IndexProviderStore( new File( config.index_provider_db( getProviderStoreDb( config.store_dir(), dataSourceName )) ),
+                    fileSystem, getVersion(), allowUpgrade );
+            boolean isReadOnly = config.read_only( false );
+            initializeBeforeLogicalLog( config );
                     
             if ( !isReadOnly )
             {
                 XaCommandFactory cf = new IndexCommandFactory();
                 XaTransactionFactory tf = new IndexTransactionFactory();
-                xaContainer = XaContainer.create( this, this.storeDir + "/logical.log", cf, tf, null, params );
+                xaContainer = xaFactory.newXaContainer( this, config.index_logical_log( storeDir + "/logical.log" ), cf, tf, null );
                 try
                 {
                     xaContainer.openLogicalLog();
@@ -93,7 +107,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
                     throw new RuntimeException( "Unable to open logical log in " + this.storeDir, e );
                 }
                 
-                setKeepLogicalLogsIfSpecified( (String) params.get( Config.KEEP_LOGICAL_LOGS ), getName() );
+                setKeepLogicalLogsIfSpecified( config.keep_logical_logs( null ), getName() );
                 setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
             }
             else
@@ -108,7 +122,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         }
     }
     
-    protected void initializeBeforeLogicalLog( Map<?, ?> params )
+    protected void initializeBeforeLogicalLog( Configuration config )
     {
     }
     

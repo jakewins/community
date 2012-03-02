@@ -24,7 +24,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.Index;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.util.IoPrimitiveUtils;
 
@@ -118,7 +117,7 @@ public abstract class AbstractIndex<T extends PropertyContainer> implements Inde
     @Override
     public T putIfAbsent( T entity, String key, Object value )
     {
-        return ((AbstractGraphDatabase)provider.graphDb()).getConfig().getGraphDbModule().getNodeManager().indexPutIfAbsent( this, entity, key, value );
+        return provider.graphDb().getNodeManager().indexPutIfAbsent( this, entity, key, value );
     }
     
     /**

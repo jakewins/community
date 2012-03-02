@@ -9,7 +9,7 @@
 
   <groupId>org.neo4j</groupId>
   <artifactId>neo4j-index-base</artifactId>
-  <version>1.6-SNAPSHOT</version>
+  <version>1.7-SNAPSHOT</version>
   <name>Neo4j - Index base classes</name>
   <description>
  Neo4j index base contains classes which makes it easy to create

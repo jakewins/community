@@ -19,21 +19,43 @@
  */
 package org.neo4j.index.lucene;
 
-import org.neo4j.graphdb.index.IndexImplementation;
-import org.neo4j.graphdb.index.IndexProvider;
-import org.neo4j.index.impl.lucene.LuceneIndexImplementation;
-import org.neo4j.kernel.KernelData;
+import java.util.Map;
 
-public class LuceneIndexProvider extends IndexProvider
+import org.neo4j.index.base.AbstractIndexImplementation;
+import org.neo4j.index.base.AbstractIndexProvider;
+import org.neo4j.index.base.IndexDataSource;
+import org.neo4j.index.impl.lucene.LuceneDataSource;
+import org.neo4j.index.impl.lucene.LuceneIndexImplementation;
+import org.neo4j.kernel.ConfigProxy;
+import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.impl.index.IndexStore;
+import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
+
+public class LuceneIndexProvider extends AbstractIndexProvider
 {
+    public interface Configuration
+    {
+        boolean read_only(boolean def);
+    }
+    
     public LuceneIndexProvider()
     {
         super( LuceneIndexImplementation.SERVICE_NAME );
     }
 
     @Override
-    public IndexImplementation load( KernelData kernel )
+    protected IndexDataSource newDataSource( Map<String, String> params, IndexStore indexStore,
+            FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory )
     {
-        return new LuceneIndexImplementation( kernel.graphDatabase(), kernel.getConfig() );
+        return new LuceneDataSource( ConfigProxy.config( params,
+                LuceneDataSource.Configuration.class ), indexStore, fileSystemAbstraction, xaFactory );
+    }
+
+    @Override
+    protected AbstractIndexImplementation newIndexImplementation( GraphDatabaseSPI db,
+            IndexDataSource dataSource, Map<String, String> params )
+    {
+        return new LuceneIndexImplementation( db, ConfigProxy.config( params, LuceneIndexImplementation.Configuration.class ), (LuceneDataSource)dataSource );
     }
 }

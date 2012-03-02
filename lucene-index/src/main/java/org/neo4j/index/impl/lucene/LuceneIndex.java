@@ -41,11 +41,13 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.index.base.AbstractIndex;
+import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.index.base.CombinedIndexHits;
 import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.IdToEntityIterator;
@@ -67,24 +69,12 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
     // allow for self-healing properties.
     final Collection<Long> abandonedIds = new CopyOnWriteArraySet<Long>();
 
-    LuceneIndex( LuceneIndexImplementation service, IndexIdentifier identifier )
+    LuceneIndex( AbstractIndexImplementation<LuceneDataSource> service, IndexIdentifier identifier )
     {
         super( service, identifier );
         this.type = service.dataSource().getType( identifier );
     }
     
-    @Override
-    protected IndexBaseXaConnection<LuceneTransaction> getConnection()
-    {
-        return super.getConnection();
-    }
-    
-    @Override
-    protected IndexBaseXaConnection<LuceneTransaction> getReadOnlyConnection()
-    {
-        return super.getReadOnlyConnection();
-    }
-        
     private void assertValidKey( String key )
     {
         if ( FORBIDDEN_KEYS.contains( key ) )
@@ -333,16 +323,19 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
 
     static class NodeIndex extends LuceneIndex<Node>
     {
-        NodeIndex( LuceneIndexImplementation service,
-                IndexIdentifier identifier )
+        private GraphDatabaseService gdb;
+
+        NodeIndex( AbstractIndexImplementation<LuceneDataSource> service,
+                   GraphDatabaseService gdb, IndexIdentifier identifier )
         {
             super( service, identifier );
+            this.gdb = gdb;
         }
 
         @Override
         protected Node idToEntity( EntityId id )
         {
-            return getProvider().graphDb().getNodeById( id.getId() );
+            return gdb.getNodeById(id.getId());
         }
 
         @Override
@@ -360,16 +353,20 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
     static class RelationshipIndex extends LuceneIndex<Relationship>
             implements org.neo4j.graphdb.index.RelationshipIndex
     {
-        RelationshipIndex( LuceneIndexImplementation service,
+        private GraphDatabaseService gdb;
+
+        RelationshipIndex( AbstractIndexImplementation<LuceneDataSource> service,
+                           GraphDatabaseService gdb,
                 IndexIdentifier identifier )
         {
             super( service, identifier );
+            this.gdb = gdb;
         }
 
         @Override
         protected Relationship idToEntity( EntityId id )
         {
-            return getProvider().graphDb().getRelationshipById( id.getId() );
+            return gdb.getRelationshipById(id.getId());
         }
 
         @Override

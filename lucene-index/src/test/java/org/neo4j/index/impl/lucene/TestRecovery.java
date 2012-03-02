@@ -20,6 +20,7 @@
 package org.neo4j.index.impl.lucene;
 
 import static org.junit.Assert.assertEquals;
+import static org.neo4j.helpers.collection.MapUtil.stringMap;
 
 import java.io.File;
 import java.util.Map;
@@ -33,9 +34,14 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.index.Neo4jTestCase;
 import org.neo4j.kernel.CommonFactories;
+import org.neo4j.kernel.ConfigProxy;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
+import org.neo4j.kernel.impl.transaction.PlaceboTm;
+import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Don't extend Neo4jTestCase since these tests restarts the db in the tests. 
@@ -110,7 +116,7 @@ public class TestRecovery
     {
         String path = getDbPath();
         Neo4jTestCase.deleteFileOrDirectory( new File( path ) );
-        assertEquals( 0, Runtime.getRuntime().exec( new String[] { "java", "-cp", System.getProperty( "java.class.path" ),
+        assertEquals( 0, Runtime.getRuntime().exec( new String[] { "java", "-Xdebug","-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005", "-cp", System.getProperty( "java.class.path" ),
                 AddRelToIndex.class.getName(), getDbPath() } ).waitFor() );
         
         // I would like to do this, but there's no exception propagated out from the constructor
@@ -119,9 +125,11 @@ public class TestRecovery
         
         // Instead I have to do this
         FileSystemAbstraction fileSystem = CommonFactories.defaultFileSystemAbstraction();
-        Map<Object, Object> params = TestLuceneDataSource.dataSourceConfig( getDbPath(),
-                new IndexStore( getDbPath(), fileSystem ) );
-        LuceneDataSource ds = new LuceneDataSource( params );
+        Map<String, String> params = stringMap(
+                "store_dir", getDbPath(),
+                "index_logical_log", getDbPath() + "/index/lucene.log",
+                "index_provider_db", getDbPath() + "/index/lucene-store.db" );
+        LuceneDataSource ds = new LuceneDataSource(ConfigProxy.config(params, LuceneDataSource.Configuration.class), new IndexStore( getDbPath(), fileSystem ), fileSystem, new XaFactory(params, TxIdGenerator.DEFAULT, new PlaceboTm(), CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL, CommonFactories.defaultRecoveryVerifier()));
         ds.close();
     }
 }

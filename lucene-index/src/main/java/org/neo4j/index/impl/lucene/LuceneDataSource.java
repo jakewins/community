@@ -55,19 +55,24 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
+import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
+import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexDataSource;
 import org.neo4j.index.base.IndexIdentifier;
-import org.neo4j.kernel.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
+import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 
@@ -77,9 +82,24 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
  */
 public class LuceneDataSource extends IndexDataSource
 {
+    public interface Configuration extends IndexDataSource.Configuration
+    {
+        int lucene_searcher_cache_size(int def);
+
+        int lucene_writer_cache_size(int def);
+
+        boolean ephemeral(boolean def);
+
+        boolean read_only(boolean def);
+
+        String store_dir();
+
+        boolean allow_store_upgrade( boolean def );
+    }
+    
     public static final Version LUCENE_VERSION = Version.LUCENE_35;
-    public static final String DEFAULT_NAME = "lucene-index";
-    public static final byte[] DEFAULT_BRANCH_ID = UTF8.encode( "162374" );
+    public static final String DATA_SOURCE_NAME = "lucene";
+    public static final byte[] BRANCH_ID = UTF8.encode( "162374" );
     public static final long INDEX_VERSION = versionStringToLong( "3.5" );
 
     /**
@@ -129,60 +149,32 @@ public class LuceneDataSource extends IndexDataSource
     /**
      * Constructs this data source.
      *
-     * @param params XA parameters.
      * @throws InstantiationException if the data source couldn't be
      * instantiated
      */
-    public LuceneDataSource( Map<Object,Object> params )
-        throws InstantiationException
+    public LuceneDataSource( Configuration config, IndexStore indexStore, FileSystemAbstraction fileSystemAbstraction,
+            XaFactory xaFactory )
     {
-        super( params );
+        super( BRANCH_ID, DATA_SOURCE_NAME, config, indexStore, fileSystemAbstraction, xaFactory );
     }
     
     @Override
-    protected void initializeBeforeLogicalLog( Map<?, ?> params )
+    protected void initializeBeforeLogicalLog( org.neo4j.index.base.IndexDataSource.Configuration configuration )
     {
+        // TODO Hmm, casting Configuration here... not very nice perhaps
+        Configuration config = (Configuration) configuration;
+        indexSearchers = new IndexSearcherLruCache( config.lucene_searcher_cache_size(Integer.MAX_VALUE) );
+        indexWriters = new IndexWriterLruCache( config.lucene_writer_cache_size(Integer.MAX_VALUE) );
         indexes = new HashMap<IndexIdentifier, LuceneIndex<? extends PropertyContainer>>();
-        int searcherSize = parseInt( params, Config.LUCENE_SEARCHER_CACHE_SIZE );
-        indexSearchers = new IndexSearcherLruCache( searcherSize );
-        int writerSize = parseInt( params, Config.LUCENE_WRITER_CACHE_SIZE );
-        indexWriters = new IndexWriterLruCache( writerSize );
 //        caching = new Cache();
         cleanWriteLocks( getStoreDir() );
         this.typeCache = new IndexTypeCache( getIndexStore() );
-        this.directoryGetter = parseBoolean( params, "ephemeral", false ) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
-    }
-
-    private boolean parseBoolean( Map<?, ?> params, String key, boolean defaultValue )
-    {
-        Object value = params.get( key );
-        return value != null ?
-                (value instanceof Boolean ? ((Boolean)value).booleanValue() : Boolean.parseBoolean( value.toString() )) :
-                defaultValue;
+        this.directoryGetter = config.ephemeral(false) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
     }
     
-    @Override
     protected long getVersion()
     {
         return INDEX_VERSION;
-    }
-    
-    @Override
-    public String getName()
-    {
-        return DEFAULT_NAME;
-    }
-    
-    @Override
-    public byte[] getBranchId()
-    {
-        return DEFAULT_BRANCH_ID;
-    }
-    
-    private int parseInt( Map<?, ?> params, String param )
-    {
-        String searcherParam = (String) params.get( param );
-        return searcherParam != null ? Integer.parseInt( searcherParam ) : Integer.MAX_VALUE;
     }
 
     IndexType getType( IndexIdentifier identifier )
@@ -245,7 +237,37 @@ public class LuceneDataSource extends IndexDataSource
         }
         indexWriters.clear();
     }
-    
+
+    public Index<Node> nodeIndex( String indexName, GraphDatabaseService graphDb, AbstractIndexImplementation<LuceneDataSource> luceneIndexImplementation )
+    {
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.NODE, indexName );
+        synchronized ( indexes )
+        {
+            LuceneIndex index = indexes.get( identifier );
+            if ( index == null )
+            {
+                index = new LuceneIndex.NodeIndex( luceneIndexImplementation, graphDb, identifier );
+                indexes.put( identifier, index );
+            }
+            return index;
+        }
+    }
+
+    public RelationshipIndex relationshipIndex( String indexName, GraphDatabaseService gdb, AbstractIndexImplementation<LuceneDataSource> luceneIndexImplementation )
+    {
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.RELATIONSHIP, indexName );
+        synchronized ( indexes )
+        {
+            LuceneIndex index = indexes.get( identifier );
+            if ( index == null )
+            {
+                index = new LuceneIndex.RelationshipIndex( luceneIndexImplementation, gdb, identifier );
+                indexes.put( identifier, index );
+            }
+            return (RelationshipIndex) index;
+        }
+    }
+
     @Override
     protected void flushAll()
     {
