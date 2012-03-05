@@ -62,6 +62,8 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         String index_provider_db( String def );
         
         String index_logical_log( String def );
+        
+        String index_dir_name( String defaultsToDataSourceName );
     }
     
     private final XaContainer xaContainer;
@@ -84,7 +86,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         super( branchId, dataSourceName );
         try
         {
-            this.storeDir = getIndexStoreDir( config.store_dir(), dataSourceName );
+            this.storeDir = getIndexStoreDir( config.store_dir(), config.index_dir_name( dataSourceName ) );
             this.indexStore = indexStore;
             ensureDirectoryCreated( this.storeDir );
             boolean allowUpgrade = config.allow_upgrade( false );
@@ -107,7 +109,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
                     throw new RuntimeException( "Unable to open logical log in " + this.storeDir, e );
                 }
                 
-                setKeepLogicalLogsIfSpecified( config.keep_logical_logs( null ), getName() );
+                setKeepLogicalLogsIfSpecified( config.keep_logical_logs( null ), dataSourceName );
                 setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
             }
             else

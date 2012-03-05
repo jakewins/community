@@ -19,6 +19,10 @@
  */
 package org.neo4j.index.lucene;
 
+import static org.neo4j.helpers.collection.MapUtil.stringMap;
+
+import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.index.base.AbstractIndexImplementation;
@@ -48,8 +52,19 @@ public class LuceneIndexProvider extends AbstractIndexProvider
     protected IndexDataSource newDataSource( Map<String, String> params, IndexStore indexStore,
             FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory )
     {
+        params = overrideLogAndProviderStore( params );
         return new LuceneDataSource( ConfigProxy.config( params,
                 LuceneDataSource.Configuration.class ), indexStore, fileSystemAbstraction, xaFactory );
+    }
+
+    private Map<String, String> overrideLogAndProviderStore( Map<String, String> params )
+    {
+        String storeDir = params.get( "store_dir" );
+        return stringMap( new HashMap<String, String>( params ),
+                // Overridden for legacy purposes. If left out then good defaults are used instead
+                "index_logical_log", new File( new File( storeDir, "index" ), "lucene.log" ).getAbsolutePath(),
+                "index_provider_db", new File( new File( storeDir, "index" ), "lucene-store.db" ).getAbsolutePath(),
+                "index_dir_name", "lucene" );
     }
 
     @Override

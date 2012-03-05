@@ -21,7 +21,6 @@ package org.neo4j.index.impl.lucene;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDir;
 import static org.neo4j.index.impl.lucene.LuceneDataSource.getFileDirectory;
 
 import java.io.File;
@@ -62,7 +61,7 @@ public class TestIndexDelectionFs
         String indexName = "index";
         String otherIndexName = "other-index";
 
-        String luceneDir = getIndexStoreDir( db.getStoreDir(), LuceneDataSource.DATA_SOURCE_NAME );
+        String luceneDir = new File( new File( db.getStoreDir(), "index" ), "lucene" ).getAbsolutePath();
         File pathToLuceneIndex = getFileDirectory( luceneDir, new IndexIdentifier( EntityType.NODE, indexName ) );
         File pathToOtherLuceneIndex = getFileDirectory( luceneDir, new IndexIdentifier( EntityType.NODE, otherIndexName ) );
 

@@ -43,7 +43,6 @@ import org.apache.lucene.search.TopDocs;
 import org.neo4j.graphdb.index.BatchInserterIndex;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.index.base.AbstractIndexHits;
-import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexIdentifier;
@@ -73,7 +72,7 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
     {
         this.inserter = inserter;
         String dbStoreDir = ((BatchInserterImpl) inserter).getStore();
-        String indexDir = AbstractIndexImplementation.getIndexStoreDir( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME );
+        String indexDir = new File( new File( dbStoreDir, "index" ), "lucene" ).getAbsolutePath(); //AbstractIndexImplementation.getIndexStoreDir( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME );
         File dir = LuceneDataSource.getFileDirectory( indexDir, identifier );
         this.createdNow = !dir.exists();
         this.identifier = identifier;

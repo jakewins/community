@@ -98,7 +98,7 @@ public class LuceneDataSource extends IndexDataSource
     }
     
     public static final Version LUCENE_VERSION = Version.LUCENE_35;
-    public static final String DATA_SOURCE_NAME = "lucene";
+    public static final String DATA_SOURCE_NAME = "lucene-index";
     public static final byte[] BRANCH_ID = UTF8.encode( "162374" );
     public static final long INDEX_VERSION = versionStringToLong( "3.5" );
 

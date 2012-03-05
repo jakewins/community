@@ -128,7 +128,8 @@ public class TestRecovery
         Map<String, String> params = stringMap(
                 "store_dir", getDbPath(),
                 "index_logical_log", getDbPath() + "/index/lucene.log",
-                "index_provider_db", getDbPath() + "/index/lucene-store.db" );
+                "index_provider_db", getDbPath() + "/index/lucene-store.db",
+                "index_dir_name", "lucene" );
         LuceneDataSource ds = new LuceneDataSource(ConfigProxy.config(params, LuceneDataSource.Configuration.class), new IndexStore( getDbPath(), fileSystem ), fileSystem, new XaFactory(params, TxIdGenerator.DEFAULT, new PlaceboTm(), CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL, CommonFactories.defaultRecoveryVerifier()));
         ds.close();
     }
