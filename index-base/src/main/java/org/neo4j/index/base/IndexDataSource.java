@@ -97,7 +97,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
             {
                 XaCommandFactory cf = new IndexCommandFactory();
                 XaTransactionFactory tf = new IndexTransactionFactory();
-                xaContainer = xaFactory.newXaContainer( this, config.index_logical_log( storeDir + "/logical.log" ), cf, tf, null );
+                xaContainer = xaFactory.newXaContainer( this, config.index_logical_log( storeDir + "/logical.log" ), cf, tf, null, null );
                 try
                 {
                     xaContainer.openLogicalLog();
