@@ -74,7 +74,7 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
         super( service, identifier );
         this.type = service.dataSource().getType( identifier );
     }
-    
+
     private void assertValidKey( String key )
     {
         if ( FORBIDDEN_KEYS.contains( key ) )
