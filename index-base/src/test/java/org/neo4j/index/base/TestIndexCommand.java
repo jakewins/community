@@ -72,9 +72,7 @@ public class TestIndexCommand
         // Assert that the read commands are equal to the written commands
         Iterator<XaCommand> commandIterator = commands.iterator();
         for ( XaCommand readCommand : readCommands )
-        {
             assertEquals( commandIterator.next(), readCommand );
-        }
         
         // Assert that even truncated files
         // (where commands are cut off in the middle) can be read
@@ -117,7 +115,7 @@ public class TestIndexCommand
     private List<XaCommand> createSomeCommands()
     {
         List<XaCommand> commands = new ArrayList<XaCommand>();
-        IndexDefineCommand definitions = new IndexDefineCommand();
+        IndexDefininitionsCommand definitions = new IndexDefininitionsCommand();
         commands.add( definitions );
         commands.add( definitions.create( INDEX_NAME_1, EntityType.NODE, SOME_CONFIG ) );
         commands.add( definitions.add( INDEX_NAME_1, EntityType.NODE, entityId( NODE_ID_1 ), KEY_1, STRING_VALUE_1 ) );
@@ -137,9 +135,7 @@ public class TestIndexCommand
         {
             XaCommand command = readCommand( reader, buffer );
             if ( command == null )
-            {
                 break;
-            }
             commands.add( command );
         }
         reader.close();

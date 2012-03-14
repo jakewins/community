@@ -22,6 +22,7 @@ package org.neo4j.index.base;
 import static org.neo4j.index.base.EntityId.entityId;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read2bMap;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read3bLengthAndString;
+import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read5bLong;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readBytes;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readDouble;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readFloat;
@@ -30,6 +31,7 @@ import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readLong;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readShort;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.write2bLengthAndString;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.write3bLengthAndString;
+import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.write5bLong;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,7 +44,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 
 /**
- * Created from {@link IndexDefineCommand} or read from a logical log.
+ * Created from {@link IndexDefininitionsCommand} or read from a logical log.
  * Contains all the different types of commands that an {@link Index} need
  * to support.
  */
@@ -54,9 +56,6 @@ public abstract class IndexCommand extends XaCommand
     static final byte REMOVE_COMMAND = (byte) 3;
     static final byte DELETE_COMMAND = (byte) 4;
     static final byte CREATE_COMMAND = (byte) 5;
-    
-    public static final byte NODE = (byte) 0;
-    public static final byte RELATIONSHIP = (byte) 1;
     
     private static final byte VALUE_TYPE_NULL = (byte) 0;
     private static final byte VALUE_TYPE_SHORT = (byte) 1;
@@ -123,19 +122,16 @@ public abstract class IndexCommand extends XaCommand
     @Override
     public void writeToFile( LogBuffer buffer ) throws IOException
     {
-        /* c: commandType
-         * e: entityType
-         * n: indexNameId
-         * k: keyId
+        /* c: commandType (0-15)
+         * e: entityType (0:node, 1:relationship)
+         * n: indexNameId (0-127)
+         * k: keyId (0-255)
          * i: entityId
-         * v: value type
+         * v: value type (0-15)
          * u: value
-         * x: 0=entityId needs 4b, 1=entityId needs 8b
-         * y: 0=startNode needs 4b, 1=startNode needs 8b
-         * z: 0=endNode needs 4b, 1=endNode needs 8b
          * 
-         * [cccv,vvex][yznn,nnnn][kkkk,kkkk]
-         * [iiii,iiii] x 4 or 8
+         * [cccc,vvvv][ennn,nnnn][kkkk,kkkk]
+         * [iiii,iiii] x 5 (only 36b used though)
          * (either string value)
          * [llll,llll][llll,llll][llll,llll][string chars...]
          * (numeric value)
@@ -143,7 +139,7 @@ public abstract class IndexCommand extends XaCommand
          */
         
         writeHeader( buffer );
-        putIntOrLong( buffer, entityId.getId() );
+        write5bLong( buffer, entityId.getId() );
         
         // Value
         switch ( valueType )
@@ -161,36 +157,9 @@ public abstract class IndexCommand extends XaCommand
 
     protected void writeHeader( LogBuffer buffer ) throws IOException
     {
-        buffer.put( (byte)((commandType<<5) | (valueType<<2) | (entityType.byteValue()<<1) | (needsLong( entityId.getId() ))) );
-        buffer.put( (byte)((startNodeNeedsLong()<<7) | (endNodeNeedsLong()<<6) | (indexNameId)) );
-        buffer.put( keyId );
-    }
-    
-    protected static void putIntOrLong( LogBuffer buffer, long id ) throws IOException
-    {
-        if ( needsLong( id ) == 1 )
-        {
-            buffer.putLong( id );
-        }
-        else
-        {
-            buffer.putInt( (int)id );
-        }
-    }
-
-    protected static byte needsLong( long value )
-    {
-        return value > Integer.MAX_VALUE ? (byte)1 : (byte)0;
-    }
-    
-    protected byte startNodeNeedsLong()
-    {
-        return 0;
-    }
-    
-    protected byte endNodeNeedsLong()
-    {
-        return 0;
+        buffer.put( (byte)((commandType<<4) | valueType ) );
+        buffer.put( (byte)((entityType.byteValue()<<7) | indexNameId) );
+        buffer.put( (byte)keyId );
     }
     
     private static byte valueTypeOf( Object value )
@@ -203,25 +172,15 @@ public abstract class IndexCommand extends XaCommand
         else if ( value instanceof Number )
         {
             if ( value instanceof Float )
-            {
                 valueType = VALUE_TYPE_FLOAT;
-            }
             else if ( value instanceof Double )
-            {
                 valueType = VALUE_TYPE_DOUBLE;
-            }
             else if ( value instanceof Long )
-            {
                 valueType = VALUE_TYPE_LONG;
-            }
             else if ( value instanceof Short )
-            {
                 valueType = VALUE_TYPE_SHORT;
-            }
             else
-            {
                 valueType = VALUE_TYPE_INT;
-            }
         }
         else
         {
@@ -258,23 +217,11 @@ public abstract class IndexCommand extends XaCommand
         }
         
         @Override
-        protected byte startNodeNeedsLong()
-        {
-            return needsLong( getEntityId().getStartNode() );
-        }
-        
-        @Override
-        protected byte endNodeNeedsLong()
-        {
-            return needsLong( getEntityId().getEndNode() );
-        }
-        
-        @Override
         public void writeToFile( LogBuffer buffer ) throws IOException
         {
             super.writeToFile( buffer );
-            putIntOrLong( buffer, getEntityId().getStartNode() );
-            putIntOrLong( buffer, getEntityId().getEndNode() );
+            write5bLong( buffer, getEntityId().getStartNode() );
+            write5bLong( buffer, getEntityId().getEndNode() );
         }
     }
     
@@ -367,20 +314,19 @@ public abstract class IndexCommand extends XaCommand
         byte[] headerBytes = readBytes( channel, new byte[3] );
         if ( headerBytes == null ) return null;
         
-        byte commandType = (byte)((headerBytes[0] & 0xE0) >> 5);
-        byte valueType = (byte)((headerBytes[0] & 0x1C) >> 2);
-        byte entityType = (byte)((headerBytes[0] & 0x2) >> 1);
-        boolean entityIdNeedsLong = (headerBytes[0] & 0x1) > 0;
-        byte indexNameId = (byte)(headerBytes[1] & 0x3F);
+        byte commandType = (byte)((headerBytes[0] & 0xF0) >> 4);
+        byte valueType = (byte)(headerBytes[0] & 0xF);
+        byte entityType = (byte)((headerBytes[1] & 0x80) >> 7);
+        byte indexNameId = (byte)(headerBytes[1] & 0x7F);
         byte keyId = headerBytes[2];
         
         switch ( commandType )
         {
         case DEFINE_COMMAND:
-            Map<String, Byte> indexNames = IndexDefineCommand.readMap( channel, buffer );
-            Map<String, Byte> keys = IndexDefineCommand.readMap( channel, buffer );
+            Map<String, Byte> indexNames = IndexDefininitionsCommand.readMap( channel, buffer );
+            Map<String, Byte> keys = IndexDefininitionsCommand.readMap( channel, buffer );
             if ( indexNames == null || keys == null ) return null;
-            return new IndexDefineCommand( indexNames, keys );
+            return new IndexDefininitionsCommand( indexNames, keys );
         case CREATE_COMMAND:
             Map<String, String> config = read2bMap( channel, buffer );
             if ( config == null ) return null;
@@ -388,7 +334,7 @@ public abstract class IndexCommand extends XaCommand
         case DELETE_COMMAND:
             return new DeleteCommand( indexNameId, entityType );
         case ADD_COMMAND: case REMOVE_COMMAND: case ADD_RELATIONSHIP_COMMAND:
-            Number entityId = entityIdNeedsLong ? (Number)readLong( channel, buffer ) : (Number)readInt( channel, buffer );
+            Long entityId = read5bLong( channel, buffer );
             if ( entityId == null ) return null;
             Object value = readValue( valueType, channel, buffer );
             if ( valueType != VALUE_TYPE_NULL && value == null ) return null;
@@ -402,16 +348,27 @@ public abstract class IndexCommand extends XaCommand
             }
             else
             {
-                boolean startNodeNeedsLong = (headerBytes[1] & 0x8) > 0;
-                boolean endNodeNeedsLong = (headerBytes[1] & 0x40) > 0;
-                Number startNode = startNodeNeedsLong ? (Number)readLong( channel, buffer ) : (Number)readInt( channel, buffer );
-                Number endNode = endNodeNeedsLong ? (Number)readLong( channel, buffer ) : (Number)readInt( channel, buffer );
+                Long startNode = read5bLong( channel, buffer );
+                Long endNode = read5bLong( channel, buffer );
                 if ( startNode == null || endNode == null ) return null;
                 return new AddRelationshipCommand( indexNameId, entityType,
                         entityId( entityId.longValue(), startNode.longValue(), endNode.longValue() ), keyId, value );
             }
         default: throw new RuntimeException( "Unknown command type " + commandType );
         }
+    }
+    
+    @Override
+    public String toString()
+    {
+        return getClass().getSimpleName() + "[" +
+                "id:" + entityId + ", " +
+                "cmd:" + commandType + ", " +
+                "etype:" + entityType + ", " +
+                "idx:" + indexNameId + ", " +
+                "key:" + keyId + ", " +
+                "vtype:" + valueType + ", " +
+                "value:" + value;
     }
     
     @Override

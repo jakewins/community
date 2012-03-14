@@ -31,23 +31,20 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.PropertyContainer;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 
 /**
- * A command which have to be first in the transaction. It will map index names
+ * A command which have to be added first in each transaction. It will map index names
  * and keys to ids so that all other commands in that transaction only refer
- * to ids instead of names. This reduced the number of bytes needed for commands
- * roughly 50% for transaction with more than a couple of commands in it,
+ * to space efficient ids instead of names. This reduced the number of bytes needed for
+ * commands by roughly 50% for transaction with more than a couple of commands in it,
  * depending on the size of the value.
  * 
  * After this command has been created it will act as a factory for other
  * commands so that it can spit out correct index name and key ids.
  */
-public class IndexDefineCommand extends XaCommand
+public class IndexDefininitionsCommand extends XaCommand
 {
     private final AtomicInteger nextIndexNameId = new AtomicInteger( 1 );
     private final AtomicInteger nextKeyId = new AtomicInteger( 1 );
@@ -56,7 +53,7 @@ public class IndexDefineCommand extends XaCommand
     private final Map<Byte, String> idToIndexName;
     private final Map<Byte, String> idToKey;
     
-    public IndexDefineCommand()
+    public IndexDefininitionsCommand()
     {
         indexNameIdRange = new HashMap<String, Byte>();
         keyIdRange = new HashMap<String, Byte>();
@@ -64,23 +61,22 @@ public class IndexDefineCommand extends XaCommand
         idToKey = new HashMap<Byte, String>();
     }
     
-    public IndexDefineCommand( Map<String, Byte> indexNames, Map<String, Byte> keys )
+    public IndexDefininitionsCommand( Map<String, Byte> indexNames, Map<String, Byte> keys )
     {
-        this.indexNameIdRange = indexNames;
-        this.keyIdRange = keys;
+        indexNameIdRange = indexNames;
+        keyIdRange = keys;
         idToIndexName = reverse( indexNames );
         idToKey = reverse( keys );
     }
     
-    private static String getFromMap( Map<Byte, String> map, byte id )
+    private static String getFromMap( Map<? extends Number, String> map, byte id )
     {
-        if ( id == 0 ) return null;
+        if ( id == 0 )
+            return null;
         
         String result = map.get( id );
         if ( result == null )
-        {
             throw new IllegalArgumentException( "" + id );
-        }
         return result;
     }
 
@@ -93,7 +89,6 @@ public class IndexDefineCommand extends XaCommand
     public IndexCommand add( String indexName, EntityType entityType, EntityId entityId, String key,
             Object value )
     {
-        // TODO Inverse to enum
         switch ( entityType )
         {
         case NODE: return new IndexCommand.AddCommand( indexNameId( indexName ), entityType.byteValue(),
@@ -126,21 +121,6 @@ public class IndexDefineCommand extends XaCommand
         return getFromMap( idToKey, id );
     }
 
-    public static byte entityTypeId( Class<?> entityType )
-    {
-        return entityType.equals( Relationship.class ) ? IndexCommand.RELATIONSHIP : IndexCommand.NODE;
-    }
-    
-    public static Class<? extends PropertyContainer> entityType( byte id )
-    {
-        switch ( id )
-        {
-        case IndexCommand.NODE: return Node.class;
-        case IndexCommand.RELATIONSHIP: return Relationship.class;
-        default: throw new IllegalArgumentException( "" + id );
-        }
-    }
-    
     private byte indexNameId( String indexName )
     {
         return id( indexName, indexNameIdRange, nextIndexNameId, idToIndexName );
@@ -209,7 +189,7 @@ public class IndexDefineCommand extends XaCommand
     @Override
     public boolean equals( Object obj )
     {
-        IndexDefineCommand other = (IndexDefineCommand) obj;
+        IndexDefininitionsCommand other = (IndexDefininitionsCommand) obj;
         return indexNameIdRange.equals( other.indexNameIdRange ) &&
                 keyIdRange.equals( other.keyIdRange );
     }

@@ -54,18 +54,45 @@ public abstract class IoPrimitiveUtils
         char[] chars = string.toCharArray();
         // 3 bytes to represent the length (4 is a bit overkill)... maybe
         // this space optimization is a bit overkill also :)
-        buffer.putShort( (short)chars.length );
-        buffer.put( (byte)((chars.length >> 16)) );
+        write3bInt( buffer, chars.length );
         buffer.put( chars );
+    }
+
+    public static void write3bInt( LogBuffer buffer, int value ) throws IOException
+    {
+        buffer.putShort( (short)value );
+        buffer.put( (byte)((value >> 16)) );
+    }
+    
+    public static void write5bLong( LogBuffer buffer, long value ) throws IOException
+    {
+        buffer.putInt( (int)value );
+        buffer.put( (byte)((value >> 32)) );
+    }
+    
+    public static Long read5bLong( ReadableByteChannel channel, ByteBuffer buffer ) throws IOException
+    {
+        Integer lowBits = readInt( channel, buffer );
+        Byte highBits = readByte( channel, buffer );
+        if ( lowBits == null || highBits == null ) return null;
+        return (highBits.longValue() << 32 | lowBits.intValue());
     }
     
     public static String read3bLengthAndString( ReadableByteChannel channel, ByteBuffer buffer ) throws IOException
+    {
+        Integer length = read3bInt( channel, buffer );
+        if ( length == null ) return null;
+        return readString( channel, buffer, length.intValue() );
+    }
+
+    private static Integer read3bInt( ReadableByteChannel channel, ByteBuffer buffer )
+            throws IOException
     {
         Short lengthShort = readShort( channel, buffer );
         Byte lengthByte = readByte( channel, buffer );
         if ( lengthShort == null || lengthByte == null ) return null;
         int length = (lengthByte << 16) | lengthShort;
-        return readString( channel, buffer, length );
+        return length;
     }
     
     public static void write2bLengthAndString( LogBuffer buffer, String string ) throws IOException

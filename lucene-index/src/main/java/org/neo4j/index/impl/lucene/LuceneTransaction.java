@@ -41,7 +41,7 @@ import org.neo4j.index.base.IndexCommand.AddRelationshipCommand;
 import org.neo4j.index.base.IndexCommand.CreateCommand;
 import org.neo4j.index.base.IndexCommand.DeleteCommand;
 import org.neo4j.index.base.IndexCommand.RemoveCommand;
-import org.neo4j.index.base.IndexDefineCommand;
+import org.neo4j.index.base.IndexDefininitionsCommand;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.index.base.IndexTransaction;
 import org.neo4j.index.base.TxData;
@@ -116,7 +116,7 @@ class LuceneTransaction extends IndexTransaction
     protected void doCommit()
     {
         LuceneDataSource dataSource = (LuceneDataSource) getDataSource();
-        IndexDefineCommand def = getDefinitions( false );
+        IndexDefininitionsCommand def = getDefinitions( false );
         dataSource.getWriteLock();
         try
         {

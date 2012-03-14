@@ -49,6 +49,12 @@ public class EntityId
         return (int)(id ^ (id >>> 32));
     }
     
+    @Override
+    public String toString()
+    {
+        return "node[" + id + "]";
+    }
+    
     public static EntityId entityId( Node node )
     {
         return new EntityId( node.getId() );
@@ -90,6 +96,12 @@ public class EntityId
         public long getEndNode()
         {
             return endNode;
+        }
+        
+        @Override
+        public String toString()
+        {
+            return "rel[" + getId() + "," + startNode + "," + endNode + "]";
         }
     }
 }

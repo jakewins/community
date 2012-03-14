@@ -40,7 +40,7 @@ public abstract class IndexTransaction extends XaTransaction
     private final Map<IndexIdentifier, TxDataBoth> txData =
             new HashMap<IndexIdentifier, TxDataBoth>();
     
-    private IndexDefineCommand definitions;
+    private IndexDefininitionsCommand definitions;
     private final Map<IndexIdentifier,Collection<IndexCommand>> commandMap = 
             new HashMap<IndexIdentifier,Collection<IndexCommand>>();
     private final IndexDataSource dataSource;
@@ -105,11 +105,11 @@ public abstract class IndexTransaction extends XaTransaction
         return data;
     }
     
-    protected IndexDefineCommand getDefinitions( boolean create )
+    protected IndexDefininitionsCommand getDefinitions( boolean create )
     {
         if ( definitions == null && create )
         {
-            definitions = new IndexDefineCommand();
+            definitions = new IndexDefininitionsCommand();
         }
         return definitions;
     }
@@ -233,9 +233,9 @@ public abstract class IndexTransaction extends XaTransaction
     @Override
     protected void injectCommand( XaCommand command )
     {
-        if ( command instanceof IndexDefineCommand )
+        if ( command instanceof IndexDefininitionsCommand )
         {
-            setDefinitions( (IndexDefineCommand) command );
+            setDefinitions( (IndexDefininitionsCommand) command );
         }
         else
         {
@@ -247,7 +247,7 @@ public abstract class IndexTransaction extends XaTransaction
         }
     }
 
-    private void setDefinitions( IndexDefineCommand command )
+    private void setDefinitions( IndexDefininitionsCommand command )
     {
         if ( definitions != null )
         {
