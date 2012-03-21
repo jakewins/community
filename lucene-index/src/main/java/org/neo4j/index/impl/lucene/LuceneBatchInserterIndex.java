@@ -440,7 +440,7 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
         }
         else
         {
-            cache = new LruCache<String, Collection<Long>>( "Batch inserter cache for " + key, size, null );
+            cache = new LruCache<String, Collection<Long>>( "Batch inserter cache for " + key, size );
             this.cache.put( key, cache );
         }
     }
