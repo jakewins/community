@@ -31,22 +31,22 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexIdentifier;
-import org.neo4j.kernel.AbstractGraphDatabase;
-import org.neo4j.kernel.EmbeddedGraphDatabase;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.util.FileUtils;
 
 public class TestIndexDelectionFs
 {
-    private static AbstractGraphDatabase db;
+    private static GraphDatabaseAPI db;
     
     @BeforeClass
     public static void doBefore() throws IOException
     {
         FileUtils.deleteRecursively( new File( "target/test-data/deletion" ) );
-        db = new EmbeddedGraphDatabase( "target/test-data/deletion" );
+        db = (GraphDatabaseAPI) new GraphDatabaseFactory().newEmbeddedDatabase( "target/test-data/deletion" );
     }
     
     @AfterClass

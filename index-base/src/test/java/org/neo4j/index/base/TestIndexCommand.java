@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
 import static org.neo4j.index.base.EntityId.entityId;
 import static org.neo4j.index.base.IndexCommand.readCommand;
-import static org.neo4j.kernel.CommonFactories.defaultLogBufferFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -41,6 +40,7 @@ import java.util.Map;
 
 import org.junit.Test;
 import org.neo4j.helpers.Pair;
+import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 
@@ -146,7 +146,7 @@ public class TestIndexCommand
     {
         File file = createTempFile( "index", "command" );
         FileChannel fileChannel = new RandomAccessFile( file, "rw" ).getChannel();
-        LogBuffer writeBuffer = defaultLogBufferFactory().create( fileChannel );
+        LogBuffer writeBuffer = new DefaultLogBufferFactory().create( fileChannel );
         List<Long> startPositions = new ArrayList<Long>();
         for ( XaCommand command : commands )
         {

@@ -23,10 +23,15 @@ package org.neo4j.kernel.impl.nioneo.store;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.AbstractGraphDatabase;
-import org.neo4j.kernel.CommonFactories;
-import org.neo4j.kernel.Config;
+import org.neo4j.kernel.DefaultFileSystemAbstraction;
+import org.neo4j.kernel.DefaultIdGeneratorFactory;
+import org.neo4j.kernel.DefaultLastCommittedTxIdSetter;
+import org.neo4j.kernel.DefaultTxHook;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
@@ -88,10 +93,11 @@ public class StoreAccess
     public StoreAccess( String path, Map<String, String> params )
     {
         this(
-              new StoreFactory( requiredParams( params, path ), CommonFactories.defaultIdGeneratorFactory(),
-                                CommonFactories.defaultFileSystemAbstraction(),
-                                CommonFactories.defaultLastCommittedTxIdSetter(), initLogger( path ),
-                                CommonFactories.defaultTxHook() ).attemptNewNeoStore( new File( path, "neostore" ).getAbsolutePath() ) );
+            new StoreFactory( new Config( new ConfigurationDefaults( GraphDatabaseSettings.class )
+                                              .apply( requiredParams( params, path ) ) ), new DefaultIdGeneratorFactory(),
+                              new DefaultFileSystemAbstraction(),
+                              new DefaultLastCommittedTxIdSetter(), initLogger( path ),
+                              new DefaultTxHook() ).attemptNewNeoStore( new File( path, "neostore" ).getAbsolutePath() ) );
         this.closeable = true;
     }
 
@@ -156,15 +162,21 @@ public class StoreAccess
 
     public final <P extends RecordStore.Processor> P applyToAll( P processor )
     {
-        for ( RecordStore<?> store : allStores() )
+        for( RecordStore<?> store : allStores() )
+        {
             apply( processor, store );
+        }
         return processor;
     }
 
     protected RecordStore<?>[] allStores()
     {
-        if ( propStore == null ) return new RecordStore<?>[] { // no property stores
-                nodeStore, relStore, relTypeStore, typeNameStore };
+        if( propStore == null )
+        {
+            return new RecordStore<?>[]{ // no property stores
+                                         nodeStore, relStore, relTypeStore, typeNameStore
+            };
+        }
         return new RecordStore<?>[] {
                 nodeStore, relStore, propStore, stringStore, arrayStore, // basic
                 relTypeStore, propIndexStore, typeNameStore, propKeyStore, // internal
@@ -198,8 +210,7 @@ public class StoreAccess
         {
             params.put( Config.USE_MEMORY_MAPPED_BUFFERS, "false" );
         }
-        params.put( Config.REBUILD_IDGENERATORS_FAST, "true" );
-
+        params.put( GraphDatabaseSettings.rebuild_idgenerators_fast.name(), GraphDatabaseSetting.TRUE );
         return params;
     }
 

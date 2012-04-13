@@ -80,7 +80,13 @@ public class NoCache<E extends EntityWithSize> implements Cache<E>
     }
 
     @Override
-    public void updateSize( E entity, int sizeBefore, int sizeAfter )
+    public void updateSize( E entity, int newSize )
+    {
+        // do nothing
+    }
+    
+    @Override
+    public void printStatistics()
     {
         // do nothing
     }

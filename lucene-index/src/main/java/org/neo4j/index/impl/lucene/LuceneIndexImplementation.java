@@ -29,7 +29,8 @@ import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.index.base.AbstractIndexImplementation;
-import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
 
 public class LuceneIndexImplementation extends AbstractIndexImplementation<LuceneDataSource>
 {
@@ -56,7 +57,7 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation<Lucen
 
     final int lazynessThreshold;
 
-    public LuceneIndexImplementation( GraphDatabaseSPI db, Configuration config, LuceneDataSource dataSource )
+    public LuceneIndexImplementation( GraphDatabaseAPI db, Config config, LuceneDataSource dataSource )
     {
         super( db, config, dataSource );
         this.lazynessThreshold = DEFAULT_LAZY_THRESHOLD;

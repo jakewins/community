@@ -46,7 +46,7 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.annotations.Documented;
 import org.neo4j.server.database.DatabaseBlockedException;
 import org.neo4j.server.helpers.FunctionalTestHelper;
@@ -78,7 +78,7 @@ public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
 
     long createNode()
     {
-        GraphDatabaseSPI graphdb = server().getDatabase().graph;
+        GraphDatabaseAPI graphdb = server().getDatabase().graph;
         Transaction tx = graphdb.beginTx();
         Node node;
         try {
@@ -383,6 +383,15 @@ public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
         String indexUri = functionalTestHelper.nodeIndexUri() + indexName + "/" + key + "/" + value;
         JaxRsResponse response = RestRequest.req()
                 .get( indexUri );
+        assertEquals( Status.NOT_FOUND.getStatusCode(), response.getStatus() );
+    }
+
+    @Test
+    public void shouldGet404WhenDeletingNonExtistentIndex() throws DatabaseBlockedException
+    {
+        String indexName = "nosuchindex";
+        String indexUri = functionalTestHelper.nodeIndexUri() + indexName;
+        JaxRsResponse response = RestRequest.req().delete(indexUri);
         assertEquals( Status.NOT_FOUND.getStatusCode(), response.getStatus() );
     }
 

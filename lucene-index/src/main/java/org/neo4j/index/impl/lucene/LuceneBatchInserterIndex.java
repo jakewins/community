@@ -47,13 +47,13 @@ import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.index.lucene.ValueContext;
-import org.neo4j.kernel.impl.batchinsert.BatchInserter;
-import org.neo4j.kernel.impl.batchinsert.BatchInserterImpl;
-import org.neo4j.kernel.impl.batchinsert.SimpleRelationship;
 import org.neo4j.kernel.impl.cache.LruCache;
 import org.neo4j.kernel.impl.util.IoPrimitiveUtils;
+import org.neo4j.unsafe.batchinsert.BatchInserter;
+import org.neo4j.unsafe.batchinsert.BatchRelationship;
 
-class LuceneBatchInserterIndex implements BatchInserterIndex
+class LuceneBatchInserterIndex implements BatchInserterIndex,
+        org.neo4j.unsafe.batchinsert.BatchInserterIndex
 {
     private final IndexIdentifier identifier;
     private final IndexType type;
@@ -67,13 +67,12 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
     private int commitBatchSize = 500000;
     private final BatchInserter inserter;
 
-    LuceneBatchInserterIndex( LuceneBatchInserterIndexProvider provider,
-            BatchInserter inserter, IndexIdentifier identifier, Map<String, String> config )
+    LuceneBatchInserterIndex( BatchInserter inserter,
+            IndexIdentifier identifier, Map<String, String> config )
     {
-        this.inserter = inserter;
-        String dbStoreDir = ((BatchInserterImpl) inserter).getStore();
-        String indexDir = new File( new File( dbStoreDir, "index" ), "lucene" ).getAbsolutePath(); //AbstractIndexImplementation.getIndexStoreDir( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME );
+        String indexDir = new File( new File( inserter.getStoreDir(), "index" ), "lucene" ).getAbsolutePath(); //AbstractIndexImplementation.getIndexStoreDir( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME );
         File dir = LuceneDataSource.getFileDirectory( indexDir, identifier );
+        this.inserter = inserter;
         this.createdNow = !dir.exists();
         this.identifier = identifier;
         this.type = IndexType.getIndexType( identifier, config );
@@ -91,17 +90,18 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
         this.commitBatchSize = size;
     }
 
-    public void add( long id, Map<String, Object> properties )
+    @Override
+    public void add( long entityId, Map<String, Object> properties )
     {
         try
         {
-            EntityId entityId = getEntityId( id );
-            Document document = IndexType.newDocument( entityId );
+            EntityId idObject = getEntityId( entityId );
+            Document document = IndexType.newDocument( idObject );
             for ( Map.Entry<String, Object> entry : properties.entrySet() )
             {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                addSingleProperty( id, document, key, value );
+                addSingleProperty( entityId, document, key, value );
             }
             writer.addDocument( document );
             if ( ++updateCount == commitBatchSize )
@@ -118,8 +118,9 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
 
     private EntityId getEntityId( long id )
     {
-        if ( identifier.getEntityType() == EntityType.NODE ) return EntityId.entityId( id );
-        SimpleRelationship rel = inserter.getRelationshipById( id );
+        if ( identifier.getEntityType() == EntityType.NODE )
+            return EntityId.entityId( id );
+        BatchRelationship rel = inserter.getRelationshipById( id );
         return EntityId.entityId( id, rel.getStartNode(), rel.getEndNode() );
     }
 
@@ -195,6 +196,7 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
         return null;
     }
     
+    @Override
     public void updateOrAdd( long entityId, Map<String, Object> properties )
     {
         try
@@ -392,17 +394,20 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
         }
     }
 
+    @Override
     public IndexHits<Long> get( String key, Object value )
     {
         IndexHits<Long> cached = getFromCache( key, value );
         return cached != null ? cached : query( type.get( key, value ), key, value );
     }
 
+    @Override
     public IndexHits<Long> query( String key, Object queryOrQueryObject )
     {
         return query( type.query( key, queryOrQueryObject, null ), null, null );
     }
 
+    @Override
     public IndexHits<Long> query( Object queryOrQueryObject )
     {
         return query( type.query( null, queryOrQueryObject, null ), null, null );
@@ -414,6 +419,7 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
         closeWriter();
     }
     
+    @Override
     public void flush()
     {
         writerModified = true;
@@ -427,6 +433,7 @@ class LuceneBatchInserterIndex implements BatchInserterIndex
 //        }
     }
     
+    @Override
     public void setCacheCapacity( String key, int size )
     {
         if ( this.cache == null )

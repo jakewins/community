@@ -51,19 +51,6 @@ public class GraphProperties extends Primitive implements PropertyContainer
         this.nodeManager = nodeManager;
     }
     
-    public int size()
-    {
-        // only one instance of this and will never go into cache
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected void updateSize( int before, int after, NodeManager nodeManager )
-    {
-        // only one instance of this and will never go into cache
-        throw new UnsupportedOperationException();
-    }
-    
     @Override
     public GraphDatabaseService getGraphDatabase()
     {
@@ -150,7 +137,7 @@ public class GraphProperties extends Primitive implements PropertyContainer
     
     @Override
     protected void commitPropertyMaps( ArrayMap<Integer, PropertyData> cowPropertyAddMap,
-            ArrayMap<Integer, PropertyData> cowPropertyRemoveMap, long firstProp )
+            ArrayMap<Integer, PropertyData> cowPropertyRemoveMap, long firstProp, NodeManager nodeManager )
     {
         if ( cowPropertyAddMap != null ) for ( Map.Entry<Integer, PropertyData> property : cowPropertyAddMap.entrySet() )
         {

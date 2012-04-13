@@ -1749,7 +1749,7 @@ RETURN x0.name?
     val b = createNode()
     val r = relate(a,b)
     val result = parseAndExecute("start a=node(1), r=relationship(0) return a,r").toList
-    
+
     assert(List(Map("a"->a, "r"->r)) === result)
   }   
   
@@ -1764,7 +1764,42 @@ RETURN x0.name?
     val result = parseAndExecute("start a=node(1,2) where a-[:A|B]->() return a").toList
 
     assert(List(Map("a" -> a), Map("a" -> b)) === result)
-  } 
+  }
+
+  @Test def nullable_var_length_path_should_work() {
+    createNode()
+    val b = createNode()
+
+    val result = parseAndExecute("start a=node(1), b=node(2) match a-[r?*]-b where r is null and a <> b return b").toList
+
+    assert(List(Map("b" -> b)) === result)
+  }
+
+  @Test def listing_rel_types_multiple_times_should_not_give_multiple_returns() {
+    val a = createNode()
+    val b = createNode()
+    relate(a,b, "REL")
+
+    val result = parseAndExecute("start a=node(1) match a-[:REL|REL]-b return b").toList
+
+    assert(List(Map("b" -> b)) === result)
+  }
+  
+  @Test def should_throw_on_missing_indexes() {
+    intercept[MissingIndexException](parseAndExecute("start a=node:missingIndex(key='value') return a").toList)
+    intercept[MissingIndexException](parseAndExecute("start a=node:missingIndex('value') return a").toList)
+    intercept[MissingIndexException](parseAndExecute("start a=relationship:missingIndex(key='value') return a").toList)
+    intercept[MissingIndexException](parseAndExecute("start a=relationship:missingIndex('value') return a").toList)
+  }
+
+  @Test def distinct_on_nullable_values() {
+    createNode("name"->"Florescu")
+    createNode()
+    createNode()
+
+    val result = parseAndExecute("start a=node(1,2,3) return distinct a.name?").toList
+    assert(result === List(Map("a.name?" -> "Florescu"), Map("a.name?" -> null)))
+  }
 
   @Test def createEngineWithSpecifiedParserVersion() {
     val db = new ImpermanentGraphDatabase(Map[String, String]("cypher_parser_version" -> "1.5").asJava)

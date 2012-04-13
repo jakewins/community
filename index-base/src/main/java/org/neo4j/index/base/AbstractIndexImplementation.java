@@ -22,8 +22,10 @@ package org.neo4j.index.base;
 import java.io.File;
 
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.IndexImplementation;
-import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
 
 public abstract class AbstractIndexImplementation<DS extends IndexDataSource> implements IndexImplementation
 {
@@ -32,12 +34,12 @@ public abstract class AbstractIndexImplementation<DS extends IndexDataSource> im
         boolean read_only( boolean def );
     }
     
-    private GraphDatabaseSPI graphDb;
+    private GraphDatabaseAPI graphDb;
     private IndexConnectionBroker<IndexBaseXaConnection> broker;
     private DS dataSource;
-    private final Configuration config;
+    private final Config config;
     
-    protected AbstractIndexImplementation( GraphDatabaseSPI db, Configuration config, DS dataSource )
+    protected AbstractIndexImplementation( GraphDatabaseAPI db, Config config, DS dataSource )
     {
         this.graphDb = db;
         this.dataSource = dataSource;
@@ -45,9 +47,9 @@ public abstract class AbstractIndexImplementation<DS extends IndexDataSource> im
         this.broker = newBroker( db, dataSource );
     }
 
-    private IndexConnectionBroker<IndexBaseXaConnection> newBroker( GraphDatabaseSPI db, DS dataSource )
+    private IndexConnectionBroker<IndexBaseXaConnection> newBroker( GraphDatabaseAPI db, DS dataSource )
     {
-        return config.read_only( false ) ?
+        return config.getBoolean( GraphDatabaseSettings.read_only ) ?
                 new ReadOnlyConnectionBroker<IndexBaseXaConnection>( db.getTxManager() ) :
                 new ConnectionBroker( db.getTxManager(), dataSource );
     }
@@ -57,7 +59,7 @@ public abstract class AbstractIndexImplementation<DS extends IndexDataSource> im
         return this.broker;
     }
     
-    public GraphDatabaseSPI graphDb()
+    public GraphDatabaseAPI graphDb()
     {
         return this.graphDb;
     }

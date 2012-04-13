@@ -59,6 +59,8 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
@@ -69,6 +71,7 @@ import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexDataSource;
 import org.neo4j.index.base.IndexIdentifier;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
@@ -82,19 +85,11 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
  */
 public class LuceneDataSource extends IndexDataSource
 {
-    public interface Configuration extends IndexDataSource.Configuration
+    public static abstract class Configuration
+        extends IndexDataSource.Configuration
     {
-        int lucene_searcher_cache_size(int def);
-
-        int lucene_writer_cache_size(int def);
-
-        boolean ephemeral(boolean def);
-
-        boolean read_only(boolean def);
-
-        String store_dir();
-
-        boolean allow_store_upgrade( boolean def );
+        public static final GraphDatabaseSetting.IntegerSetting lucene_searcher_cache_size = GraphDatabaseSettings.lucene_searcher_cache_size;
+        public static final GraphDatabaseSetting.IntegerSetting lucene_writer_cache_size = GraphDatabaseSettings.lucene_writer_cache_size;
     }
     
     public static final Version LUCENE_VERSION = Version.LUCENE_35;
@@ -152,29 +147,95 @@ public class LuceneDataSource extends IndexDataSource
      * @throws InstantiationException if the data source couldn't be
      * instantiated
      */
-    public LuceneDataSource( Configuration config, IndexStore indexStore, FileSystemAbstraction fileSystemAbstraction,
+    public LuceneDataSource( Config config, IndexStore indexStore, FileSystemAbstraction fileSystemAbstraction,
             XaFactory xaFactory )
     {
         super( BRANCH_ID, DATA_SOURCE_NAME, config, indexStore, fileSystemAbstraction, xaFactory );
     }
     
     @Override
-    protected void initializeBeforeLogicalLog( org.neo4j.index.base.IndexDataSource.Configuration configuration )
+    protected void initializeBeforeLogicalLog( Config config )
     {
-        // TODO Hmm, casting Configuration here... not very nice perhaps
-        Configuration config = (Configuration) configuration;
-        indexSearchers = new IndexSearcherLruCache( config.lucene_searcher_cache_size(Integer.MAX_VALUE) );
-        indexWriters = new IndexWriterLruCache( config.lucene_writer_cache_size(Integer.MAX_VALUE) );
+        indexSearchers = new IndexSearcherLruCache( config.getInteger( Configuration.lucene_searcher_cache_size ) );
+        indexWriters = new IndexWriterLruCache( config.getInteger( Configuration.lucene_writer_cache_size ) );
         indexes = new HashMap<IndexIdentifier, LuceneIndex<? extends PropertyContainer>>();
 //        caching = new Cache();
         cleanWriteLocks( getStoreDir() );
         this.typeCache = new IndexTypeCache( getIndexStore() );
-        this.directoryGetter = config.ephemeral(false) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
+        this.directoryGetter = config.getBoolean( Configuration.ephemeral ) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
     }
     
     protected long getVersion()
     {
         return INDEX_VERSION;
+//=======
+//    public LuceneDataSource( Config config,  IndexStore indexStore, FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory)
+//    {
+//        super( DEFAULT_BRANCH_ID, DEFAULT_NAME );
+//        indexSearchers = new IndexSearcherLruCache( config.getInteger( Configuration.lucene_searcher_cache_size ));
+//        indexWriters = new IndexWriterLruCache( config.getInteger( Configuration.lucene_writer_cache_size ));
+//        caching = new Cache();
+//        String storeDir = config.get( Configuration.store_dir );
+//        this.baseStorePath = getStoreDir( storeDir ).first();
+//        cleanWriteLocks( baseStorePath );
+//        this.indexStore = indexStore;
+//        boolean allowUpgrade = config.getBoolean( Configuration.allow_store_upgrade );
+//        this.providerStore = newIndexStore( storeDir, fileSystemAbstraction, allowUpgrade );
+//        this.typeCache = new IndexTypeCache( indexStore );
+//        boolean isReadOnly = config.getBoolean( Configuration.read_only );
+//        this.directoryGetter = config.getBoolean( Configuration.ephemeral ) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
+//
+//        nodeEntityType = new EntityType()
+//        {
+//            public Document newDocument( Object entityId )
+//            {
+//                return IndexType.newBaseDocument( (Long) entityId );
+//            }
+//
+//            public Class<? extends PropertyContainer> getType()
+//            {
+//                return Node.class;
+//            }
+//        };
+//        relationshipEntityType = new EntityType()
+//        {
+//            public Document newDocument( Object entityId )
+//            {
+//                RelationshipId relId = (RelationshipId) entityId;
+//                Document doc = IndexType.newBaseDocument( relId.id );
+//                doc.add( new Field( LuceneIndex.KEY_START_NODE_ID, "" + relId.startNode,
+//                        Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
+//                doc.add( new Field( LuceneIndex.KEY_END_NODE_ID, "" + relId.endNode,
+//                        Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
+//                return doc;
+//            }
+//
+//            public Class<? extends PropertyContainer> getType()
+//            {
+//                return Relationship.class;
+//            }
+//        };
+//
+//        XaCommandFactory cf = new LuceneCommandFactory();
+//        XaTransactionFactory tf = new LuceneTransactionFactory();
+//        xaContainer = xaFactory.newXaContainer(this, this.baseStorePath + File.separator + "lucene.log", cf, tf, null, null );
+//
+//        if ( !isReadOnly )
+//        {
+//            try
+//            {
+//                xaContainer.openLogicalLog();
+//            }
+//            catch ( IOException e )
+//            {
+//                throw new RuntimeException( "Unable to open lucene log in " +
+//                        this.baseStorePath, e );
+//            }
+//
+//            setKeepLogicalLogsIfSpecified( config.getBoolean( Configuration.online_backup_enabled ) ? "true" : config.get( Configuration.keep_logical_logs ), DEFAULT_NAME );
+//            setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
+//        }
+//>>>>>>> master
     }
 
     IndexType getType( IndexIdentifier identifier )

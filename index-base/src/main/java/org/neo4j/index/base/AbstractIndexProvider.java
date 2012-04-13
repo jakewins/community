@@ -31,7 +31,7 @@ import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexProvider;
 import org.neo4j.kernel.AbstractGraphDatabase;
-import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
@@ -50,7 +50,7 @@ public abstract class AbstractIndexProvider extends IndexProvider
     public IndexImplementation load( DependencyResolver dependencyResolver ) throws Exception
     {
         Map<String, String> params = (Map<String, String>) dependencyResolver.resolveDependency(Map.class);
-        GraphDatabaseSPI gdb = dependencyResolver.resolveDependency(AbstractGraphDatabase.class);
+        GraphDatabaseAPI gdb = dependencyResolver.resolveDependency(AbstractGraphDatabase.class);
         TransactionManager txManager = dependencyResolver.resolveDependency(TransactionManager.class);
         IndexStore indexStore = dependencyResolver.resolveDependency(IndexStore.class);
         XaFactory xaFactory = dependencyResolver.resolveDependency(XaFactory.class);
@@ -80,6 +80,6 @@ public abstract class AbstractIndexProvider extends IndexProvider
     protected abstract IndexDataSource newDataSource( Map<String, String> params, IndexStore indexStore,
             FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory );
     
-    protected abstract AbstractIndexImplementation newIndexImplementation( GraphDatabaseSPI db,
+    protected abstract AbstractIndexImplementation newIndexImplementation( GraphDatabaseAPI db,
             IndexDataSource dataSource, Map<String, String> params );
 }

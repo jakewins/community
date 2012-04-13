@@ -19,88 +19,52 @@
  */
 package org.neo4j.index.impl.lucene;
 
-import java.util.HashMap;
 import java.util.Map;
 
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.PropertyContainer;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.BatchInserterIndex;
 import org.neo4j.graphdb.index.BatchInserterIndexProvider;
 import org.neo4j.graphdb.index.Index;
-import org.neo4j.graphdb.index.IndexManager;
-import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.index.base.EntityType;
-import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.impl.batchinsert.BatchInserter;
-import org.neo4j.kernel.impl.batchinsert.BatchInserterImpl;
-import org.neo4j.kernel.impl.index.IndexStore;
 
 /**
- * The {@link BatchInserter} version of {@link LuceneIndexImplementation}. Indexes
- * created and populated using {@link BatchInserterIndex}s from this provider
- * are compatible with {@link Index}s from {@link LuceneIndexImplementation}.
+ * The {@link BatchInserter} version of {@link LuceneIndexImplementation}.
+ * Indexes created and populated using {@link BatchInserterIndex}s from this
+ * provider are compatible with {@link Index}s from
+ * {@link LuceneIndexImplementation}.
+ * 
+ * @deprecated This class has been replaced by
+ *             {@link org.neo4j.unsafe.batchinsert.LuceneBatchInserterIndexProvider}
+ *             as of Neo4j 1.7.
  */
-public class LuceneBatchInserterIndexProvider implements BatchInserterIndexProvider
+public class LuceneBatchInserterIndexProvider implements
+        BatchInserterIndexProvider
 {
-    private final BatchInserter inserter;
-    private final Map<IndexIdentifier, LuceneBatchInserterIndex> indexes =
-            new HashMap<IndexIdentifier, LuceneBatchInserterIndex>();
-    final IndexStore indexStore;
+    private final LuceneBatchInserterIndexProviderImpl provider;
 
+    /**
+     * @deprecated This class has been replaced by
+     *             {@link org.neo4j.unsafe.batchinsert.LuceneBatchInserterIndexProvider}
+     *             as of Neo4j 1.7.
+     */
     public LuceneBatchInserterIndexProvider( final BatchInserter inserter )
     {
-        this.inserter = inserter;
-        this.indexStore = ((BatchInserterImpl) inserter).getIndexStore();
-    }
-    
-    public BatchInserterIndex nodeIndex( String indexName, Map<String, String> config )
-    {
-        config( Node.class, indexName, config );
-        return index( new IndexIdentifier( EntityType.NODE, indexName ), config );
+        provider = new LuceneBatchInserterIndexProviderImpl( inserter );
     }
 
-    private Map<String, String> config( Class<? extends PropertyContainer> cls,
-            String indexName, Map<String, String> config )
+    public BatchInserterIndex nodeIndex( String indexName,
+            Map<String, String> config )
     {
-        // TODO Doesn't look right
-        if ( config != null )
-        {
-            config = MapUtil.stringMap( new HashMap<String, String>( config ),
-                    IndexManager.PROVIDER, LuceneIndexImplementation.SERVICE_NAME );
-            indexStore.setIfNecessary( cls, indexName, config );
-            return config;
-        }
-        else
-        {
-            return indexStore.get( cls, indexName );
-        }
+        return provider.nodeIndex( indexName, config );
     }
 
-    public BatchInserterIndex relationshipIndex( String indexName, Map<String, String> config )
+    public BatchInserterIndex relationshipIndex( String indexName,
+            Map<String, String> config )
     {
-        config( Relationship.class, indexName, config );
-        return index( new IndexIdentifier( EntityType.RELATIONSHIP, indexName ), config );
+        return provider.relationshipIndex( indexName, config );
     }
 
-    private BatchInserterIndex index( IndexIdentifier identifier, Map<String, String> config )
-    {
-        // We don't care about threads here... c'mon... it's a
-        // single-threaded batch inserter
-        LuceneBatchInserterIndex index = indexes.get( identifier );
-        if ( index == null )
-        {
-            index = new LuceneBatchInserterIndex( this, inserter, identifier, config );
-            indexes.put( identifier, index );
-        }
-        return index;
-    }
-    
     public void shutdown()
     {
-        for ( LuceneBatchInserterIndex index : indexes.values() )
-        {
-            index.shutdown();
-        }
+        provider.shutdown();
     }
 }

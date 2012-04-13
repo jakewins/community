@@ -22,28 +22,35 @@ package org.neo4j.index.lucene;
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.index.base.AbstractIndexProvider;
 import org.neo4j.index.base.IndexDataSource;
 import org.neo4j.index.impl.lucene.LuceneDataSource;
 import org.neo4j.index.impl.lucene.LuceneIndexImplementation;
-import org.neo4j.kernel.ConfigProxy;
-import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 
 public class LuceneIndexProvider extends AbstractIndexProvider
 {
-    public interface Configuration
-    {
-        boolean read_only(boolean def);
-    }
+    private static List<WeakReference<LuceneIndexImplementation>> previousProviders = new ArrayList<WeakReference<LuceneIndexImplementation>>();
     
-    public LuceneIndexProvider()
+    public static abstract class Configuration
+    {
+        public static final GraphDatabaseSetting.BooleanSetting read_only = GraphDatabaseSettings.read_only;
+    }
+
+    public LuceneIndexProvider( )
     {
         super( LuceneIndexImplementation.SERVICE_NAME );
     }
@@ -53,8 +60,7 @@ public class LuceneIndexProvider extends AbstractIndexProvider
             FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory )
     {
         params = overrideLogAndProviderStore( params );
-        return new LuceneDataSource( ConfigProxy.config( params,
-                LuceneDataSource.Configuration.class ), indexStore, fileSystemAbstraction, xaFactory );
+        return new LuceneDataSource( new Config( params ), indexStore, fileSystemAbstraction, xaFactory );
     }
 
     private Map<String, String> overrideLogAndProviderStore( Map<String, String> params )
@@ -66,11 +72,28 @@ public class LuceneIndexProvider extends AbstractIndexProvider
                 "index_provider_db", new File( new File( storeDir, "index" ), "lucene-store.db" ).getAbsolutePath(),
                 "index_dir_name", "lucene" );
     }
+//=======
+//        Config config = dependencyResolver.resolveDependency(Config.class);
+//        AbstractGraphDatabase gdb = dependencyResolver.resolveDependency(AbstractGraphDatabase.class);
+//        TransactionManager txManager = dependencyResolver.resolveDependency(TransactionManager.class);
+//        IndexStore indexStore = dependencyResolver.resolveDependency(IndexStore.class);
+//        XaFactory xaFactory = dependencyResolver.resolveDependency(XaFactory.class);
+//        FileSystemAbstraction fileSystemAbstraction = dependencyResolver.resolveDependency(FileSystemAbstraction.class);
+//        XaDataSourceManager xaDataSourceManager = dependencyResolver.resolveDependency( XaDataSourceManager.class );
+//
+//        LuceneDataSource luceneDataSource = new LuceneDataSource(config, indexStore, fileSystemAbstraction, xaFactory);
+//
+//        xaDataSourceManager.registerDataSource(luceneDataSource);
+//
+//        IndexConnectionBroker<LuceneXaConnection> broker = config.getBoolean( Configuration.read_only ) ? new ReadOnlyIndexConnectionBroker<LuceneXaConnection>( txManager )
+//                : new ConnectionBroker( txManager, luceneDataSource );
+//>>>>>>> master
 
     @Override
-    protected AbstractIndexImplementation newIndexImplementation( GraphDatabaseSPI db,
+    protected AbstractIndexImplementation newIndexImplementation( GraphDatabaseAPI db,
             IndexDataSource dataSource, Map<String, String> params )
     {
-        return new LuceneIndexImplementation( db, ConfigProxy.config( params, LuceneIndexImplementation.Configuration.class ), (LuceneDataSource)dataSource );
+        return new LuceneIndexImplementation( db, new Config( params ), (LuceneDataSource)dataSource );
     }
+
 }

@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static org.neo4j.kernel.impl.cache.SizeOfs.withArrayOverheadIncludingReferences;
 import static org.neo4j.kernel.impl.util.RelIdArray.empty;
 
 import java.util.Arrays;
@@ -34,6 +35,7 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.Triplet;
+import org.neo4j.kernel.impl.cache.SizeOfs;
 import org.neo4j.kernel.impl.core.LockReleaser.CowEntityElement;
 import org.neo4j.kernel.impl.core.LockReleaser.PrimitiveElement;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
@@ -79,18 +81,14 @@ public class NodeImpl extends ArrayBasedPrimitive
     @Override
     public int size()
     {
-        // NodeImpl(Object) + id(long) + relChainPosition(long) + relationships(RelIdArray[]) + super
-        int size = 16 + 8 + 8 + 8;
+        int size = super.size() + SizeOfs.REFERENCE_SIZE/*relationships reference*/ + 8/*relChainPosition*/ + 8/*id*/;
         if ( relationships != null )
         {
-            size += 16;
+            size = withArrayOverheadIncludingReferences( size, relationships.length );
             for ( RelIdArray array : relationships )
-            {
                 size += array.size();
-                size += 8; // array slot
-            }   
         }
-        return size + super.size();
+        return size;
     }
     
     @Override
@@ -352,13 +350,12 @@ public class NodeImpl extends ArrayBasedPrimitive
                 relChainPosition = nodeManager.getRelationshipChainPosition( this );
                 ArrayMap<String,RelIdArray> tmpRelMap = new ArrayMap<String,RelIdArray>();
                 rels = getMoreRelationships( nodeManager, tmpRelMap );
-                int sizeBefore = size();
                 this.relationships = toRelIdArray( tmpRelMap );
-                updateSize( sizeBefore, size(), nodeManager );
                 if ( rels != null )
                 {
                     setRelChainPosition( rels.third() );
                 }
+                updateSize( nodeManager );
             }
         }
         if ( rels != null )
@@ -368,9 +365,9 @@ public class NodeImpl extends ArrayBasedPrimitive
     }
 
     @Override
-    protected void updateSize( int sizeBefore, int sizeAfter, NodeManager nodeManager )
+    protected void updateSize( NodeManager nodeManager )
     {
-        nodeManager.updateCacheSize( this, sizeBefore, sizeAfter );
+        nodeManager.updateCacheSize( this, size() );
     }
 
     private RelIdArray[] toRelIdArray( ArrayMap<String, RelIdArray> tmpRelMap )
@@ -448,7 +445,6 @@ public class NodeImpl extends ArrayBasedPrimitive
             {
                 return false;
             }
-            int sizeBefore = size();
             rels = nodeManager.getMoreRelationships( this );
             ArrayMap<String,RelIdArray> addMap = rels.first();
             if ( addMap.size() == 0 )
@@ -474,8 +470,8 @@ public class NodeImpl extends ArrayBasedPrimitive
                     }
                 }
             }
-            nodeManager.updateCacheSize( this, sizeBefore, size() );
             setRelChainPosition( rels.third() );
+            updateSize( nodeManager );
         }
         nodeManager.putAllInRelCache( rels.second() );
         return true;
@@ -584,7 +580,7 @@ public class NodeImpl extends ArrayBasedPrimitive
 
     protected void commitRelationshipMaps(
         ArrayMap<String,RelIdArray> cowRelationshipAddMap,
-        ArrayMap<String,Collection<Long>> cowRelationshipRemoveMap, long firstRel )
+        ArrayMap<String,Collection<Long>> cowRelationshipRemoveMap, long firstRel, NodeManager nodeManager )
     {
         if ( relationships == null )
         {
@@ -625,6 +621,7 @@ public class NodeImpl extends ArrayBasedPrimitive
                     }
                 }
             }
+            updateSize( nodeManager );
         }
     }
 

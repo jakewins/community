@@ -17,19 +17,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package org.neo4j.shell;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.neo4j.helpers.collection.MapUtil.loadStrictly;
-import static org.neo4j.helpers.collection.MapUtil.stringMap;
-import static org.neo4j.kernel.Config.ENABLE_REMOTE_SHELL;
-import static org.neo4j.visualization.asciidoc.AsciidocHelper.createGraphVizWithNodeId;
-
-import java.io.File;
 import java.io.PrintWriter;
-
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.shell.impl.SameJvmClient;
@@ -37,6 +28,12 @@ import org.neo4j.shell.impl.ShellBootstrap;
 import org.neo4j.shell.impl.ShellServerExtension;
 import org.neo4j.shell.kernel.GraphDatabaseShellServer;
 import org.neo4j.test.ImpermanentGraphDatabase;
+import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
+import static org.neo4j.helpers.collection.MapUtil.*;
+import static org.neo4j.kernel.configuration.Config.*;
+import static org.neo4j.visualization.asciidoc.AsciidocHelper.*;
 
 public class ShellTest
 {
@@ -95,18 +92,18 @@ public class ShellTest
     @Test
     public void canConnectAsAgent() throws Exception
     {
-        Integer port = Integer.valueOf( 1234 );
+        int port = 1234;
         String name = "test-shell";
         GraphDatabaseService graphDb = new ImpermanentGraphDatabase();
         try
         {
-            new ShellServerExtension().loadAgent( new ShellBootstrap( port.toString(), name ).serialize() );
+            new ShellServerExtension().loadAgent( new ShellBootstrap( port, name ).serialize() );
         }
         finally
         {
             graphDb.shutdown();
         }
-        ShellLobby.newClient( port.intValue(), name );
+        ShellLobby.newClient( port, name );
     }
 
     @Test
@@ -140,7 +137,7 @@ public class ShellTest
     @Test
     public void testMatrix() throws Exception
     {
-        GraphDatabaseService db = new ImpermanentGraphDatabase( loadStrictly( new File( "src/test/resources/autoindex.properties" ) ) );
+        GraphDatabaseService db = new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().loadPropertiesFromURL( getClass().getResource( "/autoindex.properties" ) ).newGraphDatabase();
         final GraphDatabaseShellServer server = new GraphDatabaseShellServer( db, false );
         ShellClient client = new SameJvmClient( server );
 

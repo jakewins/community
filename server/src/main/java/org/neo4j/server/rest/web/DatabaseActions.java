@@ -45,17 +45,12 @@ import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.TransactionFailureException;
-import org.neo4j.graphdb.index.Index;
-import org.neo4j.graphdb.index.IndexHits;
-import org.neo4j.graphdb.index.ReadableIndex;
-import org.neo4j.graphdb.index.ReadableRelationshipIndex;
-import org.neo4j.graphdb.index.RelationshipIndex;
-import org.neo4j.graphdb.index.UniqueFactory;
+import org.neo4j.graphdb.index.*;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.index.lucene.QueryContext;
-import org.neo4j.kernel.GraphDatabaseSPI;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.TransactionBuilder;
 import org.neo4j.kernel.Traversal;
 import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
@@ -69,23 +64,7 @@ import org.neo4j.server.rest.domain.TraverserReturnType;
 import org.neo4j.server.rest.paging.Lease;
 import org.neo4j.server.rest.paging.LeaseManager;
 import org.neo4j.server.rest.paging.PagedTraverser;
-import org.neo4j.server.rest.repr.BadInputException;
-import org.neo4j.server.rest.repr.DatabaseRepresentation;
-import org.neo4j.server.rest.repr.IndexRepresentation;
-import org.neo4j.server.rest.repr.IndexedEntityRepresentation;
-import org.neo4j.server.rest.repr.ListRepresentation;
-import org.neo4j.server.rest.repr.MappingRepresentation;
-import org.neo4j.server.rest.repr.NodeIndexRepresentation;
-import org.neo4j.server.rest.repr.NodeIndexRootRepresentation;
-import org.neo4j.server.rest.repr.NodeRepresentation;
-import org.neo4j.server.rest.repr.PathRepresentation;
-import org.neo4j.server.rest.repr.PropertiesRepresentation;
-import org.neo4j.server.rest.repr.RelationshipIndexRepresentation;
-import org.neo4j.server.rest.repr.RelationshipIndexRootRepresentation;
-import org.neo4j.server.rest.repr.RelationshipRepresentation;
-import org.neo4j.server.rest.repr.Representation;
-import org.neo4j.server.rest.repr.RepresentationType;
-import org.neo4j.server.rest.repr.WeightedPathRepresentation;
+import org.neo4j.server.rest.repr.*;
 
 public class DatabaseActions
 {
@@ -93,7 +72,7 @@ public class DatabaseActions
     public static final String RELEVANCE_ORDER = "relevance";
     public static final String INDEX_ORDER = "index";
     private final Database database;
-    private final GraphDatabaseSPI graphDb;
+    private final GraphDatabaseAPI graphDb;
     private final LeaseManager leases;
     private final ForceMode defaultForceMode;
 
@@ -372,6 +351,9 @@ public class DatabaseActions
             Map<String, Object> indexSpecification )
     {
         final String indexName = (String) indexSpecification.get( "name" );
+        
+        assertIsLegalIndexName(indexName);
+        
         if ( indexSpecification.containsKey( "config" ) )
         {
 
@@ -391,6 +373,9 @@ public class DatabaseActions
             Map<String, Object> indexSpecification )
     {
         final String indexName = (String) indexSpecification.get( "name" );
+        
+        assertIsLegalIndexName(indexName);
+        
         if ( indexSpecification.containsKey( "config" ) )
         {
 
@@ -408,6 +393,10 @@ public class DatabaseActions
 
     public void removeNodeIndex( String indexName )
     {
+        if(!graphDb.index().existsForNodes(indexName)) {
+            throw new NotFoundException("No node index named '" + indexName + "'.");
+        }
+        
         Index<Node> index = graphDb.index().forNodes( indexName );
         Transaction tx = beginTx();
         try
@@ -423,6 +412,10 @@ public class DatabaseActions
 
     public void removeRelationshipIndex( String indexName )
     {
+        if(!graphDb.index().existsForRelationships(indexName)) {
+            throw new NotFoundException("No relationship index named '" + indexName + "'.");
+        }
+        
         Index<Relationship> index = graphDb.index().forRelationships( indexName );
         Transaction tx = beginTx();
         try
@@ -484,6 +477,42 @@ public class DatabaseActions
             if ( possibleMatch.equals( expectedElement ) ) return true;
         }
         return false;
+    }
+
+    public Representation isAutoIndexerEnabled(String type) {
+        AutoIndexer<? extends PropertyContainer> index = getAutoIndexerForType(type);
+        return ValueRepresentation.bool(index.isEnabled());
+    }
+
+    public void setAutoIndexerEnabled(String type, boolean enable) {
+        AutoIndexer<? extends PropertyContainer> index = getAutoIndexerForType(type);
+        index.setEnabled(enable);
+    }
+
+    private AutoIndexer<? extends PropertyContainer> getAutoIndexerForType(String type) {
+        final IndexManager indexManager = graphDb.index();
+        if ("node".equals(type)) {
+            return indexManager.getNodeAutoIndexer();
+        } else if ("relationship".equals(type)) {
+            return indexManager.getRelationshipAutoIndexer();
+        } else {
+            throw new IllegalArgumentException("invalid type " + type);
+        }
+    }
+
+    public Representation getAutoIndexedProperties(String type) {
+        AutoIndexer<? extends PropertyContainer> indexer = getAutoIndexerForType(type);
+        return ListRepresentation.string(indexer.getAutoIndexedProperties());
+    }
+
+    public void startAutoIndexingProperty(String type, String property) {
+        AutoIndexer<? extends PropertyContainer> indexer = getAutoIndexerForType(type);
+        indexer.startAutoIndexingProperty(property);
+    }
+
+    public void stopAutoIndexingProperty(String type, String property) {
+        AutoIndexer<? extends PropertyContainer> indexer = getAutoIndexerForType(type);
+        indexer.stopAutoIndexingProperty(property);
     }
 
     // Relationships
@@ -880,6 +909,7 @@ public class DatabaseActions
     {
         if ( !graphDb.index().existsForNodes( indexName ) )
             throw new NotFoundException();
+        
         Index<Node> index = graphDb.index().forNodes( indexName );
         List<IndexedEntityRepresentation> representations = new ArrayList<IndexedEntityRepresentation>();
 
@@ -915,6 +945,7 @@ public class DatabaseActions
     {
         if ( !graphDb.index().existsForNodes( indexName ) )
             throw new NotFoundException();
+        
         Index<Node> index = graphDb.index().forNodes( indexName );
         List<Representation> representations = new ArrayList<Representation>();
 
@@ -945,6 +976,8 @@ public class DatabaseActions
                                                                               String value, Long nodeOrNull,
                                                                               Map<String, Object> properties ) throws BadInputException, NodeNotFoundException
     {
+        assertIsLegalIndexName(indexName);
+        
         Transaction tx = beginTx();
         try
         {
@@ -982,6 +1015,8 @@ public class DatabaseActions
                                                                                       Long startNode, String type, Long endNode,
                                                                                       Map<String, Object> properties ) throws BadInputException, RelationshipNotFoundException, NodeNotFoundException
     {
+        assertIsLegalIndexName(indexName);
+        
         Transaction tx = beginTx();
         try
         {
@@ -1495,4 +1530,12 @@ public class DatabaseActions
             return new WeightedPathRepresentation( path );
         }
     };
+    
+    private void assertIsLegalIndexName(String indexName)
+    {
+        if(indexName == null || indexName.equals("")) 
+        {
+            throw new IllegalArgumentException("Index name must not be empty.");
+        }
+    }
 }
