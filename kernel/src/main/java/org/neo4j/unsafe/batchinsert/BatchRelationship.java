@@ -32,7 +32,7 @@ public final class BatchRelationship
     private final long endNodeId;
     private final RelationshipType type;
 
-    BatchRelationship( long id, long startNodeId, long endNodeId,
+    public BatchRelationship( long id, long startNodeId, long endNodeId,
         RelationshipType type )
     {
         this.id = id;

@@ -101,7 +101,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
                 XaCommandFactory cf = new IndexCommandFactory();
                 XaTransactionFactory tf = new IndexTransactionFactory();
                 String logicalLog = config.get( Configuration.index_logical_log );
-                xaContainer = xaFactory.newXaContainer( this, logicalLog != null ? logicalLog : store + "/logical.log", cf, tf, null, null );
+                xaContainer = xaFactory.newXaContainer( this, logicalLog != null ? logicalLog : storeDir + "/logical.log", cf, tf, null, null );
                 try
                 {
                     xaContainer.openLogicalLog();
@@ -111,7 +111,8 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
                     throw new RuntimeException( "Unable to open logical log in " + this.storeDir, e );
                 }
                 
-                setKeepLogicalLogsIfSpecified( config.get( Configuration.keep_logical_logs ), dataSourceName );
+                boolean backupEnabled = config.isSet( Configuration.online_backup_enabled ) ? config.getBoolean( Configuration.online_backup_enabled ) : false;
+                setKeepLogicalLogsIfSpecified( backupEnabled ? "true" : config.get( Configuration.keep_logical_logs ), dataSourceName );
                 setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
             }
             else

@@ -168,6 +168,8 @@ public class LuceneDataSource extends IndexDataSource
     protected long getVersion()
     {
         return INDEX_VERSION;
+    }
+    
 //=======
 //    public LuceneDataSource( Config config,  IndexStore indexStore, FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory)
 //    {
@@ -235,8 +237,8 @@ public class LuceneDataSource extends IndexDataSource
 //            setKeepLogicalLogsIfSpecified( config.getBoolean( Configuration.online_backup_enabled ) ? "true" : config.get( Configuration.keep_logical_logs ), DEFAULT_NAME );
 //            setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
 //        }
+//    }
 //>>>>>>> master
-    }
 
     IndexType getType( IndexIdentifier identifier )
     {

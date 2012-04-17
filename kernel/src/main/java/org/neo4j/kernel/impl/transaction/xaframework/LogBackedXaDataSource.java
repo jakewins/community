@@ -25,6 +25,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.AbstractGraphDatabase;
+import org.neo4j.kernel.configuration.Config;
 
 public abstract class LogBackedXaDataSource extends XaDataSource
 {
@@ -32,7 +33,7 @@ public abstract class LogBackedXaDataSource extends XaDataSource
     {
         // TODO This config should be split into a boolean and a string (keep_logical_logs vs kept_logical_logs)
         public static final GraphDatabaseSetting.StringSetting keep_logical_logs = GraphDatabaseSettings.keep_logical_logs;
-        public static final GraphDatabaseSetting.BooleanSetting online_backup_enabled = GraphDatabaseSettings.online_backup_enabled;
+        public static final GraphDatabaseSetting.BooleanSetting online_backup_enabled = new GraphDatabaseSetting.BooleanSetting( Config.ENABLE_ONLINE_BACKUP );
         public static final GraphDatabaseSetting.BooleanSetting read_only = GraphDatabaseSettings.read_only;
         public static final GraphDatabaseSetting.StringSetting store_dir = AbstractGraphDatabase.Configuration.store_dir;
         public static final GraphDatabaseSetting.BooleanSetting intercept_committing_transactions = GraphDatabaseSettings.intercept_committing_transactions;

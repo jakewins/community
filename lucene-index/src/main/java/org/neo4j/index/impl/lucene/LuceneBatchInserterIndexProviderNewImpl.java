@@ -52,56 +52,6 @@ public class LuceneBatchInserterIndexProviderNewImpl implements BatchInserterInd
     {
         this.inserter = inserter;
         this.indexStore = ((BatchInserterImpl) inserter).getIndexStore();
-//        this.nodeEntityType = new EntityType()
-//        {
-//            @Override
-//            public Document newDocument( Object entityId )
-//            {
-//                return IndexType.newBaseDocument( (Long) entityId );
-//            }
-//            
-//            @Override
-//            public Class<? extends PropertyContainer> getType()
-//            {
-//                return Node.class;
-//            }
-//        };
-//        this.relationshipEntityType = new EntityType()
-//        {
-//            @Override
-//            public Document newDocument( Object entityId )
-//            {
-//                RelationshipId relId = null;
-//                if ( entityId instanceof Long )
-//                {
-//                    BatchRelationship relationship = inserter
-//                            .getRelationshipById( (Long) entityId );
-//                    relId = new RelationshipId( relationship.getId(), relationship.getStartNode(),
-//                            relationship.getEndNode() );
-//                }
-//                else if ( entityId instanceof RelationshipId )
-//                {
-//                    relId = (RelationshipId) entityId;
-//                }
-//                else
-//                {
-//                    throw new IllegalArgumentException( "Ids of type " + entityId.getClass()
-//                            + " are not supported." );
-//                }
-//                Document doc = IndexType.newBaseDocument( relId.id );
-//                doc.add( new Field( LuceneIndex.KEY_START_NODE_ID, "" + relId.startNode,
-//                        Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
-//                doc.add( new Field( LuceneIndex.KEY_END_NODE_ID, "" + relId.endNode,
-//                        Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
-//                return doc;
-//            }
-//            
-//            @Override
-//            public Class<? extends PropertyContainer> getType()
-//            {
-//                return Relationship.class;
-//            }
-//        };
     }
     
     @Override

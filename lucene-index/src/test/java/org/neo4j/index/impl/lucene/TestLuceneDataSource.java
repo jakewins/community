@@ -109,7 +109,7 @@ public class TestLuceneDataSource
 
     private LuceneDataSource newDataSource( Map<String,String> config )
     {
-        Config conf = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(config() ));
+        Config conf = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(config( config ) ));
         return new LuceneDataSource( conf, indexStore,
                 fileSystem, new XaFactory( conf, TxIdGenerator.DEFAULT, new PlaceboTm(),
                 new DefaultLogBufferFactory(), fileSystem, StringLogger.DEV_NULL,
@@ -217,6 +217,11 @@ public class TestLuceneDataSource
 
     private Map<String,String> config()
     {
-        return stringMap( "store_dir", getDbPath() );
+        return config( stringMap() );
+    }
+    
+    private Map<String,String> config( Map<String, String> includingThis )
+    {
+        return stringMap( includingThis, "store_dir", getDbPath() );
     }
 }

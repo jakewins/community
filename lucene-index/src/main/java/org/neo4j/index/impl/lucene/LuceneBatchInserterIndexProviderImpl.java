@@ -50,62 +50,19 @@ public class LuceneBatchInserterIndexProviderImpl implements BatchInserterIndexP
     private final Map<IndexIdentifier, LuceneBatchInserterIndex> indexes =
             new HashMap<IndexIdentifier, LuceneBatchInserterIndex>();
     final IndexStore indexStore;
-    private BatchInserter inserter;
-//    final EntityType nodeEntityType;
-//    final EntityType relationshipEntityType;
+    private final org.neo4j.unsafe.batchinsert.BatchInserter inserter;
 
     public LuceneBatchInserterIndexProviderImpl( final BatchInserter inserter )
     {
-        this.inserter = inserter;
+        this.inserter = wrap( inserter );
         this.indexStore = ((BatchInserterImpl) inserter).getIndexStore();
-//        this.nodeEntityType = new EntityType()
-//        {
-//            public Document newDocument( Object entityId )
-//            {
-//                return IndexType.newBaseDocument( (Long) entityId );
-//            }
-//            
-//            public Class<? extends PropertyContainer> getType()
-//            {
-//                return Node.class;
-//            }
-//        };
-//        this.relationshipEntityType = new EntityType()
-//        {
-//            public Document newDocument( Object entityId )
-//            {
-//                RelationshipId relId = null;
-//                if ( entityId instanceof Long )
-//                {
-//                    SimpleRelationship relationship = inserter
-//                            .getRelationshipById( (Long) entityId );
-//                    relId = new RelationshipId( relationship.getId(), relationship.getStartNode(),
-//                            relationship.getEndNode() );
-//                }
-//                else if ( entityId instanceof RelationshipId )
-//                {
-//                    relId = (RelationshipId) entityId;
-//                }
-//                else
-//                {
-//                    throw new IllegalArgumentException( "Ids of type " + entityId.getClass()
-//                            + " are not supported." );
-//                }
-//                Document doc = IndexType.newBaseDocument( relId.id );
-//                doc.add( new Field( LuceneIndex.KEY_START_NODE_ID, "" + relId.startNode,
-//                        Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
-//                doc.add( new Field( LuceneIndex.KEY_END_NODE_ID, "" + relId.endNode,
-//                        Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
-//                return doc;
-//            }
-//            
-//            public Class<? extends PropertyContainer> getType()
-//            {
-//                return Relationship.class;
-//            }
-//        };
     }
     
+    private org.neo4j.unsafe.batchinsert.BatchInserter wrap( final BatchInserter oldInserter )
+    {
+        return new OldAsNewBatchInserterWrapper( oldInserter );
+    }
+
     public BatchInserterIndex nodeIndex( String indexName, Map<String, String> config )
     {
         config( Node.class, indexName, config );
@@ -142,7 +99,7 @@ public class LuceneBatchInserterIndexProviderImpl implements BatchInserterIndexP
         LuceneBatchInserterIndex index = indexes.get( identifier );
         if ( index == null )
         {
-            index = new LuceneBatchInserterIndex( null, identifier, config );
+            index = new LuceneBatchInserterIndex( inserter, identifier, config );
             indexes.put( identifier, index );
         }
         return index;
