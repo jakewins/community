@@ -24,7 +24,9 @@ import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.neo4j.helpers.collection.IterableWrapper;
+import org.neo4j.helpers.Format;
+import org.neo4j.helpers.Function;
+import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor.VisitableDiagnostics;
@@ -79,15 +81,14 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
             {
                 if ( phase.isInitialization() || phase.isExplicitlyRequested() )
                 {
-                    log.logLongMessage( "Diagnostics providers:", new IterableWrapper<String, DiagnosticsProvider>(
-                            providers )
+                    log.logMessage( Format.logLongMessage( "Diagnostics providers:", Iterables.map(new Function<DiagnosticsProvider, String>()
                     {
                         @Override
-                        protected String underlyingObjectToObject( DiagnosticsProvider provider )
+                        public String map( DiagnosticsProvider diagnosticsProvider )
                         {
-                            return provider.getDiagnosticsIdentifier();
+                            return diagnosticsProvider.getDiagnosticsIdentifier();
                         }
-                    }, true );
+                    }, providers)));
                 }
             }
 
@@ -95,9 +96,12 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
             public void acceptDiagnosticsVisitor( Object visitor )
             {
                 Visitor<? super DiagnosticsProvider> target = castToGenericVisitor( DiagnosticsProvider.class, visitor );
-                if ( target != null ) for ( DiagnosticsProvider provider : providers )
+                if( target != null )
                 {
-                    target.visit( provider );
+                    for( DiagnosticsProvider provider : providers )
+                    {
+                        target.visit( provider );
+                    }
                 }
             }
         } );
@@ -115,7 +119,10 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
         synchronized ( providers )
         {
             @SuppressWarnings( "hiding" ) State state = this.state;
-            if ( !state.startup( this ) ) return;
+            if( !state.startup( this ) )
+            {
+                return;
+            }
         }
         dumpAll( DiagnosticsPhase.STARTUP );
     }
@@ -131,7 +138,10 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
         synchronized ( providers )
         {
             @SuppressWarnings( "hiding" ) State state = this.state;
-            if ( !state.shutdown( this ) ) return;
+            if( !state.shutdown( this ) )
+            {
+                return;
+            }
         }
         dumpAll( DiagnosticsPhase.SHUTDOWN );
         providers.clear();
@@ -240,17 +250,29 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
     public void prependProvider( DiagnosticsProvider provider )
     {
         @SuppressWarnings( "hiding" ) State state = this.state;
-        if ( state == State.STOPPED ) return;
+        if( state == State.STOPPED )
+        {
+            return;
+        }
         providers.add( 0, provider );
-        if ( state == State.STARTED ) dump( DiagnosticsPhase.STARTUP, provider );
+        if( state == State.STARTED )
+        {
+            dump( DiagnosticsPhase.STARTUP, provider );
+        }
     }
 
     public void appendProvider( DiagnosticsProvider provider )
     {
         @SuppressWarnings( "hiding" ) State state = this.state;
-        if ( state == State.STOPPED ) return;
+        if( state == State.STOPPED )
+        {
+            return;
+        }
         providers.add( provider );
-        if ( state == State.STARTED ) dump( DiagnosticsPhase.STARTUP, provider );
+        if( state == State.STARTED )
+        {
+            dump( DiagnosticsPhase.STARTUP, provider );
+        }
     }
 
     private void dump( DiagnosticsPhase phase, DiagnosticsProvider provider )

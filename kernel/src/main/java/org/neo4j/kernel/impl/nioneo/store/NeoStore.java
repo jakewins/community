@@ -594,9 +594,9 @@ public class NeoStore extends AbstractStore
     }
 
     @Override
-    public void logVersions( StringLogger.LineLogger msgLog)
+    public void logVersions( List<String> msgLog)
     {
-        msgLog.logLine( "Store versions:" );
+        msgLog.add( "Store versions:" );
 
         super.logVersions( msgLog );
         nodeStore.logVersions( msgLog );
@@ -608,9 +608,9 @@ public class NeoStore extends AbstractStore
     }
 
     @Override
-    public void logIdUsage( StringLogger.LineLogger msgLog )
+    public void logIdUsage( List<String> msgLog )
     {
-        msgLog.logLine( "Id usage:" );
+        msgLog.add( "Id usage:" );
         nodeStore.logIdUsage(msgLog );
         relStore.logIdUsage(msgLog );
         relTypeStore.logIdUsage( msgLog);

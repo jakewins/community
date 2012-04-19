@@ -25,6 +25,9 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.test.EmbeddedDatabaseRule;
 
 import static org.junit.Assert.*;
@@ -33,7 +36,14 @@ import static org.junit.Assert.*;
 public class TransactionLifecycleTest
 {
     @Rule
-    public EmbeddedDatabaseRule database = new EmbeddedDatabaseRule();
+    public EmbeddedDatabaseRule database = new EmbeddedDatabaseRule()
+    {
+        @Override
+        protected void configure( GraphDatabaseBuilder builder )
+        {
+            builder.setConfig( GraphDatabaseSettings.dump_configuration, GraphDatabaseSetting.TRUE );
+        }
+    };
 
     @Test(expected=NotFoundException.class)
     public void givenACallToFailATransactionSubsequentSuccessCallsShouldBeSwallowedSilently() {

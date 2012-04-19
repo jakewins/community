@@ -23,9 +23,9 @@ package org.neo4j.kernel.logging;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
+import ch.qos.logback.core.status.Status;
 import java.io.File;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
-import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.RestartOnChange;
@@ -87,6 +87,11 @@ public class LogbackService
                 {
                     throw new IllegalStateException("Failed to configure logging", e );
                 }
+
+                for( Status status : loggerContext.getStatusManager().getCopyOfStatusList() )
+                {
+                    System.out.println( status );
+                }
             }
 
             @Override
@@ -124,26 +129,6 @@ public class LogbackService
         Slf4jStringLogger( Logger logger )
         {
             this.logger = logger;
-        }
-
-        @Override
-        protected void logLine( String line )
-        {
-            logger.info( line );
-        }
-
-        @Override
-        public void logLongMessage( final String msg, Visitor<LineLogger> source, final boolean flush )
-        {
-            logMessage( msg, flush );
-            source.visit( new LineLogger()
-            {
-                @Override
-                public void logLine( String line )
-                {
-                    logMessage( line, flush );
-                }
-            } );
         }
 
         @Override

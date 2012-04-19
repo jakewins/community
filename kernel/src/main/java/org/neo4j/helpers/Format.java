@@ -97,6 +97,19 @@ public class Format
         return String.format( "%.2f TB", Double.valueOf( size ) );
     }
 
+    public static String logLongMessage(String message, Iterable<String> lines)
+    {
+        StringBuilder msg = new StringBuilder();
+        msg.append( message );
+
+        for( String line: lines )
+        {
+            msg.append( "\n").append( line );
+        }
+
+        return msg.toString();
+    }
+
     private Format()
     {
         // No instances

@@ -22,17 +22,19 @@ package org.neo4j.kernel.configuration;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.helpers.Function;
 import org.neo4j.helpers.TimeUtil;
-import org.neo4j.helpers.collection.PrefetchingIterator;
+import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.kernel.impl.annotations.Documented;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 import org.neo4j.kernel.info.DiagnosticsProvider;
+
+import static org.neo4j.helpers.Format.*;
 
 /**
  * This class holds the overall configuration of a Neo4j database instance. Use the accessors
@@ -346,42 +348,27 @@ public class Config implements DiagnosticsProvider
         return Enum.valueOf( enumType, get( graphDatabaseSetting ) );
     }
 
-    @Override
     public String getDiagnosticsIdentifier()
     {
         return getClass().getName();
     }
 
-    @Override
     public void acceptDiagnosticsVisitor( Object visitor )
     {
         // nothing visits configuration
     }
 
-    @Override
     public void dump( DiagnosticsPhase phase, StringLogger log )
     {
         if ( phase.isInitialization() || phase.isExplicitlyRequested() )
         {
-            log.logLongMessage( "Neo4j Kernel properties:", new PrefetchingIterator<String>()
+            log.logMessage( logLongMessage( "Neo4j Kernel properties:", Iterables.map( new Function<Map.Entry<String, String>, String>()
             {
-                final Iterator<String> keys = params.keySet().iterator();
-
-                @Override
-                protected String fetchNextOrNull()
+                public String map( Map.Entry<String, String> stringStringEntry )
                 {
-                    while ( keys.hasNext() )
-                    {
-                        Object key = keys.next();
-                        if ( key instanceof String )
-                        {
-                            Object value = params.get( key );
-                            return key + "=" + value;
-                        }
-                    }
-                    return null;
+                    return stringStringEntry.getKey()+"="+stringStringEntry.getValue();
                 }
-            }, true );
+            }, params.entrySet() ) ));
         }
     }
     

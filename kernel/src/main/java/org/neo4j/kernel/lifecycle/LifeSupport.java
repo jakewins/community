@@ -22,7 +22,9 @@ package org.neo4j.kernel.lifecycle;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.neo4j.helpers.collection.Visitor;
+import org.neo4j.helpers.Format;
+import org.neo4j.helpers.Function;
+import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
@@ -314,20 +316,14 @@ public class LifeSupport
     
     public synchronized void dump(StringLogger logger)
     {
-        logger.logLongMessage( "Lifecycle status:"+status.name(), new Visitor<StringLogger.LineLogger>()
+        logger.logMessage( Format.logLongMessage("Lifecycle status:" + status.name(), Iterables.map( new Function<LifecycleInstance, String>()
         {
             @Override
-            public boolean visit( StringLogger.LineLogger element )
+            public String map( LifecycleInstance lifecycleInstance )
             {
-                for( LifecycleInstance instance : instances )
-                {
-                    element.logLine( instance.toString() );
-                }
-                
-                return true;
+                return instances.toString();
             }
-        }, true
-        );
+        }, instances )));
     }
 
     private LifecycleException causedBy( LifecycleException exception, LifecycleException chainedLifecycleException )

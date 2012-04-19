@@ -23,9 +23,10 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.commons.configuration.Configuration;
-import org.neo4j.helpers.collection.PrefetchingIterator;
+import org.neo4j.helpers.Format;
+import org.neo4j.helpers.Function;
+import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor;
 import org.neo4j.kernel.info.DiagnosticsPhase;
@@ -96,21 +97,21 @@ public interface Configurator
             if ( phase.isInitialization() || phase.isExplicitlyRequested() )
             {
                 final Configuration config = source.configuration();
-                log.logLongMessage( "Server configuration:", new PrefetchingIterator<String>()
+                log.logMessage( Format.logLongMessage("Server configuration:", Iterables.map( new Function<String, String>()
                 {
-                    final Iterator<?> keys = config.getKeys();
-
                     @Override
-                    protected String fetchNextOrNull()
+                    public String map( String key )
                     {
-                        while ( keys.hasNext() )
-                        {
-                            Object key = keys.next();
-                            if ( key instanceof String ) return key + " = " + config.getProperty( (String) key );
-                        }
-                        return null;
+                        return key + " = " + config.getProperty( key );
                     }
-                }, true );
+                }, new Iterable<String>()
+                {
+                  @Override
+                  public Iterator<String> iterator()
+                  {
+                      return (Iterator<String>) config.getKeys();
+                  }
+                }) ));
             }
         }
         

@@ -23,11 +23,11 @@ package org.neo4j.tooling;
 import java.util.Arrays;
 import java.util.ResourceBundle;
 import java.util.Set;
-import org.neo4j.graphdb.factory.GraphDatabaseSettingsResourceBundle;
 import org.neo4j.graphdb.factory.SettingsResourceBundle;
 
 /**
- * Generates the default neo4j.properties file by using the {@link GraphDatabaseSettingsResourceBundle}
+ * Generates the default neo4j.properties file by using the {@link SettingsResourceBundle}. Invoke main method
+ * with list of settings classes that you want included in the output.
  */
 public class GenerateDefaultNeo4jProperties
 {

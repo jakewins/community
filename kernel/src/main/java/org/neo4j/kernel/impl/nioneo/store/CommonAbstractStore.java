@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -784,14 +785,14 @@ public abstract class CommonAbstractStore
         }
     }
 
-    public void logVersions( StringLogger.LineLogger logger)
+    public void logVersions( List<String> logger)
     {
-        logger.logLine( "  " + getTypeAndVersionDescriptor() );
+        logger.add( "  " + getTypeAndVersionDescriptor() );
     }
 
-    public void logIdUsage(StringLogger.LineLogger lineLogger )
+    public void logIdUsage(List<String> lineLogger )
     {
-        lineLogger.logLine( String.format( "  %s: used=%s high=%s", getTypeDescriptor(),
+        lineLogger.add( String.format( "  %s: used=%s high=%s", getTypeDescriptor(),
                 getNumberOfIdsInUse(), getHighestPossibleIdInUse() ) );
     }
 

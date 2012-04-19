@@ -25,13 +25,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.neo4j.helpers.Format;
-import org.neo4j.helpers.collection.Visitor;
-
-import static org.neo4j.helpers.collection.IteratorUtil.*;
 
 public abstract class StringLogger
 {
@@ -40,11 +36,6 @@ public abstract class StringLogger
         new ActualStringLogger( new PrintWriter( System.out ) );
     private static final int DEFAULT_THRESHOLD_FOR_ROTATION = 100 * 1024 * 1024;
     private static final int NUMBER_OF_OLD_LOGS_TO_KEEP = 2;
-
-    public interface LineLogger
-    {
-        void logLine( String line );
-    }
 
     public static StringLogger logger( File logfile )
     {
@@ -148,44 +139,6 @@ public abstract class StringLogger
         logMessage( msg, cause, false );
     }
 
-    public void logLongMessage( String msg, Visitor<LineLogger> source )
-    {
-        logLongMessage( msg, source, false );
-    }
-
-    public void logLongMessage( String msg, Iterable<String> source )
-    {
-        logLongMessage( msg, source, false );
-    }
-
-    public void logLongMessage( String msg, Iterable<String> source, boolean flush )
-    {
-        logLongMessage( msg, source.iterator(), flush );
-    }
-
-    public void logLongMessage( String msg, Iterator<String> source )
-    {
-        logLongMessage( msg, source, false );
-    }
-
-    public void logLongMessage( String msg, final Iterator<String> source, boolean flush )
-    {
-        logLongMessage( msg, new Visitor<LineLogger>()
-        {
-            @Override
-            public boolean visit( LineLogger logger )
-            {
-                for ( String line : loop( source ) )
-                {
-                    logger.logLine( line );
-                }
-                return true;
-            }
-        }, flush );
-    }
-
-    public abstract void logLongMessage( String msg, Visitor<LineLogger> source, boolean flush );
-
     public abstract void logMessage( String msg, boolean flush );
 
     public abstract void logMessage( String msg, Throwable cause, boolean flush );
@@ -196,8 +149,6 @@ public abstract class StringLogger
 
     public abstract void close();
 
-    protected abstract void logLine( String line );
-
     public static final StringLogger DEV_NULL = new StringLogger()
     {
         @Override
@@ -205,12 +156,6 @@ public abstract class StringLogger
 
         @Override
         public void logMessage( String msg, Throwable cause, boolean flush ) {}
-
-        @Override
-        public void logLongMessage( String msg, Visitor<LineLogger> source, boolean flush ) {}
-
-        @Override
-        protected void logLine( String line ) {}
 
         @Override
         public void flush() {}
@@ -299,24 +244,6 @@ public abstract class StringLogger
             checkRotation();
         }
 
-        @Override
-        public synchronized void logLongMessage( String msg, Visitor<LineLogger> source, boolean flush )
-        {
-            out.println( time() + ": " + msg );
-            source.visit( new LineLoggerImpl( this ) );
-            if ( flush )
-            {
-                out.flush();
-            }
-            checkRotation();
-        }
-
-        @Override
-        protected void logLine( String line )
-        {
-            out.println( "    " + line );
-        }
-
 //        private void ensureOpen()
 //        {
 //            /*
@@ -399,21 +326,6 @@ public abstract class StringLogger
         public void close()
         {
             out.close();
-        }
-    }
-
-    private static final class LineLoggerImpl implements LineLogger
-    {
-        private final StringLogger target;
-
-        LineLoggerImpl( StringLogger target )
-        {
-            this.target = target;
-        }
-
-        public void logLine( String line )
-        {
-            target.logLine( line );
         }
     }
 }

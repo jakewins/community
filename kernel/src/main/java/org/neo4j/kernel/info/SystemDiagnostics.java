@@ -19,8 +19,6 @@
  */
 package org.neo4j.kernel.info;
 
-import static org.neo4j.helpers.Format.bytes;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -39,12 +37,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import org.neo4j.helpers.collection.Visitor;
+import org.neo4j.helpers.Format;
 import org.neo4j.kernel.impl.util.StringLogger;
-import org.neo4j.kernel.impl.util.StringLogger.LineLogger;
+
+import static org.neo4j.helpers.Format.*;
 
 enum SystemDiagnostics implements DiagnosticsProvider
 {
@@ -54,7 +53,7 @@ enum SystemDiagnostics implements DiagnosticsProvider
         private static final String IBM_OS_BEAN = "com.ibm.lang.management.OperatingSystemMXBean";
         
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
             logBeanBytesProperty( logger, "Total Physical memory: ", os, SUN_OS_BEAN, "getTotalPhysicalMemorySize" );
@@ -66,29 +65,32 @@ enum SystemDiagnostics implements DiagnosticsProvider
             logBeanBytesProperty( logger, "Free physical memory: ", os, IBM_OS_BEAN, "getFreePhysicalMemorySize" );
         }
 
-        private void logBeanBytesProperty( StringLogger.LineLogger logger, String message, Object bean, String type,
+        private void logBeanBytesProperty( List<String> logger, String message, Object bean, String type,
                 String method )
         {
             Object value = getBeanProperty( bean, type, method, null );
-            if ( value instanceof Number ) logger.logLine( message + bytes( ( (Number) value ).longValue() ) );
+            if( value instanceof Number )
+            {
+                logger.add( message + bytes( ( (Number) value ).longValue() ) );
+            }
         }
     },
     JAVA_MEMORY( "JVM memory information:" )
     {
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
-            logger.logLine( "Free  memory: " + bytes( Runtime.getRuntime().freeMemory() ) );
-            logger.logLine( "Total memory: " + bytes( Runtime.getRuntime().totalMemory() ) );
-            logger.logLine( "Max   memory: " + bytes( Runtime.getRuntime().maxMemory() ) );
+            logger.add( "Free  memory: " + bytes( Runtime.getRuntime().freeMemory() ) );
+            logger.add( "Total memory: " + bytes( Runtime.getRuntime().totalMemory() ) );
+            logger.add( "Max   memory: " + bytes( Runtime.getRuntime().maxMemory() ) );
             for ( GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans() )
             {
-                logger.logLine( "Garbage Collector: " + gc.getName() + ": " + Arrays.toString( gc.getMemoryPoolNames() ) );
+                logger.add( "Garbage Collector: " + gc.getName() + ": " + Arrays.toString( gc.getMemoryPoolNames() ) );
             }
             for ( MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans() )
             {
                 MemoryUsage usage = pool.getUsage();
-                logger.logLine( String.format( "Memory Pool: %s (%s): committed=%s, used=%s, max=%s, threshold=%s",
+                logger.add( String.format( "Memory Pool: %s (%s): committed=%s, used=%s, max=%s, threshold=%s",
                         pool.getName(), pool.getType(), usage == null ? "?" : bytes( usage.getCommitted() ),
                         usage == null ? "?" : bytes( usage.getUsed() ), usage == null ? "?" : bytes( usage.getMax() ),
                         pool.isUsageThresholdSupported() ? bytes( pool.getUsageThreshold() ) : "?" ) );
@@ -100,42 +102,45 @@ enum SystemDiagnostics implements DiagnosticsProvider
         private static final String SUN_UNIX_BEAN = "com.sun.management.UnixOperatingSystemMXBean";
         
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
             RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
-            logger.logLine( String.format( "Operating System: %s; version: %s; arch: %s; cpus: %s", os.getName(),
+            logger.add( String.format( "Operating System: %s; version: %s; arch: %s; cpus: %s", os.getName(),
                     os.getVersion(), os.getArch(), Integer.valueOf( os.getAvailableProcessors() ) ) );
             logBeanProperty( logger, "Max number of file descriptors: ", os, SUN_UNIX_BEAN, "getMaxFileDescriptorCount" );
             logBeanProperty( logger, "Number of open file descriptors: ", os, SUN_UNIX_BEAN, "getOpenFileDescriptorCount" );
-            logger.logLine( "Process id: " + runtime.getName() );
-            logger.logLine( "Byte order: " + ByteOrder.nativeOrder() );
+            logger.add( "Process id: " + runtime.getName() );
+            logger.add( "Byte order: " + ByteOrder.nativeOrder() );
         }
 
-        private void logBeanProperty( StringLogger.LineLogger logger, String message, Object bean, String type, String method )
+        private void logBeanProperty( List<String> logger, String message, Object bean, String type, String method )
         {
             Object value = getBeanProperty( bean, type, method, null );
-            if ( value != null ) logger.logLine( message + value );
+            if( value != null )
+            {
+                logger.add( message + value );
+            }
         }
     },
     JAVA_VIRTUAL_MACHINE( "JVM information:" )
     {
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
-            logger.logLine( "VM Name: " + runtime.getVmName() );
-            logger.logLine( "VM Vendor: " + runtime.getVmVendor() );
-            logger.logLine( "VM Version: " + runtime.getVmVersion() );
+            logger.add( "VM Name: " + runtime.getVmName() );
+            logger.add( "VM Vendor: " + runtime.getVmVendor() );
+            logger.add( "VM Version: " + runtime.getVmVersion() );
             CompilationMXBean compiler = ManagementFactory.getCompilationMXBean();
-            logger.logLine( "JIT compiler: " + ( ( compiler == null ) ? "unknown" : compiler.getName() ) );
-            logger.logLine( "VM Arguments: " + runtime.getInputArguments() );
+            logger.add( "JIT compiler: " + ( ( compiler == null ) ? "unknown" : compiler.getName() ) );
+            logger.add( "VM Arguments: " + runtime.getInputArguments() );
         }
     },
     CLASSPATH( "Java classpath:" )
     {
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
             Collection<String> classpath;
@@ -152,7 +157,7 @@ enum SystemDiagnostics implements DiagnosticsProvider
             }
             for ( String path : classpath )
             {
-                logger.logLine( path );
+                logger.add( path );
             }
         }
 
@@ -160,17 +165,25 @@ enum SystemDiagnostics implements DiagnosticsProvider
         {
             Map<String, String> paths = new HashMap<String, String>();
             assert pathKeys.length == classPaths.length;
-            for ( int i = 0; i < classPaths.length; i++ )
-                for ( String path : classPaths[i].split( File.pathSeparator ) )
-                    paths.put( canonicalize( path ), pathValue( paths, pathKeys[i], path ) );
+            for( int i = 0; i < classPaths.length; i++ )
+            {
+                for( String path : classPaths[ i ].split( File.pathSeparator ) )
+                {
+                    paths.put( canonicalize( path ), pathValue( paths, pathKeys[ i ], path ) );
+                }
+            }
             for ( int level = 0; loader != null; level++ )
             {
                 if ( loader instanceof URLClassLoader )
                 {
                     URLClassLoader urls = (URLClassLoader) loader;
-                    for ( URL url : urls.getURLs() )
-                        if ( "file".equalsIgnoreCase( url.getProtocol() ) )
+                    for( URL url : urls.getURLs() )
+                    {
+                        if( "file".equalsIgnoreCase( url.getProtocol() ) )
+                        {
                             paths.put( url.toString(), pathValue( paths, "loader." + level, url.getPath() ) );
+                        }
+                    }
                 }
                 loader = loader.getParent();
             }
@@ -199,28 +212,31 @@ enum SystemDiagnostics implements DiagnosticsProvider
     LIBRARY_PATH( "Library path:" )
     {
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
             for ( String path : runtime.getLibraryPath().split( File.pathSeparator ) )
             {
-                logger.logLine( canonicalize( path ) );
+                logger.add( canonicalize( path ) );
             }
         }
     },
     SYSTEM_PROPERTIES( "System.properties:" )
     {
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             for ( Object property : System.getProperties().keySet() )
             {
                 if ( property instanceof String )
                 {
                     String key = (String) property;
-                    if ( key.startsWith( "java." ) || key.startsWith( "os." ) || key.endsWith( ".boot.class.path" )
-                         || key.equals( "line.separator" ) ) continue;
-                    logger.logLine( key + " = " + System.getProperty( key ) );
+                    if( key.startsWith( "java." ) || key.startsWith( "os." ) || key.endsWith( ".boot.class.path" )
+                        || key.equals( "line.separator" ) )
+                    {
+                        continue;
+                    }
+                    logger.add( key + " = " + System.getProperty( key ) );
                 }
             }            
         }
@@ -236,7 +252,7 @@ enum SystemDiagnostics implements DiagnosticsProvider
         }
 
         @Override
-        void dump( StringLogger.LineLogger logger )
+        void dump( List<String> logger )
         {
             for ( File subdir : SYS_BLOCK.listFiles( new java.io.FileFilter()
             {
@@ -255,8 +271,10 @@ enum SystemDiagnostics implements DiagnosticsProvider
                         BufferedReader reader = new BufferedReader( new FileReader( scheduler ) );
                         try
                         {
-                            for ( String line; null != ( line = reader.readLine() ); )
-                                logger.logLine( line );
+                            for( String line; null != ( line = reader.readLine() ); )
+                            {
+                                logger.add( line );
+                            }
                         }
                         finally
                         {
@@ -283,7 +301,10 @@ enum SystemDiagnostics implements DiagnosticsProvider
     {
         for ( SystemDiagnostics provider : values() )
         {
-            if ( provider.isApplicable() ) manager.appendProvider( provider );
+            if( provider.isApplicable() )
+            {
+                manager.appendProvider( provider );
+            }
         }
     }
 
@@ -309,19 +330,20 @@ enum SystemDiagnostics implements DiagnosticsProvider
     {
         if ( phase.isInitialization() || phase.isExplicitlyRequested() )
         {
-            log.logLongMessage( message, new Visitor<StringLogger.LineLogger>()
+            log.logMessage( Format.logLongMessage(message, new Iterable<String>()
             {
                 @Override
-                public boolean visit( LineLogger logger )
+                public Iterator<String> iterator()
                 {
-                    dump( logger );
-                    return false;
+                    List<String> lines = new ArrayList<String>(  );
+                    dump( lines );
+                    return lines.iterator();
                 }
-            }, true );
+            }));
         }
     }
 
-    abstract void dump( StringLogger.LineLogger logger );
+    abstract void dump( List<String> logger );
 
     private static String canonicalize( String path )
     {

@@ -38,10 +38,10 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.Exceptions;
+import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
-import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.LockReleaser;
@@ -121,7 +121,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         NEO_STORE_VERSIONS( "Store versions:" )
         {
             @Override
-            void dump( NeoStoreXaDataSource source, StringLogger.LineLogger log )
+            void dump( NeoStoreXaDataSource source, List<String> log )
             {
                 source.neoStore.logVersions( log );
             }
@@ -129,7 +129,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         NEO_STORE_ID_USAGE( "Id usage:" )
         {
             @Override
-            void dump( NeoStoreXaDataSource source, StringLogger.LineLogger log )
+            void dump( NeoStoreXaDataSource source, List<String> log )
             {
                 source.neoStore.logIdUsage( log );
             }
@@ -147,19 +147,20 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         {
             if ( phase.isInitialization() || phase.isExplicitlyRequested() )
             {
-                log.logLongMessage( message, new Visitor<StringLogger.LineLogger>()
+                log.logMessage( Format.logLongMessage(message, new Iterable<String>()
                 {
                     @Override
-                    public boolean visit( StringLogger.LineLogger logger )
+                    public Iterator<String> iterator()
                     {
-                        dump( source, logger );
-                        return false;
+                        List<String> lines = new ArrayList<String>(  );
+                        dump( source, lines );
+                        return lines.iterator();
                     }
-                }, true );
+                }));
             }
         }
 
-        abstract void dump( NeoStoreXaDataSource source, StringLogger.LineLogger log );
+        abstract void dump( NeoStoreXaDataSource source, List<String> log );
     }
 
     /**

@@ -692,7 +692,7 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
     }
 
     @Override
-    public void logVersions(StringLogger.LineLogger logger )
+    public void logVersions(List<String> logger )
     {
         super.logVersions( logger );
         propertyIndexStore.logVersions( logger );
@@ -701,7 +701,7 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
     }
 
     @Override
-    public void logIdUsage(StringLogger.LineLogger logger )
+    public void logIdUsage(List<String> logger )
     {
         super.logIdUsage(logger);
         propertyIndexStore.logIdUsage( logger );

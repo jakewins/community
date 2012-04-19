@@ -20,8 +20,7 @@
 package org.neo4j.kernel.impl.nioneo.store;
 
 import java.io.IOException;
-
-import org.neo4j.kernel.impl.util.StringLogger;
+import java.util.List;
 
 /**
  * Common interface for the node,relationship,property and relationship type
@@ -46,5 +45,5 @@ public interface Store
 
     public WindowPoolStats getWindowPoolStats();
 
-    public void logIdUsage( StringLogger.LineLogger logger );
+    public void logIdUsage( List<String> logger );
 }
