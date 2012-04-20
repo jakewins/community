@@ -73,6 +73,8 @@ public class LogbackService
             public void start()
                 throws Throwable
             {
+                loggerContext.getStatusManager().clear();
+
                 JoranConfigurator configurator = new JoranConfigurator();
                 configurator.setContext( loggerContext );
                 loggerContext.putProperty( "neo_store", storeDir );
@@ -90,7 +92,8 @@ public class LogbackService
 
                 for( Status status : loggerContext.getStatusManager().getCopyOfStatusList() )
                 {
-                    System.out.println( status );
+                    if (status.getLevel() > Status.INFO)
+                        System.out.println( status );
                 }
             }
 
