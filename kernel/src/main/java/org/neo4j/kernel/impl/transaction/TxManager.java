@@ -191,26 +191,6 @@ public class TxManager extends AbstractTransactionManager
     public void start()
         throws Throwable
     {
-        // Do recovery on start - all Resources should be registered by now
-        Iterator<List<TxLog.Record>> danglingRecordList =
-            txLog.getDanglingRecords();
-        boolean danglingRecordFound = danglingRecordList.hasNext();
-        if ( danglingRecordFound )
-        {
-            log.info( "Unresolved transactions found, " +
-                "recovery started ..." );
-
-            msgLog.logMessage( "TM non resolved transactions found in " + txLog.getName(), true );
-
-            // Recover DataSources
-            xaDataSourceManager.recover(danglingRecordList);
-
-            log.info( "Recovery completed, all transactions have been " +
-                "resolved to a consistent state." );
-            msgLog.logMessage( "Recovery completed, all transactions have been " +
-                "resolved to a consistent state." );
-        }
-        getTxLog().truncate();
     }
 
     @Override

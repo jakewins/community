@@ -22,7 +22,9 @@ package org.neo4j.index.impl.lucene;
 
 import java.io.File;
 import java.util.Map;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -53,16 +55,12 @@ import static org.junit.Assert.*;
  */
 public class TestRecovery
 {
-    private String getDbPath()
-    {
-        return "target/var/recovery";
-    }
-    
+    @Rule
+    public TemporaryFolder temp = new TemporaryFolder();
+
     private GraphDatabaseService newGraphDbService()
     {
-        String path = getDbPath();
-        Neo4jTestCase.deleteFileOrDirectory( new File( path ) );
-        return new GraphDatabaseFactory().newEmbeddedDatabase( path );
+        return new GraphDatabaseFactory().newEmbeddedDatabase( temp.getRoot().getAbsolutePath() );
     }
     
     @Test
@@ -84,7 +82,7 @@ public class TestRecovery
         graphDb.shutdown();
         
         // Start up and let it recover
-        final GraphDatabaseService newGraphDb = new GraphDatabaseFactory().newEmbeddedDatabase( getDbPath() );
+        final GraphDatabaseService newGraphDb = new GraphDatabaseFactory().newEmbeddedDatabase( temp.getRoot().getAbsolutePath() );
         newGraphDb.shutdown();
     }
     
@@ -99,7 +97,7 @@ public class TestRecovery
         db.shutdown();
         
         // This doesn't seem to trigger recovery... it really should
-        new GraphDatabaseFactory().newEmbeddedDatabase( getDbPath() ).shutdown();
+        new GraphDatabaseFactory().newEmbeddedDatabase( temp.getRoot().getAbsolutePath() ).shutdown();
     }
     
     @Test
@@ -111,22 +109,22 @@ public class TestRecovery
 
         Process process = Runtime.getRuntime().exec( new String[]{
             "java", "-cp", System.getProperty( "java.class.path" ),
-            AddDeleteQuit.class.getName(), getDbPath()
+            AddDeleteQuit.class.getName(), temp.getRoot().getAbsolutePath()
         } );
         assertEquals( 0, new ProcessStreamHandler( process, true ).waitForResult() );
         
-        new GraphDatabaseFactory().newEmbeddedDatabase( getDbPath() ).shutdown();
+        new GraphDatabaseFactory().newEmbeddedDatabase( temp.getRoot().getAbsolutePath() ).shutdown();
         db.shutdown();
     }
 
     @Test
     public void recoveryForRelationshipCommandsOnly() throws Exception
     {
-        String path = getDbPath();
+        String path = temp.getRoot().getAbsolutePath();
         Neo4jTestCase.deleteFileOrDirectory( new File( path ) );
         Process process = Runtime.getRuntime().exec( new String[]{
             "java", "-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005", "-cp", System.getProperty( "java.class.path" ),
-            AddRelToIndex.class.getName(), getDbPath()
+            AddRelToIndex.class.getName(), path
         } );
         assertEquals( 0, new ProcessStreamHandler( process, true ).waitForResult() );
         
@@ -138,9 +136,9 @@ public class TestRecovery
         FileSystemAbstraction fileSystemAbstraction = new DefaultFileSystemAbstraction();
         FileSystemAbstraction fileSystem = fileSystemAbstraction;
         Map<String, String> params = MapUtil.stringMap(
-                "store_dir", getDbPath());
+                "store_dir", temp.getRoot().getAbsolutePath());
         Config config = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(params ));
-        LuceneDataSource ds = new LuceneDataSource( config, new IndexStore( getDbPath(), fileSystem ), fileSystem,
+        LuceneDataSource ds = new LuceneDataSource( config, new IndexStore( temp.getRoot().getAbsolutePath(), fileSystem ), fileSystem,
                                                    new XaFactory( config, TxIdGenerator.DEFAULT, new PlaceboTm(), new DefaultLogBufferFactory(), fileSystemAbstraction, StringLogger.DEV_NULL, RecoveryVerifier.ALWAYS_VALID));
         ds.close();
     }

@@ -100,6 +100,7 @@ public class XaDataSourceManager
         branchIdMapping.clear();
         sourceIdMapping.clear();
         Iterator<XaDataSource> itr = dataSources.values().iterator();
+
         while( itr.hasNext() )
         {
             XaDataSource dataSource = itr.next();

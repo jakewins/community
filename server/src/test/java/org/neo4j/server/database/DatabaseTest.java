@@ -33,6 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.kernel.lifecycle.LifecycleException;
 import org.neo4j.server.logging.InMemoryAppender;
 import org.neo4j.shell.ShellException;
 import org.neo4j.shell.ShellLobby;
@@ -93,7 +94,7 @@ public class DatabaseTest
         assertThat( appender.toString(), containsString( "Successfully shutdown database" ) );
     }
 
-    @Test( expected = IllegalStateException.class )
+    @Test( expected = LifecycleException.class )
     public void shouldComplainIfDatabaseLocationIsAlreadyInUse()
     {
         deletionFailureOk = true;

@@ -19,43 +19,82 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static org.neo4j.helpers.collection.Iterables.cast;
+import static org.neo4j.helpers.collection.Iterables.iterable;
+
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.cache.Cache;
 import org.neo4j.kernel.impl.cache.CacheProvider;
 import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 
-public class DefaultCaches implements Caches
+public class DefaultCaches extends LifecycleAdapter implements Caches
 {
-    private CacheProvider provider;
-    private Config config;
-    private final StringLogger logger;
-    
-    public DefaultCaches( StringLogger logger )
+    private Cache<NodeImpl> node;
+    private Cache<RelationshipImpl> relationship;
+    protected CacheProvider cacheProvider;
+
+    public static class Configuration
     {
-        this.logger = logger;
+        public static final GraphDatabaseSettings.CacheTypeSetting cache_type = GraphDatabaseSettings.cache_type;
     }
-    
-    @Override
-    public void configure( CacheProvider provider, Config config )
+
+    private Config config;
+    private Iterable<CacheProvider> cacheProviders;
+    private final StringLogger logger;
+    public DefaultCaches( Iterable<CacheProvider> cacheProviders, StringLogger logger, Config config )
     {
-        this.provider = provider;
+        if(!cacheProviders.iterator().hasNext()) {
+            throw new IllegalArgumentException("No cache providers specified, cannot start without caches.");
+        }
+        this.cacheProviders = cacheProviders;
+        this.logger = logger;
         this.config = config;
     }
 
     @Override
+    public void start()
+        throws Throwable
+    {
+        cacheProvider = findCacheProvider( config.get( Configuration.cache_type ) );
+        node = cacheProvider.newNodeCache( logger, config );
+        relationship = cacheProvider.newRelationshipCache( logger, config );
+    }
+
+    @Override
+    public CacheProvider getCurrentCacheProvider()
+    {
+        return cacheProvider;
+    }
+
+    @Override
+    public Iterable<Cache<?>> caches()
+    {
+        return cast( iterable( node, relationship ) );
+    }
+
+
+    @Override
     public Cache<NodeImpl> node()
     {
-        return provider.newNodeCache( logger, config );
+        return node;
     }
 
     @Override
     public Cache<RelationshipImpl> relationship()
     {
-        return provider.newRelationshipCache( logger, config );
+        return relationship;
     }
 
-    @Override
-    public void invalidate()
+    private CacheProvider findCacheProvider(String name)
+        throws IllegalArgumentException
     {
+        for( CacheProvider cacheProvider : cacheProviders )
+        {
+            if (cacheProvider.getName().equals( name ))
+                return cacheProvider;
+        }
+        throw new IllegalArgumentException( "No cache type '" + name + "'" );
     }
 }

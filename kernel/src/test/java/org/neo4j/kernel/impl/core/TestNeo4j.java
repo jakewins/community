@@ -23,7 +23,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -45,6 +47,9 @@ import static org.junit.Assert.*;
 
 public class TestNeo4j extends AbstractNeo4jTestCase
 {
+    @Rule
+    public TemporaryFolder temp = new TemporaryFolder();
+
     @Test
     public void testReferenceNode()
     {
@@ -254,9 +259,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
     @Test
     public void testMultipleNeos()
     {
-        String storePath = getStorePath( "test-neo2" );
-        deleteFileOrDirectory( storePath );
-        GraphDatabaseService graphDb2 = new GraphDatabaseFactory().newEmbeddedDatabase( storePath );
+        GraphDatabaseService graphDb2 = new GraphDatabaseFactory().newEmbeddedDatabase( temp.getRoot().getAbsolutePath() );
         Transaction tx2 = graphDb2.beginTx();
         getGraphDb().createNode();
         graphDb2.createNode();
@@ -322,8 +325,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
     {
         Map<String,String> config = new HashMap<String,String>();
         config.put( GraphDatabaseSettings.keep_logical_logs.name(), Config.DEFAULT_DATA_SOURCE_NAME );
-        String storeDir = "target/configdb";
-        deleteFileOrDirectory( storeDir );
+        String storeDir = temp.getRoot().getAbsolutePath();
         GraphDatabaseFactory graphDatabaseFactory = new GraphDatabaseFactory();
         GraphDatabaseAPI db = (GraphDatabaseAPI) graphDatabaseFactory.newEmbeddedDatabaseBuilder( storeDir ).setConfig( config ).newGraphDatabase();
         XaDataSourceManager xaDsMgr = 

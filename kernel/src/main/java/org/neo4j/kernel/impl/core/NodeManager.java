@@ -26,16 +26,21 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.transaction.Status;
 import javax.transaction.TransactionManager;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.helpers.Pair;
@@ -44,7 +49,6 @@ import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.PropertyTracker;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.cache.Cache;
-import org.neo4j.kernel.impl.cache.CacheProvider;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
@@ -59,10 +63,11 @@ import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArrayWithLoops;
+import org.neo4j.kernel.impl.util.RelIdIterator;
 import org.neo4j.kernel.lifecycle.Lifecycle;
 
 public class NodeManager
-    implements Lifecycle
+    implements Lifecycle, LockReleaser.NodeManagerCallback
 {
     private static Logger log = Logger.getLogger( NodeManager.class.getName() );
 
@@ -71,14 +76,13 @@ public class NodeManager
     private Config config;
 
     private final GraphDatabaseService graphDbService;
-    private final Cache<NodeImpl> nodeCache;
-    private final Cache<RelationshipImpl> relCache;
-
-    private final CacheProvider cacheProvider;
+    private Cache<NodeImpl> nodeCache;
+    private Cache<RelationshipImpl> relCache;
 
     private final LockManager lockManager;
     private final TransactionManager transactionManager;
     private final LockReleaser lockReleaser;
+    private final Caches caches;
     private final PropertyIndexManager propertyIndexManager;
     private final RelationshipTypeHolder relTypeHolder;
     private final PersistenceManager persistenceManager;
@@ -100,14 +104,14 @@ public class NodeManager
     public NodeManager( Config config, GraphDatabaseService graphDb, LockManager lockManager,
             LockReleaser lockReleaser, TransactionManager transactionManager,
             PersistenceManager persistenceManager, EntityIdGenerator idGenerator,
-            RelationshipTypeHolder relationshipTypeHolder, CacheProvider cacheProvider, PropertyIndexManager propertyIndexManager,
-            NodeProxy.NodeLookup nodeLookup, RelationshipProxy.RelationshipLookups relationshipLookups, 
-            Cache<NodeImpl> nodeCache, Cache<RelationshipImpl> relCache )
+            RelationshipTypeHolder relationshipTypeHolder, Caches caches, PropertyIndexManager propertyIndexManager,
+            NodeProxy.NodeLookup nodeLookup, RelationshipProxy.RelationshipLookups relationshipLookups)
     {
         this.config = config;
         this.graphDbService = graphDb;
         this.lockManager = lockManager;
         this.transactionManager = transactionManager;
+        this.caches = caches;
         this.propertyIndexManager = propertyIndexManager;
         this.lockReleaser = lockReleaser;
         this.persistenceManager = persistenceManager;
@@ -116,9 +120,6 @@ public class NodeManager
         this.relationshipLookups = relationshipLookups;
         this.relTypeHolder = relationshipTypeHolder;
 
-        this.cacheProvider = cacheProvider;
-        this.nodeCache = nodeCache;
-        this.relCache = relCache;
         for ( int i = 0; i < loadLocks.length; i++ )
         {
             loadLocks[i] = new ReentrantLock();
@@ -133,11 +134,6 @@ public class NodeManager
         return graphDbService;
     }
 
-    public CacheProvider getCacheType()
-    {
-        return this.cacheProvider;
-    }
-
     @Override
     public void init()
     {
@@ -146,6 +142,10 @@ public class NodeManager
     @Override
     public void start( )
     {
+        // Get caches
+        nodeCache = caches.node();
+        relCache = caches.relationship();
+
         // load and verify from PS
         NameData[] relTypes = null;
         NameData[] propertyIndexes = null;
@@ -160,28 +160,22 @@ public class NodeManager
             setHasAllpropertyIndexes( true );
         }
 
-//        useAdaptiveCache = config.use_adaptive_cache(false);
-//        float adaptiveCacheHeapRatio = config.adaptive_cache_heap_ratio( 0.77f, 0.1f, 0.95f );
-//        int minNodeCacheSize = config.min_node_cache_size( 0 );
-//        int minRelCacheSize = config.min_relationship_cache_size( 0 );
-//        int maxNodeCacheSize = config.max_node_cache_size( 1500 );
-//        int maxRelCacheSize = config.max_relationship_cache_size( 3500 );
-
+        lockReleaser.setNodeManagerCallback( this );
     }
 
     @Override
     public void stop()
     {
+        lockReleaser.setNodeManagerCallback( null );
+
+        nodeCache.printStatistics();
+        relCache.printStatistics();
         clearCache();
     }
 
     @Override
     public void shutdown()
     {
-        nodeCache.printStatistics();
-        relCache.printStatistics();
-        nodeCache.clear();
-        relCache.clear();
     }
 
     public Node createNode()
@@ -583,12 +577,14 @@ public class NodeManager
 
     public void removeNodeFromCache( long nodeId )
     {
-        nodeCache.remove( nodeId );
+        if (nodeCache != null)
+            nodeCache.remove( nodeId );
     }
 
     public void removeRelationshipFromCache( long relId )
     {
-        relCache.remove( relId );
+        if (nodeCache != null)
+            relCache.remove( relId );
     }
 
     Object loadPropertyValue( PropertyData property )
@@ -696,10 +692,19 @@ public class NodeManager
         graphProperties = instantiateGraphProperties();
     }
 
+    /**
+     * @see #getCaches()
+     * @return
+     */
     @SuppressWarnings( "unchecked" )
+    @Deprecated
     public Iterable<? extends Cache<?>> caches()
     {
         return Arrays.asList( nodeCache, relCache );
+    }
+    
+    public Caches getCaches() {
+        return caches;
     }
 
     void setRollbackOnly()
@@ -785,6 +790,207 @@ public class NodeManager
     void releaseIndexLock( String index, String key, LockType lockType )
     {
         lockType.unacquire( new IndexLock( index, key ), lockManager, lockReleaser );
+    }
+
+    // NodeManagerCallback implementation
+    public void releaseCows( LockReleaser.PrimitiveElement element, int param )
+    {
+        ArrayMap<Long,LockReleaser.CowNodeElement> cowNodeElements = element.nodes;
+        Set<Map.Entry<Long,LockReleaser.CowNodeElement>> nodeEntrySet =
+            cowNodeElements.entrySet();
+        for ( Map.Entry<Long,LockReleaser.CowNodeElement> entry : nodeEntrySet )
+        {
+            NodeImpl node = getNodeIfCached( entry.getKey() );
+            if ( node != null )
+            {
+                LockReleaser.CowNodeElement nodeElement = entry.getValue();
+                if ( param == Status.STATUS_COMMITTED )
+                {
+                    node.commitRelationshipMaps( nodeElement.relationshipAddMap,
+                        nodeElement.relationshipRemoveMap, nodeElement.firstRel, this );
+                    node.commitPropertyMaps( nodeElement.propertyAddMap,
+                        nodeElement.propertyRemoveMap, nodeElement.firstProp, this );
+                }
+                else if ( param != Status.STATUS_ROLLEDBACK )
+                {
+                    throw new TransactionFailureException(
+                        "Unknown transaction status: " + param );
+                }
+            }
+        }
+        ArrayMap<Long,LockReleaser.CowRelElement> cowRelElements = element.relationships;
+        Set<Map.Entry<Long,LockReleaser.CowRelElement>> relEntrySet =
+            cowRelElements.entrySet();
+        for ( Map.Entry<Long,LockReleaser.CowRelElement> entry : relEntrySet )
+        {
+            RelationshipImpl rel = getRelIfCached( entry.getKey() );
+            if ( rel != null )
+            {
+                LockReleaser.CowRelElement relElement = entry.getValue();
+                if ( param == Status.STATUS_COMMITTED )
+                {
+                    rel.commitPropertyMaps( relElement.propertyAddMap,
+                        relElement.propertyRemoveMap, Record.NO_NEXT_PROPERTY.intValue(), this );
+                }
+                else if ( param != Status.STATUS_ROLLEDBACK )
+                {
+                    throw new TransactionFailureException(
+                        "Unknown transaction status: " + param );
+                }
+            }
+        }
+        if ( element.graph != null && param == Status.STATUS_COMMITTED )
+        {
+            getGraphProperties().commitPropertyMaps( element.graph.getPropertyAddMap( false ),
+                    element.graph.getPropertyRemoveMap( false ), Record.NO_NEXT_PROPERTY.intValue(), this );
+        }
+    }
+
+    public void populateRelationshipPropertyEvents( LockReleaser.PrimitiveElement element, TransactionDataImpl result )
+    {
+        for ( long relId : element.relationships.keySet() )
+        {
+            LockReleaser.CowRelElement relElement = element.relationships.get( relId );
+            RelationshipProxy rel = newRelationshipProxyById( relId );
+            RelationshipImpl relImpl = getRelationshipForProxy( relId, null );
+            if ( relElement.deleted )
+            {
+                if ( relCreated( relId ) )
+                {
+                    continue;
+                }
+                // note: this is done in node populate data
+                // result.deleted( rel );
+            }
+            if ( relElement.propertyAddMap != null && !relElement.deleted )
+            {
+                for ( PropertyData data : relElement.propertyAddMap.values() )
+                {
+                    String key = getKeyForProperty( data );
+                    Object oldValue = relImpl.getCommittedPropertyValue( this, key );
+                    Object newValue = data.getValue();
+                    result.assignedProperty( rel, key, newValue, oldValue );
+                }
+            }
+            if ( relElement.propertyRemoveMap != null )
+            {
+                for ( PropertyData data : relElement.propertyRemoveMap.values() )
+                {
+                    String key = getKeyForProperty( data );
+                    Object oldValue = data.getValue();
+                    if ( oldValue != null && !relElement.deleted )
+                    {
+                        relImpl.getCommittedPropertyValue( this, key );
+                    }
+                    result.removedProperty( rel, key, oldValue );
+                }
+            }
+        }
+    }
+
+    public void populateNodeRelEvent( LockReleaser.PrimitiveElement element, TransactionDataImpl result )
+    {
+        for ( long nodeId : element.nodes.keySet() )
+        {
+            LockReleaser.CowNodeElement nodeElement = element.nodes.get( nodeId );
+            NodeProxy node = newNodeProxyById( nodeId );
+            NodeImpl nodeImpl = getNodeForProxy( nodeId, null );
+            if ( nodeElement.deleted )
+            {
+                if ( nodeCreated( nodeId ) )
+                {
+                    continue;
+                }
+                result.deleted( node );
+            }
+            if ( nodeElement.relationshipAddMap != null && !nodeElement.deleted )
+            {
+                for ( String type : nodeElement.relationshipAddMap.keySet() )
+                {
+                    RelIdArray createdRels = nodeElement.relationshipAddMap.get( type );
+                    populateNodeRelEvent( element, result, nodeId, createdRels );
+                }
+            }
+            if ( nodeElement.relationshipRemoveMap != null )
+            {
+                for ( String type : nodeElement.relationshipRemoveMap.keySet() )
+                {
+                    Collection<Long> deletedRels = nodeElement.relationshipRemoveMap.get( type );
+                    for ( long relId : deletedRels )
+                    {
+                        if ( relCreated( relId ) )
+                        {
+                            continue;
+                        }
+                        RelationshipProxy rel = newRelationshipProxyById( relId );
+                        if ( rel.getStartNode().getId() == nodeId )
+                        {
+                            result.deleted( newRelationshipProxyById( relId ));
+                        }
+                    }
+                }
+            }
+            if ( nodeElement.propertyAddMap != null && !nodeElement.deleted )
+            {
+                for ( PropertyData data : nodeElement.propertyAddMap.values() )
+                {
+                    String key = getKeyForProperty( data );
+                    Object oldValue = nodeImpl.getCommittedPropertyValue( this, key );
+                    Object newValue = data.getValue();
+                    result.assignedProperty( node, key, newValue, oldValue );
+                }
+            }
+            if ( nodeElement.propertyRemoveMap != null )
+            {
+                for ( PropertyData data : nodeElement.propertyRemoveMap.values() )
+                {
+                    String key = getKeyForProperty( data );
+                    Object oldValue = data.getValue();
+                    if ( oldValue == null && !nodeElement.deleted )
+                    {
+                        nodeImpl.getCommittedPropertyValue( this, key );
+                    }
+                    result.removedProperty( node, key, oldValue );
+                }
+            }
+        }
+    }
+
+    private void populateNodeRelEvent( LockReleaser.PrimitiveElement element, TransactionDataImpl result,
+            long nodeId, RelIdArray createdRels )
+    {
+        for ( RelIdIterator iterator = createdRels.iterator( DirectionWrapper.BOTH ); iterator.hasNext(); )
+        {
+            long relId = iterator.next();
+            LockReleaser.CowRelElement relElement = element.relationships.get( relId );
+            if ( relElement != null && relElement.deleted )
+            {
+                continue;
+            }
+            RelationshipProxy rel = newRelationshipProxyById( relId );
+            if ( rel.getStartNode().getId() == nodeId )
+            {
+                result.created( newRelationshipProxyById( relId ));
+            }
+        }
+    }
+
+    public void populateCreatedNodes( LockReleaser.PrimitiveElement element, TransactionDataImpl result )
+    {
+        RelIdArray createdNodes = getCreatedNodes();
+        for ( RelIdIterator iterator = createdNodes.iterator( DirectionWrapper.BOTH ); iterator.hasNext(); )
+        {
+            long nodeId = iterator.next();
+            if ( element != null && element.nodes != null )
+            {
+                LockReleaser.CowNodeElement nodeElement = element.nodes.get( nodeId );
+                if ( nodeElement != null && nodeElement.deleted )
+                {
+                    continue;
+                }
+            }
+            result.created( newNodeProxyById( nodeId ) );
+        }
     }
 
     public static class IndexLock
@@ -1112,12 +1318,12 @@ public class NodeManager
         return this.lockManager;
     }
 
-    void addRelationshipType( NameData type )
+    public void addRelationshipType( NameData type )
     {
         relTypeHolder.addRawRelationshipType( type );
     }
 
-    void addPropertyIndex( NameData index )
+    public void addPropertyIndex( NameData index )
     {
         propertyIndexManager.addPropertyIndex( index );
     }
@@ -1186,7 +1392,7 @@ public class NodeManager
     {
         return new GraphProperties( this );
     }
-    
+
     public GraphProperties getGraphProperties()
     {
         return graphProperties;

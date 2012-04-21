@@ -44,6 +44,9 @@ public class LifeSupport
 
     public <T> T add(T instance)
     {
+        if (instance == null)
+            throw new NullPointerException( "Lifecycle instance may not be null" );
+
         if (instance instanceof Lifecycle)
             instances.add( new LifecycleInstance((Lifecycle) instance) );
         return instance;
@@ -107,7 +110,8 @@ public class LifeSupport
      * If it was previously not initialized, it will be initialized first.
      *
      * If any instance fails to start, the already started instances will be stopped, so
-     * that the overall status is STOPPED.
+     * that the overall status is STOPPED, unless the starting state was NONE, in which case
+     * it is instead SHUTDOWN.
      *
      * @throws LifecycleException
      */
@@ -115,7 +119,12 @@ public class LifeSupport
     public synchronized void start()
         throws LifecycleException
     {
-        init();
+        boolean shutdownOnException = false;
+        if (status == LifecycleStatus.NONE)
+        {
+            init();
+            shutdownOnException = true;
+        }
         
         if (status == LifecycleStatus.STOPPED)
         {
@@ -131,7 +140,10 @@ public class LifeSupport
                     status = changedStatus( this, status, LifecycleStatus.STARTED);
                     try
                     {
-                        stop();
+                        if (shutdownOnException)
+                            shutdown();
+                        else
+                            stop();
                     }
                     catch( LifecycleException e1 )
                     {
@@ -316,14 +328,15 @@ public class LifeSupport
     
     public synchronized void dump(StringLogger logger)
     {
-        logger.logMessage( Format.logLongMessage("Lifecycle status:" + status.name(), Iterables.map( new Function<LifecycleInstance, String>()
+        String msg = Format.logLongMessage( "Lifecycle status:" + status.name(), Iterables.map( new Function<LifecycleInstance, String>()
         {
             @Override
             public String map( LifecycleInstance lifecycleInstance )
             {
-                return instances.toString();
+                return lifecycleInstance.toString();
             }
-        }, instances )));
+        }, instances ) );
+        logger.logMessage( msg );
     }
 
     private LifecycleException causedBy( LifecycleException exception, LifecycleException chainedLifecycleException )

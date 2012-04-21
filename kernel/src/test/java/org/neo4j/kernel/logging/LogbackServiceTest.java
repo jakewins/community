@@ -20,10 +20,10 @@
 
 package org.neo4j.kernel.logging;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.net.SimpleSocketServer;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.AppenderBase;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -43,8 +44,10 @@ import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.slf4j.Logger;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.net.SimpleSocketServer;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 
 /**
  * Test of LogbackService
@@ -90,7 +93,7 @@ public class LogbackServiceTest
     }
 
     @Test
-    public void testRemoteLogging()
+    public void testRemoteLogging() throws Exception
     {
         final List<String> logMessages = new ArrayList<String>(  );
         LoggerContext context = new LoggerContext();
@@ -125,10 +128,16 @@ public class LogbackServiceTest
         }
         finally
         {
+            // Wait for a reply for max 10 seconds
+            long startTime = System.currentTimeMillis();
+            while(logMessages.size() <= 0 && startTime + 1000 * 10 > System.currentTimeMillis()) {
+                Thread.sleep(100);
+            }
+            
             life.shutdown();
             server.close();
         }
-
+        
         assertThat( logMessages.get( 0 ), equalTo( "TEST" ) );
     }
 }

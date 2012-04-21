@@ -268,7 +268,8 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
         {
             return;
         }
-        providers.add( provider );
+        if (!providers.contains( provider ))
+            providers.add( provider );
         if( state == State.STARTED )
         {
             dump( DiagnosticsPhase.STARTUP, provider );

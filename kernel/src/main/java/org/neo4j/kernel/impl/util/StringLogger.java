@@ -131,12 +131,12 @@ public abstract class StringLogger
 
     public void logMessage( String msg )
     {
-        logMessage( msg, false );
+        logMessage( msg, true );
     }
 
     public void logMessage( String msg, Throwable cause )
     {
-        logMessage( msg, cause, false );
+        logMessage( msg, cause, true );
     }
 
     public abstract void logMessage( String msg, boolean flush );

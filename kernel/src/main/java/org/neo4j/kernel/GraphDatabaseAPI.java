@@ -22,6 +22,7 @@ package org.neo4j.kernel;
 
 import java.util.Collection;
 import javax.transaction.TransactionManager;
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.kernel.guard.Guard;
 import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
@@ -42,6 +43,13 @@ import org.neo4j.kernel.info.DiagnosticsManager;
 public interface GraphDatabaseAPI
     extends GraphDatabaseService
 {
+    /**
+     * This is the preferred way to get access to internal services.
+     *
+     * @return a dependency resolver which can be used to access internal services
+     */
+    DependencyResolver getDependencyResolver();
+
     @Deprecated
     NodeManager getNodeManager();
 
@@ -90,5 +98,6 @@ public interface GraphDatabaseAPI
     @Deprecated
     KernelPanicEventGenerator getKernelPanicGenerator();
 
+    @Deprecated
     Guard getGuard();
 }

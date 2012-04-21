@@ -339,7 +339,7 @@ public class TestGraphProperties
             ProduceUncleanStore.class.getName(), storeDir, "true"
         } );
 
-        assertEquals( 0, new ProcessStreamHandler( process, true ).waitForResult() );
+        assertEquals( 0, new ProcessStreamHandler( process, false ).waitForResult() );
 
         process = Runtime.getRuntime().exec( new String[]{
             "java", "-cp", System.getProperty( "java.class.path" ),
