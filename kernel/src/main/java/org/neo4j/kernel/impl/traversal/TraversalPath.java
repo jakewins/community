@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.traversal;
 
 import java.util.Iterator;
 import java.util.LinkedList;
-
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;

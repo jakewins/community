@@ -21,38 +21,36 @@ package org.neo4j.kernel.impl.core;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.kernel.impl.util.ArrayIntSet;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 class RelationshipArrayIntSetIterator implements Iterable<Relationship>,
     Iterator<Relationship>
 {
-    private Logger log = Logger
-        .getLogger( RelationshipArrayIntSetIterator.class.getName() );
-
+    private final StringLogger logger;
     private Iterator<Integer> relIds;
     private Node fromNode;
     private Direction direction = null;
     private Relationship nextElement = null;
     private final NodeManager nodeManager;
 
-    RelationshipArrayIntSetIterator( ArrayIntSet relIds, Node fromNode,
+    RelationshipArrayIntSetIterator( StringLogger logger, ArrayIntSet relIds, Node fromNode,
         Direction direction, NodeManager nodeManager )
     {
+        this.logger = logger;
         this.relIds = relIds.iterator();
         this.fromNode = fromNode;
         this.direction = direction;
         this.nodeManager = nodeManager;
     }
 
-    RelationshipArrayIntSetIterator( Iterator<Integer> relIds, Node fromNode,
+    RelationshipArrayIntSetIterator( StringLogger logger, Iterator<Integer> relIds, Node fromNode,
         Direction direction, NodeManager nodeManager )
     {
+        this.logger = logger;
         this.relIds = relIds;
         this.fromNode = fromNode;
         this.direction = direction;
@@ -61,7 +59,7 @@ class RelationshipArrayIntSetIterator implements Iterable<Relationship>,
 
     public Iterator<Relationship> iterator()
     {
-        return new RelationshipArrayIntSetIterator( relIds, fromNode,
+        return new RelationshipArrayIntSetIterator( logger,  relIds, fromNode,
             direction, nodeManager );
     }
 
@@ -98,8 +96,7 @@ class RelationshipArrayIntSetIterator implements Iterable<Relationship>,
                 }
                 catch ( Throwable t )
                 {
-                    log.log( Level.FINE,
-                        "Unable to get relationship " + nextId, t );
+                    logger.debug( "Unable to get relationship " + nextId, t );
                 }
             }
         }

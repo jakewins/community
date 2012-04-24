@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 
 public abstract class IoPrimitiveUtils

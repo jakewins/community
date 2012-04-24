@@ -20,9 +20,6 @@
 package org.neo4j.kernel.impl.persistence;
 
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.Synchronization;
@@ -30,7 +27,6 @@ import javax.transaction.SystemException;
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 import javax.transaction.xa.XAResource;
-
 import org.neo4j.graphdb.NotInTransactionException;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.helpers.Pair;
@@ -47,13 +43,12 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 public class PersistenceManager
 {
-    private static Logger log = Logger.getLogger( PersistenceManager.class
-        .getName() );
-
     private final PersistenceSource persistenceSource;
+    private StringLogger logger;
     private final TransactionManager transactionManager;
     private LockReleaser lockReleaser;
 
@@ -62,10 +57,11 @@ public class PersistenceManager
 
     private final TxEventSyncHookFactory syncHookFactory;
 
-    public PersistenceManager( TransactionManager transactionManager,
+    public PersistenceManager( StringLogger logger, TransactionManager transactionManager,
             PersistenceSource persistenceSource,
             TxEventSyncHookFactory syncHookFactory, LockReleaser lockReleaser )
     {
+        this.logger = logger;
         this.transactionManager = transactionManager;
         this.persistenceSource = persistenceSource;
         this.syncHookFactory = syncHookFactory;
@@ -333,8 +329,7 @@ public class PersistenceManager
             }
             catch ( Throwable t )
             {
-                log.log( Level.SEVERE,
-                    "Unable to release connections for " + tx, t );
+                logger.error( "Unable to release connections for " + tx, t );
             }
         }
 
@@ -346,8 +341,7 @@ public class PersistenceManager
             }
             catch ( Throwable t )
             {
-                log.log( Level.SEVERE,
-                    "Unable to delist resources for " + tx, t );
+                logger.error( "Unable to delist resources for " + tx, t );
             }
         }
 
@@ -359,8 +353,7 @@ public class PersistenceManager
             }
             catch ( Throwable t )
             {
-                log.log( Level.SEVERE,
-                    "Error releasing resources for " + tx, t );
+                logger.error( "Error releasing resources for " + tx, t );
             }
         }
     }

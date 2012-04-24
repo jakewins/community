@@ -19,27 +19,25 @@
  */
 package org.neo4j.jmx.impl;
 
-import static java.lang.management.ManagementFactory.getPlatformMBeanServer;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import javax.management.MBeanServer;
 import javax.management.remote.JMXServiceURL;
-
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.KernelData;
 import org.neo4j.kernel.KernelExtension;
+import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.Logging;
+
+import static java.lang.management.ManagementFactory.*;
 
 @Service.Implementation( KernelExtension.class )
 public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
 {
     public static final String KEY = "kernel jmx";
-    private static final Logger log = Logger.getLogger( JmxExtension.class.getName() );
+    public static final String JMX_LOGGER = "neo4j.jmx";
 
     public JmxExtension()
     {
@@ -49,6 +47,11 @@ public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
     @Override
     protected JmxData load( KernelData kernel )
     {
+        StringLogger logger = kernel.graphDatabase()
+            .getDependencyResolver()
+            .resolveDependency( Logging.class )
+            .getLogger( JMX_LOGGER );
+
         ManagementSupport support = ManagementSupport.load();
         MBeanServer mbs = support.getMBeanServer();
         List<Neo4jMBean> beans = new LinkedList<Neo4jMBean>();
@@ -60,7 +63,7 @@ public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
         }
         catch ( Exception e )
         {
-            log.info( "Failed to register Kernel JMX Bean" );
+            logger.warn( "Failed to register Kernel JMX Bean", e );
         }
 
         for ( ManagementBeanProvider provider : Service.load( ManagementBeanProvider.class ) )
@@ -75,7 +78,7 @@ public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
             }
             catch ( Exception e )
             { // Unexpected exception
-                log.info( "Failed to register JMX Bean " + provider + " (" + e + ")" );
+                logger.info( "Failed to register JMX Bean " + provider + " (" + e + ")" );
             }
         }
         try
@@ -86,9 +89,9 @@ public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
         }
         catch ( Exception e )
         {
-            log.info( "Failed to register Configuration JMX Bean" );
+            logger.info( "Failed to register Configuration JMX Bean" );
         }
-        return new JmxData( kernel, support, beans.toArray( new Neo4jMBean[beans.size()] ) );
+        return new JmxData( logger, kernel, support, beans.toArray( new Neo4jMBean[beans.size()] ) );
     }
 
     @Override
@@ -101,10 +104,12 @@ public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
     {
         private final Neo4jMBean[] beans;
         private final JMXServiceURL url;
+        private StringLogger logger;
         private final ManagementSupport support;
 
-        private JmxData( KernelData kernel, ManagementSupport support, Neo4jMBean[] beans )
+        private JmxData( StringLogger logger, KernelData kernel, ManagementSupport support, Neo4jMBean[] beans )
         {
+            this.logger = logger;
             this.support = support;
             this.beans = beans;
             this.url = support.getJMXServiceURL( kernel );
@@ -121,7 +126,7 @@ public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
                 }
                 catch ( Exception e )
                 {
-                    log.log( Level.WARNING, "Failed to unregister JMX Bean " + bean, e );
+                    logger.warn( "Failed to unregister JMX Bean " + bean, e );
                 }
             }
         }

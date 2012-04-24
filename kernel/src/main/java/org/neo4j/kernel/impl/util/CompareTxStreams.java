@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.util;
 
 import java.io.IOException;
-
 import org.neo4j.kernel.impl.transaction.xaframework.InMemoryLogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.LogExtractor;
 

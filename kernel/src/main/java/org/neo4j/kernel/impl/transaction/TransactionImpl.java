@@ -25,9 +25,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import javax.transaction.HeuristicMixedException;
 import javax.transaction.HeuristicRollbackException;
 import javax.transaction.RollbackException;
@@ -38,16 +35,12 @@ import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
-
 import org.neo4j.helpers.Exceptions;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
 
 class TransactionImpl implements Transaction
 {
-    private static Logger log = Logger.getLogger( TransactionImpl.class
-        .getName() );
-
     private static final int RS_ENLISTED = 0;
     private static final int RS_SUSPENDED = 1;
     private static final int RS_DELISTED = 2;
@@ -159,7 +152,7 @@ class TransactionImpl implements Transaction
                     }
                     catch ( IOException e )
                     {
-                        log.log( Level.SEVERE, "Error writing transaction log", e );
+                        txManager.getLogger().error( "Error writing transaction log", e );
                         txManager.setTmNotOk( e );
                         throw Exceptions.withCause( new SystemException( "TM encountered a problem, "
                                                                          + " error writing transaction log" ), e );
@@ -212,7 +205,7 @@ class TransactionImpl implements Transaction
                     }
                     catch ( IOException e )
                     {
-                        log.log( Level.SEVERE, "Error writing transaction log", e );
+                        txManager.getLogger().error( "Error writing transaction log", e );
                         txManager.setTmNotOk( e );
                         throw Exceptions.withCause( new SystemException( "TM encountered a problem, "
                                                                          + " error writing transaction log" ), e );
@@ -222,7 +215,7 @@ class TransactionImpl implements Transaction
             }
             catch ( XAException e )
             {
-                log.log( Level.SEVERE, "Unable to enlist resource[" + xaRes + "]", e );
+                txManager.getLogger().error( "Unable to enlist resource[" + xaRes + "]", e );
                 status = Status.STATUS_MARKED_ROLLBACK;
                 return false;
             }
@@ -296,7 +289,7 @@ class TransactionImpl implements Transaction
             }
             catch ( XAException e )
             {
-                log.log( Level.SEVERE, "Unable to delist resource[" + xaRes + "]", e );
+                txManager.getLogger().error( "Unable to delist resource[" + xaRes + "]", e );
                 status = Status.STATUS_MARKED_ROLLBACK;
                 return false;
             }
@@ -367,8 +360,8 @@ class TransactionImpl implements Transaction
                 }
                 catch ( Throwable t )
                 {
-                    log.log( Level.WARNING, "Caught exception from tx syncronization[" + s
-                        + "] beforeCompletion()", t );
+                    txManager.getLogger().error( "Caught exception from tx syncronization[" + s
+                                                 + "] beforeCompletion()", t );
                 }
             }
             // execute any hooks added since we entered doBeforeCompletion
@@ -399,8 +392,8 @@ class TransactionImpl implements Transaction
             }
             catch ( Throwable t )
             {
-                log.log( Level.WARNING, "Caught exception from tx syncronization[" + s
-                    + "] afterCompletion()", t );
+                txManager.getLogger().warn( "Caught exception from tx syncronization[" + s
+                                            + "] afterCompletion()", t );
             }
         }
         syncHooks = null; // help gc
@@ -455,7 +448,7 @@ class TransactionImpl implements Transaction
     {
         if ( resourceList.size() == 0 )
         {
-            log.severe( "Detected zero resources in resourceList" );
+            txManager.getLogger().error( "Detected zero resources in resourceList" );
             return true;
         }
         // check for more than one unique xid
@@ -525,7 +518,7 @@ class TransactionImpl implements Transaction
             }
             catch ( IOException e )
             {
-                log.log( Level.SEVERE, "Error writing transaction log", e );
+                txManager.getLogger().error( "Error writing transaction log", e );
                 txManager.setTmNotOk( e );
                 throw Exceptions.withCause( new SystemException( "TM encountered a problem, "
                                                                  + " error writing transaction log" ), e );

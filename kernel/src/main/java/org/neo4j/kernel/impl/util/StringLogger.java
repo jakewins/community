@@ -31,6 +31,11 @@ import org.neo4j.helpers.Format;
 
 public abstract class StringLogger
 {
+    public enum Level
+    {
+        DEBUG,INFO,WARN,ERROR
+    }
+
     public static final String DEFAULT_NAME = "messages.log";
     public static final StringLogger SYSTEM =
         new ActualStringLogger( new PrintWriter( System.out ) );
@@ -129,19 +134,93 @@ public abstract class StringLogger
         } ) );
     }
 
+    @Deprecated
     public void logMessage( String msg )
     {
-        logMessage( msg, true );
+        logMessage( Level.INFO, msg );
     }
 
+    @Deprecated
     public void logMessage( String msg, Throwable cause )
     {
-        logMessage( msg, cause, true );
+        logMessage( Level.ERROR, msg, cause );
     }
 
-    public abstract void logMessage( String msg, boolean flush );
+    public void debug( String msg)
+    {
+        logMessage( Level.DEBUG, msg );
+    }
 
-    public abstract void logMessage( String msg, Throwable cause, boolean flush );
+    public void debug(String msg, Object... args)
+    {
+        debug( String.format( msg, args ) );
+    }
+
+    public void debug( String msg, Throwable throwable )
+    {
+        logMessage( Level.DEBUG, msg, throwable );
+    }
+
+    public void info( String msg)
+    {
+        logMessage( Level.WARN, msg );
+    }
+
+    public void info(String msg, Object... args)
+    {
+        info( String.format( msg, args ) );
+    }
+
+    public void info( String msg, Throwable throwable )
+    {
+        logMessage( Level.WARN, msg, throwable );
+    }
+
+    public void warn( String msg)
+    {
+        logMessage( Level.WARN, msg );
+    }
+
+    public void warn(String msg, Object... args)
+    {
+        warn( String.format( msg, args ) );
+    }
+
+    public void warn( String msg, Throwable throwable )
+    {
+        logMessage( Level.WARN, msg, throwable );
+    }
+
+    public void error( String msg)
+    {
+        logMessage( Level.WARN, msg );
+    }
+
+    public void error(String msg, Object... args)
+    {
+        error( String.format( msg, args ) );
+    }
+
+    public void error( String msg, Throwable throwable )
+    {
+        logMessage( Level.WARN, msg, throwable );
+    }
+
+    public abstract void logMessage(Level level, String msg);
+
+    public abstract void logMessage(Level level, String msg, Throwable throwable);
+
+    @Deprecated
+    public void logMessage( String msg, boolean flush )
+    {
+        info(msg );
+    }
+
+    @Deprecated
+    public void logMessage( String msg, Throwable cause, boolean flush )
+    {
+        warn( msg, cause );
+    }
 
     public abstract void addRotationListener( Runnable listener );
 
@@ -152,10 +231,14 @@ public abstract class StringLogger
     public static final StringLogger DEV_NULL = new StringLogger()
     {
         @Override
-        public void logMessage( String msg, boolean flush ) {}
+        public void logMessage( Level level, String msg )
+        {
+        }
 
         @Override
-        public void logMessage( String msg, Throwable cause, boolean flush ) {}
+        public void logMessage( Level level, String msg, Throwable throwable )
+        {
+        }
 
         @Override
         public void flush() {}
@@ -215,33 +298,25 @@ public abstract class StringLogger
         }
 
         @Override
-        public synchronized void logMessage( String msg, boolean flush )
+        public synchronized void logMessage( Level level, String msg )
         {
-//            ensureOpen();
             out.println( time() + ": " + msg );
-            if ( flush )
-            {
-                out.flush();
-            }
+            out.flush();
+            checkRotation();
+        }
+
+        @Override
+        public synchronized void logMessage( Level level, String msg, Throwable cause )
+        {
+            out.println( time() + ": " + msg + " " + cause.getMessage() );
+            cause.printStackTrace( out );
+            out.flush();
             checkRotation();
         }
 
         private String time()
         {
             return Format.date();
-        }
-
-        @Override
-        public synchronized void logMessage( String msg, Throwable cause, boolean flush )
-        {
-//            ensureOpen();
-            out.println( time() + ": " + msg + " " + cause.getMessage() );
-            cause.printStackTrace( out );
-            if ( flush )
-            {
-                out.flush();
-            }
-            checkRotation();
         }
 
 //        private void ensureOpen()

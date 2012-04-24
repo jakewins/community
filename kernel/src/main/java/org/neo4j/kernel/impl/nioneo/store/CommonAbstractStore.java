@@ -28,9 +28,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.UTF8;
@@ -61,9 +58,7 @@ public abstract class CommonAbstractStore
     public static final String ALL_STORES_VERSION = "v0.A.0";
     public static final String UNKNOWN_VERSION = "Uknown";
 
-    protected static final Logger logger = Logger
-        .getLogger( CommonAbstractStore.class.getName() );
-
+    protected final StringLogger logger;
     protected Config configuration;
     protected IdGeneratorFactory idGeneratorFactory;
     protected FileSystemAbstraction fileSystemAbstraction;
@@ -99,9 +94,10 @@ public abstract class CommonAbstractStore
      * @param idType
      *            The Id used to index into this store
      */
-    public CommonAbstractStore( String fileName, Config configuration, IdType idType,
+    public CommonAbstractStore( StringLogger logger, String fileName, Config configuration, IdType idType,
                                 IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
     {
+        this.logger = logger;
         this.storageFileName = fileName;
         this.configuration = configuration;
         this.idGeneratorFactory = idGeneratorFactory;
@@ -122,6 +118,11 @@ public abstract class CommonAbstractStore
                 closeChannel();
             throw launderedException( e );
         }
+    }
+
+    public StringLogger getLogger()
+    {
+        return logger;
     }
 
     public String getTypeAndVersionDescriptor()
@@ -221,7 +222,7 @@ public abstract class CommonAbstractStore
         }
         loadIdGenerator();
 
-        setWindowPool( new PersistenceWindowPool( getStorageFileName(),
+        setWindowPool( new PersistenceWindowPool( logger,  getStorageFileName(),
             getEffectiveRecordSize(), getFileChannel(), calculateMappedMemory(configuration.getParams(), storageFileName ),
             configuration.getBoolean( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
     }
@@ -727,7 +728,7 @@ public abstract class CommonAbstractStore
             }
         } catch ( IOException e )
         {
-            logger.log( Level.WARNING, "Could not close [" + storageFileName + "]", e );
+            logger.warn("Could not close [" + storageFileName + "]", e );
         }
         fileChannel = null;
     }

@@ -20,10 +20,8 @@
 package org.neo4j.kernel.impl.nioneo.xa;
 
 import java.util.Map;
-
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
-
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.kernel.impl.index.IndexXaConnection;

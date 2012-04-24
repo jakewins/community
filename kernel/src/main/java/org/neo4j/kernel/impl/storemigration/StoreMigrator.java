@@ -19,13 +19,10 @@
  */
 package org.neo4j.kernel.impl.storemigration;
 
-import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -47,6 +44,8 @@ import org.neo4j.kernel.impl.storemigration.legacystore.LegacyPropertyRecord;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyRelationshipTypeStoreReader;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.kernel.impl.storemigration.monitoring.MigrationProgressMonitor;
+
+import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.*;
 
 public class StoreMigrator
 {

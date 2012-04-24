@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.nioneo.store;
 
 import java.util.Iterator;
-
 import org.neo4j.helpers.Predicate;
 import org.neo4j.helpers.ProgressIndicator;
 import org.neo4j.helpers.collection.IterableWrapper;

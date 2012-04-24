@@ -30,8 +30,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 import org.junit.After;
@@ -74,8 +72,6 @@ public class TestXa extends AbstractNeo4jTestCase
     private LifeSupport life = new LifeSupport();
     private NeoStoreXaDataSource ds;
     private NeoStoreXaConnection xaCon;
-    private Logger log;
-    private Level level;
     private Map<String, PropertyIndex> propertyIndexes;
 
     private static class MyPropertyIndex extends org.neo4j.kernel.impl.core.PropertyIndex
@@ -116,14 +112,6 @@ public class TestXa extends AbstractNeo4jTestCase
     @Before
     public void setUpNeoStore() throws Exception
     {
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog/"
-                + "nioneo_logical.log" );
-        level = log.getLevel();
-        log.setLevel( Level.OFF );
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource" );
-        log.setLevel( Level.OFF );
         deleteFileOrDirectory( new File( path() ) );
         propertyIndexes = new HashMap<String, PropertyIndex>();
 
@@ -141,14 +129,6 @@ public class TestXa extends AbstractNeo4jTestCase
     public void tearDownNeoStore()
     {
         life.shutdown();
-        log.setLevel( level );
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog/"
-                + "nioneo_logical.log" );
-        log.setLevel( level );
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource" );
-        log.setLevel( level );
         File file = new File( file( "neo" ) );
         if ( file.exists() )
         {

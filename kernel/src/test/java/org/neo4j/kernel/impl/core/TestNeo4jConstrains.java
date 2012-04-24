@@ -19,13 +19,9 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
@@ -34,7 +30,11 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.MyRelTypes;
+import org.neo4j.kernel.logging.Loggers;
 import org.neo4j.tooling.GlobalGraphOperations;
+import org.slf4j.impl.StaticLoggerBinder;
+
+import static org.junit.Assert.*;
 
 public class TestNeo4jConstrains extends AbstractNeo4jTestCase
 {
@@ -350,7 +350,8 @@ public class TestNeo4jConstrains extends AbstractNeo4jTestCase
     @Test
     public void testIllegalPropertyType()
     {
-        Logger log = Logger.getLogger( NodeManager.class.getName() );
+        LoggerContext loggerContext = (LoggerContext) StaticLoggerBinder.getSingleton().getLoggerFactory();
+        Logger log = loggerContext.getLogger( Loggers.NODEMANAGER );
         Level level = log.getLevel();
         log.setLevel( Level.OFF );
         try

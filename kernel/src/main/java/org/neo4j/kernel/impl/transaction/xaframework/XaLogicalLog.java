@@ -34,13 +34,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
-
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
-
 import org.neo4j.helpers.Exceptions;
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
@@ -53,6 +49,8 @@ import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.BufferedFileChannel;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
+
+import static java.lang.Math.*;
 
 /**
  * <CODE>XaLogicalLog</CODE> is a transaction and logical log combined. In
@@ -76,7 +74,9 @@ import org.neo4j.kernel.impl.util.StringLogger;
  */
 public class XaLogicalLog implements LogLoader
 {
-    private final Logger log;
+    private static final char CLEAN = 'C';
+    private static final char LOG1 = '1';
+    private static final char LOG2 = '2';
 
     private FileChannel fileChannel = null;
     private final ByteBuffer sharedBuffer;
@@ -123,7 +123,6 @@ public class XaLogicalLog implements LogLoader
         this.fileSystem = fileSystem;
         this.logFiles = new XaLogicalLogFiles(fileName, fileSystem);
 
-        log = Logger.getLogger( this.getClass().getName() + File.separator + fileName );
         sharedBuffer = ByteBuffer.allocateDirect( 9 + Xid.MAXGTRIDSIZE
             + Xid.MAXBQUALSIZE * 10 );
         msgLog = stringLogger;
@@ -649,7 +648,7 @@ public class XaLogicalLog implements LogLoader
         }
         catch ( IOException e )
         {
-            log.log( Level.WARNING, "Failed to truncate log at correct size", e );
+            msgLog.warn( "Failed to truncate log at correct size", e );
         }
         channel.close();
         String newName;
@@ -677,7 +676,7 @@ public class XaLogicalLog implements LogLoader
         }
         if ( !fileSystem.deleteFile( logFileName ) )
         {
-            log.warning( "Unable to delete clean logical log[" + logFileName + "]" );
+            msgLog.warn( "Unable to delete clean logical log[" + logFileName + "]" );
         }
     }
 
@@ -695,19 +694,19 @@ public class XaLogicalLog implements LogLoader
     {
         if ( fileChannel == null || !fileChannel.isOpen() )
         {
-            log.fine( "Logical log: " + fileName + " already closed" );
+            msgLog.debug( "Logical log: " + fileName + " already closed" );
             return;
         }
         long endPosition = writeBuffer.getFileChannelPosition();
         if ( xidIdentMap.size() > 0 )
         {
-            log.info( "Close invoked with " + xidIdentMap.size() +
-                " running transaction(s). " );
+            msgLog.info( "Close invoked with " + xidIdentMap.size() +
+                         " running transaction(s). " );
             writeBuffer.force();
             fileChannel.close();
-            log.info( "Dirty log: " + fileName + "." + currentLog +
-                " now closed. Recovery will be started automatically next " +
-                "time it is opened." );
+            msgLog.info( "Dirty log: " + fileName + "." + currentLog +
+                         " now closed. Recovery will be started automatically next " +
+                         "time it is opened." );
             return;
         }
         releaseCurrentLogFile();
@@ -756,16 +755,16 @@ public class XaLogicalLog implements LogLoader
 
     private void doInternalRecovery( String logFileName ) throws IOException
     {
-        log.info( "Non clean shutdown detected on log [" + logFileName +
-            "]. Recovery started ..." );
+        msgLog.info( "Non clean shutdown detected on log [" + logFileName +
+                     "]. Recovery started ..." );
         msgLog.logMessage( "Non clean shutdown detected on log [" + logFileName +
             "]. Recovery started ...", true );
         // get log creation time
         long[] header = readLogHeader( fileChannel, "Tried to do recovery on log with illegal format version" );
         if ( header == null )
         {
-            log.info( "Unable to read header information, "
-                + "no records in logical log." );
+            msgLog.info( "Unable to read header information, "
+                         + "no records in logical log." );
             msgLog.logMessage( "No log version found for " + logFileName, true );
             fileChannel.close();
             boolean success = fileSystem.renameFile( logFileName,
@@ -779,8 +778,8 @@ public class XaLogicalLog implements LogLoader
         long lastCommittedTx = header[1];
         previousLogLastCommittedTx = lastCommittedTx;
         positionCache.putHeader( logVersion, previousLogLastCommittedTx );
-        log.fine( "Logical log version: " + logVersion + " with committed tx[" +
-            lastCommittedTx + "]" );
+        msgLog.debug( "Logical log version: " + logVersion + " with committed tx[" +
+                      lastCommittedTx + "]" );
         msgLog.logMessage( "[" + logFileName + "] logVersion=" + logVersion +
                 " with committed tx=" + lastCommittedTx, true );
         long logEntriesFound = 0;
@@ -823,25 +822,22 @@ public class XaLogicalLog implements LogLoader
         String recoveryCompletedMessage = "Internal recovery completed, scanned " + logEntriesFound
                 + " log entries. Recovered " + recoveredTxCount
                 + " transactions. Last tx recovered: " + lastRecoveredTx;
-        log.fine( recoveryCompletedMessage );
+        msgLog.debug( recoveryCompletedMessage );
         msgLog.logMessage( recoveryCompletedMessage );
 
         xaRm.checkXids();
         if ( xidIdentMap.size() == 0 )
         {
-            log.fine( "Recovery completed." );
-            msgLog.logMessage( "Recovery on log [" + logFileName + "] completed." );
+            msgLog.debug( "Recovery on log [" + logFileName + "] completed." );
         }
         else
         {
-            log.fine( "[" + logFileName + "] Found " + xidIdentMap.size()
-                + " prepared 2PC transactions." );
-            msgLog.logMessage( "Recovery on log [" + logFileName +
-                    "] completed with " + xidIdentMap + " prepared transactions found." );
+            msgLog.debug( "Recovery on log [" + logFileName +
+                          "] completed with " + xidIdentMap + " prepared transactions found." );
             for ( LogEntry.Start startEntry : xidIdentMap.values() )
             {
-                log.fine( "[" + logFileName + "] 2PC xid[" +
-                    startEntry.getXid() + "]" );
+                msgLog.debug( "[" + logFileName + "] 2PC xid[" +
+                              startEntry.getXid() + "]" );
             }
         }
         recoveredTxMap.clear();

@@ -128,6 +128,11 @@ public class Database
         return databaseStoreDirectory;
     }
 
+    public GraphDatabaseAPI getGraph()
+    {
+        return graph;
+    }
+
     public org.neo4j.graphdb.index.Index<Relationship> getRelationshipIndex( String name )
     {
         RelationshipIndex index = graph.index()

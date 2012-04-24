@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.storemigration;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.nioneo.store.PropertyBlock;
 import org.neo4j.kernel.impl.nioneo.store.PropertyRecord;

@@ -30,6 +30,7 @@ public interface Loggers
     public static final String DATASOURCE = "neo4j.datasource";
     public static final String DIAGNOSTICS = "neo4j.diagnostics";
     public static final String TXMANAGER = "neo4j.txmanager";
+    public static final String NODEMANAGER = "neo4j.nodemanager";
     public static final String XAFACTORY = "neo4j.xafactory";
     public static final String NEOSTORE = "neo4j.neostore";
     public static final String EXTENSION = "neo4j.extension";

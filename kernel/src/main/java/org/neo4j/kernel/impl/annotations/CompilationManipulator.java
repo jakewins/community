@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.annotations;
 
 import java.util.Map;
-
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;

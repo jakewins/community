@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.core;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import org.neo4j.graphdb.event.ErrorState;
 import org.neo4j.kernel.KernelEventHandlers;
 

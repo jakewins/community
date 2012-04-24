@@ -30,9 +30,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.TimeZone;
 import java.util.TreeSet;
-
 import javax.transaction.xa.Xid;
-
 import org.neo4j.helpers.Args;
 import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Pair;

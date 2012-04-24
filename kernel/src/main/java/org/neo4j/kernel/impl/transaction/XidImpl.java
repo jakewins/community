@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.transaction;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
-
 import javax.transaction.xa.Xid;
 
 public class XidImpl implements Xid

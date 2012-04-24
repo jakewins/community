@@ -19,23 +19,20 @@
  */
 package org.neo4j.kernel.impl.index;
 
-import static org.neo4j.helpers.collection.MapUtil.reverse;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read2bLengthAndString;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readByte;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.write2bLengthAndString;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
+
+import static org.neo4j.helpers.collection.MapUtil.*;
+import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.*;
 
 /**
  * A command which have to be first in the transaction. It will map index names

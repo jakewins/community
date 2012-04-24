@@ -20,8 +20,6 @@
 package org.neo4j.kernel.impl.transaction;
 
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.transaction.HeuristicMixedException;
 import javax.transaction.NotSupportedException;
 import javax.transaction.RollbackException;
@@ -34,21 +32,22 @@ import org.neo4j.helpers.Exceptions;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.lifecycle.Lifecycle;
 
 public class ReadOnlyTxManager extends AbstractTransactionManager
     implements Lifecycle
 {
-    private static Logger log = Logger.getLogger( ReadOnlyTxManager.class.getName() );
-
     private ArrayMap<Thread,ReadOnlyTransactionImpl> txThreadMap;
 
     private int eventIdentifierCounter = 0;
 
+    private StringLogger logger;
     private XaDataSourceManager xaDsManager = null;
 
-    public ReadOnlyTxManager(XaDataSourceManager xaDsManagerToUse)
+    public ReadOnlyTxManager(StringLogger logger, XaDataSourceManager xaDsManagerToUse)
     {
+        this.logger = logger;
         xaDsManager = xaDsManagerToUse;
     }
 
@@ -90,7 +89,7 @@ public class ReadOnlyTxManager extends AbstractTransactionManager
             throw new NotSupportedException(
                 "Nested transactions not supported" );
         }
-        tx = new ReadOnlyTransactionImpl( this );
+        tx = new ReadOnlyTransactionImpl( logger,  this );
         txThreadMap.put( thread, tx );
     }
 
@@ -149,10 +148,10 @@ public class ReadOnlyTxManager extends AbstractTransactionManager
         }
         catch ( XAException e )
         {
-            log.log( Level.SEVERE, "Unable to rollback marked transaction. "
-                + "Some resources may be commited others not. "
-                + "Neo4j kernel should be SHUTDOWN for "
-                                   + "resource maintance and transaction recovery ---->", e );
+            logger.error( "Unable to rollback marked transaction. "
+                          + "Some resources may be commited others not. "
+                          + "Neo4j kernel should be SHUTDOWN for "
+                          + "resource maintance and transaction recovery ---->", e );
             throw Exceptions.withCause(
                     new HeuristicMixedException( "Unable to rollback " + " ---> error code for rollback: "
                                                  + e.errorCode ), e );
@@ -184,10 +183,10 @@ public class ReadOnlyTxManager extends AbstractTransactionManager
             }
             catch ( XAException e )
             {
-                log.log( Level.SEVERE, "Unable to rollback marked or active transaction. "
-                    + "Some resources may be commited others not. "
-                    + "Neo4j kernel should be SHUTDOWN for "
-                                       + "resource maintance and transaction recovery ---->", e );
+                logger.error( "Unable to rollback marked or active transaction. "
+                              + "Some resources may be commited others not. "
+                              + "Neo4j kernel should be SHUTDOWN for "
+                              + "resource maintance and transaction recovery ---->", e );
                 throw Exceptions.withCause( new SystemException( "Unable to rollback "
                                                                  + " ---> error code for rollback: " + e.errorCode ), e );
             }

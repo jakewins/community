@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.transaction.Status;
 import javax.transaction.Synchronization;
 import javax.transaction.SystemException;
@@ -41,6 +39,7 @@ import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArrayWithLoops;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Manages object version diffs and locks for each transaction.
@@ -70,13 +69,12 @@ public class LockReleaser
         void removeGraphPropertiesFromCache();
     }
 
-    private static Logger log = Logger.getLogger( LockReleaser.class.getName() );
-
     private final ArrayMap<Transaction, List<LockElement>> lockMap =
         new ArrayMap<Transaction, List<LockElement>>( (byte) 5, true, true );
     private final ArrayMap<Transaction, PrimitiveElement> cowMap =
         new ArrayMap<Transaction, PrimitiveElement>( (byte) 5, true, true );
 
+    private final StringLogger logger;
     private NodeManagerCallback nodeManager;
     private final LockManager lockManager;
     private final TransactionManager transactionManager;
@@ -272,11 +270,12 @@ public class LockReleaser
         }
     }
 
-    public LockReleaser( LockManager lockManager,
+    public LockReleaser( StringLogger logger, LockManager lockManager,
                          TransactionManager transactionManager,
                          PropertyIndexManager propertyIndexManager
     )
     {
+        this.logger = logger;
         this.lockManager = lockManager;
         this.transactionManager = transactionManager;
         this.propertyIndexManager = propertyIndexManager;
@@ -472,7 +471,7 @@ public class LockReleaser
                 }
                 catch( Exception e )
                 {
-                    log.log( Level.SEVERE, "Unable to release lock[" + lockElement.lockType + "] on resource["
+                    logger.error( "Unable to release lock[" + lockElement.lockType + "] on resource["
                                            + lockElement.resource + "]", e );
                 }
             }

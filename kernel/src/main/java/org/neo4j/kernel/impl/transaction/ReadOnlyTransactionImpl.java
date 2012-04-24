@@ -23,9 +23,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import javax.transaction.HeuristicMixedException;
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
@@ -35,14 +32,11 @@ import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
-
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 class ReadOnlyTransactionImpl implements Transaction
 {
-    private static Logger log = Logger.getLogger( ReadOnlyTransactionImpl.class
-        .getName() );
-
     private static final int RS_ENLISTED = 0;
     private static final int RS_SUSPENDED = 1;
     private static final int RS_DELISTED = 2;
@@ -60,10 +54,12 @@ class ReadOnlyTransactionImpl implements Transaction
 
     private final int eventIdentifier;
 
+    private StringLogger logger;
     private final ReadOnlyTxManager txManager;
 
-    ReadOnlyTransactionImpl( ReadOnlyTxManager txManager )
+    ReadOnlyTransactionImpl( StringLogger logger, ReadOnlyTxManager txManager )
     {
+        this.logger = logger;
         this.txManager = txManager;
         globalId = XidImpl.getNewGlobalId();
         eventIdentifier = txManager.getNextEventIdentifier();
@@ -179,7 +175,7 @@ class ReadOnlyTransactionImpl implements Transaction
             }
             catch ( XAException e )
             {
-                log.log( Level.SEVERE, "Unable to enlist resource[" + xaRes + "]", e );
+                logger.error( "Unable to enlist resource[" + xaRes + "]", e );
                 status = Status.STATUS_MARKED_ROLLBACK;
                 return false;
             }
@@ -240,7 +236,7 @@ class ReadOnlyTransactionImpl implements Transaction
             }
             catch ( XAException e )
             {
-                log.log( Level.SEVERE, "Unable to delist resource[" + xaRes + "]", e );
+                logger.error( "Unable to delist resource[" + xaRes + "]", e );
                 status = Status.STATUS_MARKED_ROLLBACK;
                 return false;
             }
@@ -311,8 +307,8 @@ class ReadOnlyTransactionImpl implements Transaction
                 }
                 catch ( Throwable t )
                 {
-                    log.warning( "Caught exception from tx syncronization[" + s
-                        + "] beforeCompletion()" );
+                    logger.error( "Caught exception from tx syncronization[" + s
+                                  + "] beforeCompletion()" );
                 }
             }
             // execute any hooks added since we entered doBeforeCompletion
@@ -343,8 +339,8 @@ class ReadOnlyTransactionImpl implements Transaction
             }
             catch ( Throwable t )
             {
-                log.warning( "Caught exception from tx syncronization[" + s
-                    + "] afterCompletion()" );
+                logger.warn( "Caught exception from tx syncronization[" + s
+                             + "] afterCompletion()" );
             }
         }
         syncHooks = null; // help gc
@@ -399,7 +395,7 @@ class ReadOnlyTransactionImpl implements Transaction
     {
         if ( resourceList.size() == 0 )
         {
-            log.severe( "Detected zero resources in resourceList" );
+            logger.error( "Detected zero resources in resourceList" );
             return true;
         }
         // check for more than one unique xid

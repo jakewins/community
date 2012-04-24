@@ -31,8 +31,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.junit.Test;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.MapUtil;
@@ -140,11 +138,8 @@ public class TestDynamicStore
     @Test
     public void testStickyStore() throws IOException
     {
-        Logger log = Logger.getLogger( CommonAbstractStore.class.getName() );
-        Level level = log.getLevel();
         try
         {
-            log.setLevel( Level.OFF );
             createEmptyStore( dynamicStoreFile(), 30 );
             FileChannel fileChannel = new RandomAccessFile( dynamicStoreFile(), "rw" ).getChannel();
             fileChannel.truncate( fileChannel.size() - 2 );
@@ -155,7 +150,6 @@ public class TestDynamicStore
         }
         finally
         {
-            log.setLevel( level );
             deleteBothFiles();
         }
     }

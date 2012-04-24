@@ -19,7 +19,7 @@
  */
 package org.neo4j.kernel.impl.util;
 
-import static java.lang.System.arraycopy;
+import static java.lang.System.*;
 
 public class DirectArrayMap<V>
 {

@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.util;
 
 import java.util.Arrays;
-
 import org.neo4j.kernel.impl.nioneo.store.Buffer;
 
 /**

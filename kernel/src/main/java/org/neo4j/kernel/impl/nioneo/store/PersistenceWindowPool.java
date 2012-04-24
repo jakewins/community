@@ -28,8 +28,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Manages {@link PersistenceWindow persistence windows} for a store. Each store
@@ -43,6 +42,7 @@ public class PersistenceWindowPool
 {
     private static final int MAX_BRICK_COUNT = 100000;
 
+    private StringLogger logger;
     private final String storeName;
     // == recordSize
     private final int blockSize;
@@ -56,8 +56,6 @@ public class PersistenceWindowPool
     private BrickElement brickArray[] = new BrickElement[0];
     private int brickMiss = 0;
 
-    private static Logger log = Logger.getLogger( PersistenceWindowPool.class
-        .getName() );
     private static final int REFRESH_BRICK_COUNT = 50000;
     private final FileChannel.MapMode mapMode;
 
@@ -83,10 +81,11 @@ public class PersistenceWindowPool
      * @throws IOException
      *             If unable to create pool
      */
-    public PersistenceWindowPool( String storeName, int blockSize,
+    public PersistenceWindowPool( StringLogger logger, String storeName, int blockSize,
         FileChannel fileChannel, long mappedMem,
         boolean useMemoryMappedBuffers, boolean readOnly )
     {
+        this.logger = logger;
         this.storeName = storeName;
         this.blockSize = blockSize;
         this.fileChannel = fileChannel;
@@ -182,7 +181,7 @@ public class PersistenceWindowPool
 
     void dumpStatistics()
     {
-        log.finest( storeName + " hit=" + hit + " miss=" + miss + " switches="
+        logger.debug( storeName + " hit=" + hit + " miss=" + miss + " switches="
             + switches + " ooe=" + ooe );
     }
 
@@ -620,7 +619,7 @@ public class PersistenceWindowPool
     {
         try
         {
-            log.fine( "[" + storeName + "] brickCount=" + brickCount
+            logger.debug( "[" + storeName + "] brickCount=" + brickCount
                 + " brickSize=" + brickSize + "b mappedMem=" + availableMem
                 + "b (storeSize=" + fileChannel.size() + "b)" );
         }
@@ -633,12 +632,12 @@ public class PersistenceWindowPool
 
     private void logWarn( String logMessage )
     {
-        log.warning( "[" + storeName + "] " + logMessage );
+        logger.warn( "[" + storeName + "] " + logMessage );
     }
 
     private void logWarn( String logMessage, Throwable cause )
     {
-        log.log( Level.WARNING, "[" + storeName + "] " + logMessage, cause );
+        logger.warn( "[" + storeName + "] " + logMessage, cause );
     }
 
     WindowPoolStats getStats()

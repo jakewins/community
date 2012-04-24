@@ -20,7 +20,6 @@
 package org.neo4j.server;
 
 import static org.neo4j.server.configuration.Configurator.WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY;
-
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
@@ -48,6 +47,8 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckFailedException;
 import org.neo4j.server.web.SimpleUriBuilder;
 import org.neo4j.server.web.WebServer;
+
+import static org.neo4j.server.configuration.Configurator.*;
 
 public class NeoServerWithEmbeddedWebServer implements NeoServer
 {
@@ -92,8 +93,8 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         DiagnosticsManager diagnosticsManager = startDatabase();
 
-        StringLogger logger = diagnosticsManager.getTargetLog();
-        logger.logMessage( "--- SERVER STARTUP START ---" );
+        StringLogger logger = dm.getTargetLog();
+        logger.info( "--- SERVER STARTUP START ---" );
 
         diagnosticsManager.register( Configurator.DIAGNOSTICS, configurator );
 
@@ -103,7 +104,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         startWebServer( logger );
 
-        logger.logMessage( "--- SERVER STARTUP END ---", true );
+        logger.info( "--- SERVER STARTUP END ---", true );
     }
 
     /**
