@@ -20,10 +20,15 @@
 
 package org.neo4j.tooling;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.ResourceBundle;
 import java.util.Set;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.factory.SettingsResourceBundle;
+import org.neo4j.helpers.Args;
 
 /**
  * Generates the default neo4j.properties file by using the {@link SettingsResourceBundle}. Invoke main method
@@ -32,9 +37,20 @@ import org.neo4j.graphdb.factory.SettingsResourceBundle;
 public class GenerateDefaultNeo4jProperties
 {
     public static void main( String[] args )
-        throws ClassNotFoundException
+        throws ClassNotFoundException, FileNotFoundException
     {
-        for( String settingsClassName : args )
+        Args arguments = new Args( args );
+
+        PrintStream out;
+        if (arguments.has( "f" ))
+        {
+            out = new PrintStream( new FileOutputStream(arguments.get( "f" , null)) );
+        } else
+            out = System.out;
+
+        String settingsClasses = arguments.get( "classes", GraphDatabaseSettings.class.getName() );
+
+        for( String settingsClassName : settingsClasses.split( "," ) )
         {
             Class settingsClass = GenerateDefaultNeo4jProperties.class.getClassLoader().loadClass( settingsClassName );
 
@@ -42,10 +58,10 @@ public class GenerateDefaultNeo4jProperties
 
             if (bundle.containsKey( "description" ))
             {
-                System.out.println( "# " );
-                System.out.println( "# "+bundle.getString( "description" ) );
-                System.out.println( "# " );
-                System.out.println( );
+                out.println( "# " );
+                out.println( "# "+bundle.getString( "description" ) );
+                out.println( "# " );
+                out.println( );
             }
 
             Set<String> keys = bundle.keySet();
@@ -55,7 +71,7 @@ public class GenerateDefaultNeo4jProperties
                 {
                     // Output description
                     String name = property.substring( 0, property.lastIndexOf( "." ) );
-                    System.out.println( "# "+bundle.getString( property ) );
+                    out.println( "# "+bundle.getString( property ) );
 
                     // Output optional options
                     String optionsKey = name+".options";
@@ -64,32 +80,35 @@ public class GenerateDefaultNeo4jProperties
                         String[] options = bundle.getString( optionsKey ).split( "," );
                         if (bundle.containsKey( name+".option."+options[0] ))
                         {
-                            System.out.println("# Valid settings:");
+                            out.println("# Valid settings:");
                             for( String option : options )
                             {
                                 String description = bundle.getString( name + ".option." + option );
                                 char[] spaces = new char[ option.length() + 3 ];
                                 Arrays.fill( spaces,' ' );
                                 description = description.replace( "\n", "\n#"+ new String( spaces ) );
-                                System.out.println("# "+option+": "+ description );
+                                out.println("# "+option+": "+ description );
                             }
                         } else
                         {
-                            System.out.println("# Valid settings:"+bundle.getString( optionsKey ));
+                            out.println("# Valid settings:"+bundle.getString( optionsKey ));
                         }
                     }
 
                     String defaultKey = name + ".default";
                     if (bundle.containsKey( defaultKey ))
                     {
-                        System.out.println( name+"="+bundle.getString( defaultKey ) );
+                        out.println( name+"="+bundle.getString( defaultKey ) );
                     } else
                     {
-                        System.out.println( "# "+name+"=" );
+                        out.println( "# "+name+"=" );
                     }
-                    System.out.println( );
+                    out.println( );
                 }
             }
         }
+
+        if (arguments.has( "f" ))
+            out.close();
     }
 }
