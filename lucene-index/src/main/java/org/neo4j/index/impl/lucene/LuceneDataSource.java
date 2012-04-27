@@ -19,6 +19,7 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import static org.neo4j.index.impl.lucene.LuceneUtil.cleanWriteLocks;
 import static org.neo4j.index.impl.lucene.MultipleBackupDeletionPolicy.SNAPSHOT_ID;
 import static org.neo4j.kernel.impl.nioneo.store.NeoStore.versionStringToLong;
 
@@ -53,7 +54,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -248,27 +248,6 @@ public class LuceneDataSource extends IndexDataSource
     Map<String, String> getConfig( IndexIdentifier identifier )
     {
         return getIndexStore().get( identifier.getEntityType().getType(), identifier.getIndexName() );
-    }
-
-    private void cleanWriteLocks( String directory )
-    {
-        File dir = new File( directory );
-        if ( !dir.isDirectory() )
-        {
-            return;
-        }
-        for ( File file : dir.listFiles() )
-        {
-            if ( file.isDirectory() )
-            {
-                cleanWriteLocks( file.getAbsolutePath() );
-            }
-            else if ( file.getName().equals( "write.lock" ) )
-            {
-                boolean success = file.delete();
-                assert success;
-            }
-        }
     }
 
     @Override
@@ -718,27 +697,5 @@ public class LuceneDataSource extends IndexDataSource
                 getIndexWriter( new IndexIdentifier( org.neo4j.index.base.EntityType.RELATIONSHIP, name ) );
             }
         }
-    }
-    
-    private static enum DirectoryGetter
-    {
-        FS
-        {
-            @Override
-            Directory getDirectory( String baseStorePath, IndexIdentifier identifier ) throws IOException
-            {
-                return FSDirectory.open( getFileDirectory( baseStorePath, identifier) );
-            }
-        },
-        MEMORY
-        {
-            @Override
-            Directory getDirectory( String baseStorePath, IndexIdentifier identifier )
-            {
-                return new RAMDirectory();
-            }
-        };
-        
-        abstract Directory getDirectory( String baseStorePath, IndexIdentifier identifier ) throws IOException;
     }
 }

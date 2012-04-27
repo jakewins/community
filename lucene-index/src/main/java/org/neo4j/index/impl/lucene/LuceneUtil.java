@@ -19,6 +19,7 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.lucene.document.Document;
@@ -127,6 +128,27 @@ public abstract class LuceneUtil
         {
             return NumericRangeQuery.newIntRange( key, from != null ? from.intValue() : 0,
                     to != null ? to.intValue() : Integer.MAX_VALUE, includeFrom, includeTo );
+        }
+    }
+
+    public static void cleanWriteLocks( String directory )
+    {
+        File dir = new File( directory );
+        if ( !dir.isDirectory() )
+        {
+            return;
+        }
+        for ( File file : dir.listFiles() )
+        {
+            if ( file.isDirectory() )
+            {
+                cleanWriteLocks( file.getAbsolutePath() );
+            }
+            else if ( file.getName().equals( "write.lock" ) )
+            {
+                boolean success = file.delete();
+                assert success;
+            }
         }
     }
 }
