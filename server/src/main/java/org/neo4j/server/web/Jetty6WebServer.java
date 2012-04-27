@@ -21,6 +21,7 @@ package org.neo4j.server.web;
 
 import static java.lang.String.format;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -42,6 +43,7 @@ import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.SessionManager;
 import org.mortbay.jetty.handler.MovedContextHandler;
+import org.mortbay.jetty.handler.RequestLogHandler;
 import org.mortbay.jetty.nio.SelectChannelConnector;
 import org.mortbay.jetty.servlet.Context;
 import org.mortbay.jetty.servlet.FilterHolder;
@@ -51,8 +53,8 @@ import org.mortbay.jetty.servlet.SessionHandler;
 import org.mortbay.jetty.webapp.WebAppContext;
 import org.mortbay.resource.Resource;
 import org.mortbay.thread.QueuedThreadPool;
-import org.neo4j.server.NeoServer;
 import org.neo4j.kernel.guard.Guard;
+import org.neo4j.server.NeoServer;
 import org.neo4j.server.guard.GuardingRequestFilter;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.rest.security.SecurityFilter;
@@ -61,6 +63,8 @@ import org.neo4j.server.rest.security.UriPathWildcardMatcher;
 import org.neo4j.server.rest.web.AllowAjaxFilter;
 import org.neo4j.server.security.KeyStoreInformation;
 import org.neo4j.server.security.SslSocketConnectorFactory;
+
+import ch.qos.logback.access.jetty.RequestLogImpl;
 
 import com.sun.jersey.api.core.ResourceConfig;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
@@ -82,7 +86,6 @@ public class Jetty6WebServer implements WebServer
 
     private NeoServer server;
     private int jettyMaxThreads = tenThreadsPerProcessor();
-    private boolean httpEnabled = true;
     private boolean httpsEnabled = false;
     private KeyStoreInformation httpsCertificateInformation = null;
     private SslSocketConnectorFactory sslSocketFactory = new SslSocketConnectorFactory();
@@ -203,6 +206,18 @@ public class Jetty6WebServer implements WebServer
     public Server getJetty()
     {
         return jetty;
+    }
+
+    @Override
+    public void enableHTTPLoggingForWebadmin( File logbackConfigFile )
+    {
+        final RequestLogImpl requestLog = new RequestLogImpl();
+        requestLog.setFileName( logbackConfigFile.getAbsolutePath() );
+
+        final RequestLogHandler requestLogHandler = new RequestLogHandler();
+        requestLogHandler.setRequestLog( requestLog );
+
+        jetty.addHandler( requestLogHandler );
     }
 
     @Override

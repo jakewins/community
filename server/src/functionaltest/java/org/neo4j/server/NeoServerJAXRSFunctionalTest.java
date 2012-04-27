@@ -19,7 +19,11 @@
  */
 package org.neo4j.server;
 
+import static org.junit.Assert.assertEquals;
+import static org.neo4j.server.helpers.FunctionalTestHelper.CLIENT;
+
 import java.net.URI;
+
 import org.dummy.web.service.DummyThirdPartyWebService;
 import org.junit.After;
 import org.junit.Before;
@@ -35,9 +39,6 @@ import org.neo4j.server.helpers.UnitOfWork;
 import org.neo4j.server.rest.JaxRsResponse;
 import org.neo4j.server.rest.RestRequest;
 import org.neo4j.test.server.ExclusiveServerTestBase;
-
-import static org.junit.Assert.*;
-import static org.neo4j.server.helpers.FunctionalTestHelper.*;
 
 public class NeoServerJAXRSFunctionalTest extends ExclusiveServerTestBase
 {
@@ -61,10 +62,10 @@ public class NeoServerJAXRSFunctionalTest extends ExclusiveServerTestBase
 
     @Test
     public void shouldMakeJAXRSClassesAvailableViaHTTP() throws Exception {
-        server = ServerHelper.createServer();
+        server = ServerHelper.createNonPersistentServer();
         FunctionalTestHelper functionalTestHelper = new FunctionalTestHelper(server);
 
-        JaxRsResponse response = new RestRequest().get(functionalTestHelper.getWebadminUri());
+        JaxRsResponse response = new RestRequest().get(functionalTestHelper.webAdminUri());
         assertEquals(200, response.getStatus());
         response.close();
     }

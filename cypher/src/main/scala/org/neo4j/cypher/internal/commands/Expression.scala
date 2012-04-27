@@ -46,7 +46,7 @@ abstract class Expression extends (Map[String, Any] => Any) {
   override def toString() = identifier.name
 }
 
-case class CachedExpression(key:String, identifier:Identifier) extends Expression {
+case class CachedExpression(key:String, identifier:Identifier) extends CastableExpression {
   override def apply(m: Map[String, Any]) = m(key)
   protected def compute(v1: Map[String, Any]) = null
   def declareDependencies(extectedType: AnyType) = Seq()
@@ -161,7 +161,11 @@ abstract class Arithmetics(left: Expression, right: Expression) extends Expressi
 
 case class Literal(v: Any) extends Expression {
   def compute(m: Map[String, Any]) = v
-  val identifier = Identifier(v.toString, AnyType.fromJava(v))
+  val identifier = Identifier(name, AnyType.fromJava(v))
+  private def name = v match {
+    case null => "null"
+    case x => x.toString
+  }
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = Seq()
   def rewrite(f: (Expression) => Expression) = f(this)
   def filter(f: (Expression) => Boolean) = if(f(this))
@@ -238,7 +242,7 @@ case class Collection(expressions:Expression*) extends CastableExpression {
     expressions.flatMap(_.filter(f))
 }
 
-case class Parameter(parameterName: String) extends CastableExpression {
+case class ParameterExpression(parameterName: String) extends CastableExpression {
   def compute(m: Map[String, Any]): Any = m.getOrElse("-=PARAMETER=-" + parameterName + "-=PARAMETER=-", throw new ParameterNotFoundException("Expected a parameter named " + parameterName)) match {
     case ParameterValue(x) => x
     case _ => throw new ParameterNotFoundException("Expected a parameter named " + parameterName)

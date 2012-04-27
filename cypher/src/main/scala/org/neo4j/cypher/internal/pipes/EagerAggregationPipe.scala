@@ -33,26 +33,27 @@ class EagerAggregationPipe(source: Pipe, val keyExpressions: Seq[Expression], ag
   def dependencies: Seq[Identifier] = keyExpressions.flatMap(_.dependencies(AnyType())) ++ aggregations.flatMap(_.dependencies(AnyType()))
 
   def createSymbols() = {
-    val keySymbols = source.symbols.filter(keyExpressions.map(_.identifier.name): _*)
+    val map = keyExpressions.map(_.identifier.name)
+    val keySymbols = source.symbols.filter(map: _*)
     val aggregatedColumns = aggregations.map(_.identifier)
 
     keySymbols.add(aggregatedColumns: _*)
   }
 
-  def createResults[U](params: Map[String, Any]): Traversable[Map[String, Any]] = {
+  def createResults(state: QueryState): Traversable[ExecutionContext] = {
     // This is the temporary storage used while the aggregation is going on
-    val result = Map[NiceHasher, Seq[AggregationFunction]]()
+    val result = Map[NiceHasher, (ExecutionContext,Seq[AggregationFunction])]()
     val keyNames = keyExpressions.map(_.identifier.name)
     val aggregationNames = aggregations.map(_.identifier.name)
 
-    source.createResults(params).foreach(m => {
-      val groupValues: NiceHasher = new NiceHasher(keyNames.map(m(_)))
-      val functions = result.getOrElseUpdate(groupValues, aggregations.map(_.createAggregationFunction))
-      functions.foreach(func => func(m))
+    source.createResults(state).foreach(ctx => {
+      val groupValues: NiceHasher = new NiceHasher(keyNames.map(ctx(_)))
+      val (_,functions) = result.getOrElseUpdate(groupValues, (ctx, aggregations.map(_.createAggregationFunction)))
+      functions.foreach(func => func(ctx))
     })
 
-    val r = result.map {
-      case (key, aggregator: Seq[AggregationFunction]) => {
+    result.map {
+      case (key, (ctx,aggregator)) => {
         val newMap = Map[String,Any]()
 
         //add key values
@@ -61,11 +62,9 @@ class EagerAggregationPipe(source: Pipe, val keyExpressions: Seq[Expression], ag
         //add aggregated values
         aggregationNames.zip(aggregator.map(_.result)).foreach( newMap += _ )
 
-        newMap
+        ctx.copy(m=newMap)
       }
     }
-
-     r
   }
 
   override def executionPlan(): String = source.executionPlan() + "\r\n" + "EagerAggregation( keys: [" + keyExpressions.map(_.identifier.name).mkString(", ") + "], aggregates: [" + aggregations.mkString(", ") + "])"

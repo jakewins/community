@@ -256,6 +256,7 @@ public class ImdbExampleTest
 
         // START SNIPPET: update
         // create a node with a property
+        // so we have something to update later on
         Node fishburn = graphDb.createNode();
         fishburn.setProperty( "name", "Fishburn" );
         // index it
@@ -267,6 +268,7 @@ public class ImdbExampleTest
 
         // START SNIPPET: update
         // update the index entry
+        // when the property value changes
         actors.remove( fishburn, "name", fishburn.getProperty( "name" ) );
         fishburn.setProperty( "name", "Laurence Fishburn" );
         actors.add( fishburn, "name", fishburn.getProperty( "name" ) );
