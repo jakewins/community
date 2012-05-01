@@ -37,7 +37,7 @@ import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
-public abstract class AbstractLuceneIndexTest
+public abstract class AbstractIndexTest
 {
     protected static GraphDatabaseService graphDb;
     protected Transaction tx;
@@ -87,7 +87,7 @@ public abstract class AbstractLuceneIndexTest
         }
     }
 
-    void restartTx()
+    protected void restartTx()
     {
         commitTx();
         beginTx();

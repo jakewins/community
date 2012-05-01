@@ -438,7 +438,8 @@ public class LuceneDataSource extends IndexDataSource
         }
     }
 
-    void deleteIndex( IndexIdentifier identifier, boolean recovery )
+    @Override
+    public void deleteIndex( IndexIdentifier identifier, boolean recovery )
     {
         closeWriter( identifier );
         deleteFileOrDirectory( getFileDirectory( getStoreDir(), identifier ) );
@@ -487,7 +488,7 @@ public class LuceneDataSource extends IndexDataSource
 
         try
         {
-            Directory dir = directoryGetter.getDirectory( getStoreDir(), identifier ); //getDirectory( baseStorePath, identifier );
+            Directory dir = directoryGetter.getDirectory( this, identifier ); //getDirectory( baseStorePath, identifier );
             directoryExists( dir );
             IndexType type = getType( identifier );
             IndexWriterConfig writerConfig = new IndexWriterConfig( LUCENE_VERSION, type.analyzer );

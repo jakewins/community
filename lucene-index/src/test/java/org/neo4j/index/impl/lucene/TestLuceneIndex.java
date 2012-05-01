@@ -75,7 +75,7 @@ import org.neo4j.index.lucene.ValueContext;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
-public class TestLuceneIndex extends AbstractLuceneIndexTest
+public class TestLuceneIndex extends AbstractIndexTest
 {
     public final @Rule TestName testname = new TestName();
 

@@ -19,13 +19,13 @@
  */
 package org.neo4j.index.impl.lucene;
 
-import static org.neo4j.index.impl.lucene.LuceneDataSource.getFileDirectory;
-
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
+import org.neo4j.index.base.IndexDataSource;
 import org.neo4j.index.base.IndexIdentifier;
 
 public enum DirectoryGetter
@@ -33,19 +33,21 @@ public enum DirectoryGetter
     FS
     {
         @Override
-        Directory getDirectory( String baseStorePath, IndexIdentifier identifier ) throws IOException
+        public Directory getDirectory( IndexDataSource ds, IndexIdentifier identifier ) throws IOException
         {
-            return FSDirectory.open( getFileDirectory( baseStorePath, identifier) );
+            File dir = ds.getIndexDirectory( identifier );
+            dir.mkdirs();
+            return FSDirectory.open( dir );
         }
     },
     MEMORY
     {
         @Override
-        Directory getDirectory( String baseStorePath, IndexIdentifier identifier )
+        public Directory getDirectory( IndexDataSource ds, IndexIdentifier identifier )
         {
             return new RAMDirectory();
         }
     };
     
-    abstract Directory getDirectory( String baseStorePath, IndexIdentifier identifier ) throws IOException;
+    public abstract Directory getDirectory( IndexDataSource ds, IndexIdentifier identifier ) throws IOException;
 }

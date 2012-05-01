@@ -19,13 +19,24 @@
  */
 package org.neo4j.index.base.keyvalue;
 
+import static org.neo4j.index.base.EntityType.entityType;
+
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
+
+import javax.transaction.xa.XAException;
 
 import org.neo4j.graphdb.PropertyContainer;
+import org.neo4j.helpers.Exceptions;
 import org.neo4j.index.base.AbstractIndex;
+import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexCommand;
+import org.neo4j.index.base.IndexCommand.CreateCommand;
+import org.neo4j.index.base.IndexCommand.DeleteCommand;
 import org.neo4j.index.base.IndexDataSource;
+import org.neo4j.index.base.IndexDefininitionsCommand;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.index.base.IndexTransaction;
 import org.neo4j.index.base.TxData;
@@ -86,5 +97,70 @@ public abstract class KeyValueTransaction extends IndexTransaction
     protected TxData newTxData( AbstractIndex index, TxDataType txDataType )
     {
         return new KeyValueTxData();
+    }
+    
+    @Override
+    protected void doCommit() throws XAException
+    {
+        IndexDataSource dataSource = getDataSource();
+        IndexDefininitionsCommand def = getDefinitions( false );
+        try
+        {
+            for ( Map.Entry<IndexIdentifier, Collection<IndexCommand>> entry : getCommands().entrySet() )
+            {
+                if ( entry.getValue().isEmpty() ) continue;
+                IndexIdentifier identifier = entry.getKey();
+                IndexCommand firstCommand = entry.getValue().iterator().next();
+                if ( firstCommand instanceof CreateCommand )
+                {
+                    CreateCommand createCommand = (CreateCommand) firstCommand;
+                    dataSource.getIndexStore().setIfNecessary( entityType( createCommand.getEntityType() ).getType(),
+                            def.getIndexName( createCommand.getIndexNameId() ), createCommand.getConfig() );
+                    continue;
+                }
+                else if ( firstCommand instanceof DeleteCommand )
+                {
+                    deleteIndex( identifier, isRecovered() );
+                    continue;
+                }
+
+                TxDataBoth data = getTxData( identifier );
+                KeyValueTxData added = (KeyValueTxData) data.added( false );
+                if ( added != null )
+                {
+                    for ( Map.Entry<String, Map<Object, Set<EntityId>>> bla : added.rawMap().entrySet() )
+                    {
+                        for ( Map.Entry<Object, Set<EntityId>> bli : bla.getValue().entrySet() )
+                            addToIndex( identifier, bla.getKey(), bli.getKey(), bli.getValue() );
+                    }
+                }
+
+                KeyValueTxData removed = (KeyValueTxData) data.removed( false );
+                if ( removed != null )
+                {
+                    for ( Map.Entry<String, Map<Object, Set<EntityId>>> bla : removed.rawMap().entrySet() )
+                    {
+                        for ( Map.Entry<Object, Set<EntityId>> bli : bla.getValue().entrySet() )
+                            removeFromIndex( identifier, bla.getKey(), bli.getKey(), bli.getValue() );
+                    }
+                }
+            }
+        }
+        catch ( Exception e )
+        {
+            throw Exceptions.launderedException( e );
+        }
+    }
+
+    protected abstract void removeFromIndex( IndexIdentifier identifier, String key, Object value, Set<EntityId> entities )
+            throws Exception;
+
+    protected abstract void addToIndex( IndexIdentifier identifier, String key, Object value, Set<EntityId> entities )
+            throws Exception;
+
+    protected void deleteIndex( IndexIdentifier identifier, boolean recovered )
+            throws Exception
+    {
+        getDataSource().deleteIndex( identifier, recovered );
     }
 }

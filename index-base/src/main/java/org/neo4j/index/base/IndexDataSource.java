@@ -84,9 +84,9 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         super( branchId, dataSourceName );
         try
         {
-            String indexDirName = config.get( Configuration.index_dir_name );
+            String indexDirName = config.isSet( Configuration.index_dir_name ) ? config.get( Configuration.index_dir_name ) : dataSourceName;
             String dbStoreDir = config.get( Configuration.store_dir );
-            this.storeDir = getIndexStoreDir( dbStoreDir, indexDirName != null ? indexDirName : dataSourceName );
+            this.storeDir = getIndexStoreDir( dbStoreDir, indexDirName );
             this.indexStore = indexStore;
             ensureDirectoryCreated( this.storeDir );
             boolean allowUpgrade = config.getBoolean( GraphDatabaseSettings.allow_store_upgrade );
@@ -318,4 +318,16 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     {
         return xaContainer;
     }
+    
+    public File getIndexDirectory( EntityType type )
+    {
+        return new File( storeDir, type.name().toLowerCase() );
+    }
+    
+    public File getIndexDirectory( IndexIdentifier identifier )
+    {
+        return new File( getIndexDirectory( identifier.getEntityType() ), identifier.getIndexName() );
+    }
+    
+    public abstract void deleteIndex( IndexIdentifier identifier, boolean recovered );
 }

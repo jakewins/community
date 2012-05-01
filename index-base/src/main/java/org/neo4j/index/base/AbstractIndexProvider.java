@@ -68,7 +68,7 @@ public abstract class AbstractIndexProvider extends IndexProvider
             AbstractIndexImplementation indexImplementation = previousProvider.get();
             if (indexImplementation == null)
                 iterator.remove();
-            else if ( indexImplementation.matches( gdb ) )
+            else if ( indexImplementation.matches( gdb ) && indexImplementation.getClass().equals( this.getClass() ) )
                 indexImplementation.reset( dataSource );
         }
         

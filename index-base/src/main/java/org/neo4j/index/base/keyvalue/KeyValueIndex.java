@@ -44,21 +44,20 @@ public abstract class KeyValueIndex<T extends PropertyContainer> extends Abstrac
         super( implementation, identifier );
     }
 
-
     // template method to read data from a key/value store. The actual work is delegated to the input ReadCallback
-    protected final IndexHits<T> read( ReadCallback callback )
+    protected final IndexHits<T> read( String key, Object value, ReadCallback callback )
     {
         IndexBaseXaConnection connection = getReadOnlyConnection();
         IndexTransaction tx = connection != null ? connection.getTx() : null;
-        Collection<EntityId> added = tx != null ? tx.getAddedIds( this, callback.key, callback.value ) :
+        Collection<EntityId> added = tx != null ? tx.getAddedIds( this, key, value ) :
                 Collections.<EntityId>emptyList();
-        Collection<EntityId> removed = tx != null ? tx.getRemovedIds( this, callback.key, callback.value ) :
+        Collection<EntityId> removed = tx != null ? tx.getRemovedIds( this, key, value ) :
                 Collections.<EntityId>emptyList();
         List<EntityId> ids = new ArrayList<EntityId>( added );
         getProvider().dataSource().getReadLock();
         try
         {
-            callback.update( ids, removed );
+            callback.update( key, value, ids, removed );
         }
         finally
         {
@@ -101,17 +100,8 @@ public abstract class KeyValueIndex<T extends PropertyContainer> extends Abstrac
         throw new UnsupportedOperationException();
     }
 
-    protected static abstract class ReadCallback
+    public static interface ReadCallback
     {
-        protected final String key;
-        protected final Object value;
-
-        protected ReadCallback( String key, Object value )
-        {
-            this.key = key;
-            this.value = value;
-        }
-
-        protected abstract void update( List<EntityId> ids, Collection<EntityId> removed );
+        void update( String key, Object value, List<EntityId> ids, Collection<EntityId> removed );
     }
 }
