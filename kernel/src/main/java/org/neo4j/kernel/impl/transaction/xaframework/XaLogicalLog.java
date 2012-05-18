@@ -112,6 +112,8 @@ public class XaLogicalLog implements LogLoader
 
     private final XaLogicalLogFiles logFiles;
 
+    private final XaLogicalLogRecoveryCheck logRecoveryChecker;
+
     public XaLogicalLog( String fileName, XaResourceManager xaRm, XaCommandFactory cf,
             XaTransactionFactory xaTf, LogBufferFactory logBufferFactory, FileSystemAbstraction fileSystem, StringLogger stringLogger )
     {
@@ -122,6 +124,7 @@ public class XaLogicalLog implements LogLoader
         this.logBufferFactory = logBufferFactory;
         this.fileSystem = fileSystem;
         this.logFiles = new XaLogicalLogFiles(fileName, fileSystem);
+        this.logRecoveryChecker = new XaLogicalLogRecoveryCheck();
 
         log = Logger.getLogger( this.getClass().getName() + File.separator + fileName );
         sharedBuffer = ByteBuffer.allocateDirect( 9 + Xid.MAXGTRIDSIZE
@@ -199,7 +202,7 @@ public class XaLogicalLog implements LogLoader
     private void open( String fileToOpen ) throws IOException
     {
         fileChannel = fileSystem.open( fileToOpen, "rw" );
-        if ( new XaLogicalLogRecoveryCheck(fileChannel).recoveryRequired() )
+        if ( logRecoveryChecker.recoveryRequired(fileChannel) )
         {
             nonCleanShutdown = true;
             doingRecovery = true;

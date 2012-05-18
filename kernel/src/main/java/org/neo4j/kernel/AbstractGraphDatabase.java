@@ -20,6 +20,8 @@
 
 package org.neo4j.kernel;
 
+import static org.neo4j.helpers.Exceptions.launderedException;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -33,7 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
 import javax.transaction.TransactionManager;
+
 import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -44,6 +48,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
+import org.neo4j.graphdb.factory.Default;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.IndexManager;
@@ -117,8 +122,6 @@ import org.neo4j.kernel.logging.Loggers;
 import org.neo4j.kernel.logging.Logging;
 import org.neo4j.tooling.GlobalGraphOperations;
 
-import static org.neo4j.helpers.Exceptions.*;
-
 /**
  * Exposes the methods {@link #getManagementBeans(Class)}() a.s.o.
  */
@@ -137,6 +140,8 @@ public abstract class AbstractGraphDatabase
 
         public static final GraphDatabaseSetting.StringSetting store_dir = new GraphDatabaseSetting.StringSetting( "store_dir",".*","TODO" );
         public static final GraphDatabaseSetting.StringSetting neo_store = new GraphDatabaseSetting.StringSetting( "neo_store",".*","TODO" );
+        
+        @Default("nioneo_logical.log")
         public static final GraphDatabaseSetting.StringSetting logical_log = new GraphDatabaseSetting.StringSetting( "logical_log",".*","TODO" );
     }
 
@@ -275,8 +280,8 @@ public abstract class AbstractGraphDatabase
         // Apply autoconfiguration for memory settings
         AutoConfigurator autoConfigurator = new AutoConfigurator( fileSystem,
                                                                   config.get( NeoStoreXaDataSource.Configuration.store_dir ),
-                                                                  config.getBoolean( GraphDatabaseSettings.use_memory_mapped_buffers ),
-                                                                  config.getBoolean( GraphDatabaseSettings.dump_configuration ) );
+                                                                  config.get( GraphDatabaseSettings.use_memory_mapped_buffers ),
+                                                                  config.get( GraphDatabaseSettings.dump_configuration ) );
         Map<String,String> autoConfiguration = autoConfigurator.configure( );
         for( Map.Entry<String, String> autoConfig : autoConfiguration.entrySet() )
         {
@@ -292,7 +297,7 @@ public abstract class AbstractGraphDatabase
         this.msgLog = logging.getLogger( Loggers.NEO4J );
 
         // Instantiate all services - some are overridable by subclasses
-        boolean readOnly = config.getBoolean( Configuration.read_only );
+        boolean readOnly = config.get( Configuration.read_only );
 
         String cacheTypeName = config.get( Configuration.cache_type );
         CacheProvider cacheProvider = cacheProviders.get( cacheTypeName );
@@ -310,7 +315,7 @@ public abstract class AbstractGraphDatabase
 
         xaDataSourceManager = life.add( new XaDataSourceManager( logging.getLogger( Loggers.DATASOURCE )) );
 
-        guard = config.getBoolean( Configuration.execution_guard_enabled ) ? new Guard( msgLog ) : null;
+        guard = config.get( Configuration.execution_guard_enabled ) ? new Guard( msgLog ) : null;
 
         xaDataSourceManager = life.add(new XaDataSourceManager(msgLog));
 
@@ -397,7 +402,7 @@ public abstract class AbstractGraphDatabase
 
         extensions = life.add(createKernelData());
 
-        if ( config.getBoolean( Configuration.load_kernel_extensions ))
+        if ( config.get( Configuration.load_kernel_extensions ))
         {
             life.add(new DefaultKernelExtensionLoader( extensions ));
         }

@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.UTF8;
@@ -181,7 +182,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             long fileSize = fileChannel.size();
             int recordSize = getRecordSize();
             boolean fullRebuild = true;
-            if ( conf.getBoolean( Configuration.rebuild_idgenerators_fast) )
+            if ( conf.get( Configuration.rebuild_idgenerators_fast) )
             {
                 fullRebuild = false;
                 highId = findHighIdBackwards();

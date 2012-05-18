@@ -27,6 +27,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.IdGeneratorFactory;
@@ -87,7 +88,7 @@ public class NeoStore extends AbstractStore
         this.propStore = propStore;
         this.relStore = relStore;
         this.nodeStore = nodeStore;
-        REL_GRAB_SIZE = conf.getInteger( Configuration.relationship_grab_size );
+        REL_GRAB_SIZE = conf.get( Configuration.relationship_grab_size );
         this.txHook = txHook;
 
         /* [MP:2012-01-03] Fix for the problem in 1.5.M02 where store version got upgraded but

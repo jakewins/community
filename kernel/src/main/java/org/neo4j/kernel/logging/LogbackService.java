@@ -20,10 +20,8 @@
 
 package org.neo4j.kernel.logging;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.core.joran.spi.JoranException;
 import java.io.File;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.AbstractGraphDatabase;
@@ -35,6 +33,10 @@ import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.StaticLoggerBinder;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
 
 /**
  * Logging service that uses Logback as backend.
@@ -76,9 +78,9 @@ public class LogbackService
                 JoranConfigurator configurator = new JoranConfigurator();
                 configurator.setContext( loggerContext );
                 loggerContext.putProperty( "neo_store", storeDir );
-                loggerContext.putProperty( "remote_logging_enabled", config.get( GraphDatabaseSettings.remote_logging_enabled ) );
-                loggerContext.putProperty( "remote_logging_host", config.get( GraphDatabaseSettings.remote_logging_host ) );
-                loggerContext.putProperty( "remote_logging_port", config.get( GraphDatabaseSettings.remote_logging_port ) );
+                loggerContext.putProperty( "remote_logging_enabled", config.get( GraphDatabaseSettings.remote_logging_enabled ).toString() );
+                loggerContext.putProperty( "remote_logging_host", config.get( GraphDatabaseSettings.remote_logging_host ).toString() );
+                loggerContext.putProperty( "remote_logging_port", config.get( GraphDatabaseSettings.remote_logging_port ).toString() );
                 try
                 {
                     configurator.doConfigure( getClass().getResource( "/neo4j-logback.xml" ) );

@@ -24,14 +24,7 @@ import java.nio.channels.FileChannel;
 
 public class XaLogicalLogRecoveryCheck {
 
-    private final FileChannel fileChannel;
-    
-    public XaLogicalLogRecoveryCheck(FileChannel fileChannel)
-    {
-        this.fileChannel = fileChannel;
-    }
-
-    public boolean recoveryRequired() throws IOException
+    public boolean recoveryRequired(FileChannel fileChannel) throws IOException
     {
         return fileChannel.size() != 0;
     }

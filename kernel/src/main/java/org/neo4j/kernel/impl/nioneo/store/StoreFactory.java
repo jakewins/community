@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.logging.Logger;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.UTF8;
@@ -222,8 +223,8 @@ public class StoreFactory
     private void createPropertyStore( String fileName )
     {
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( PropertyStore.TYPE_DESCRIPTOR ));
-        int stringStoreBlockSize = config.getInteger( Configuration.string_block_size );
-        int arrayStoreBlockSize = config.getInteger( Configuration.array_block_size );
+        int stringStoreBlockSize = config.get( Configuration.string_block_size );
+        int arrayStoreBlockSize = config.get( Configuration.array_block_size );
 
         createDynamicStringStore(fileName + ".strings", stringStoreBlockSize, IdType.STRING_BLOCK);
         createPropertyIndexStore(fileName + ".index");

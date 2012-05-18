@@ -19,6 +19,9 @@
  */
 package org.neo4j.unsafe.batchinsert;
 
+import static java.lang.Boolean.parseBoolean;
+import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.RelationshipType;
@@ -67,9 +71,6 @@ import org.neo4j.kernel.impl.nioneo.store.UnderlyingStorageException;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
 
-import static java.lang.Boolean.*;
-import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.*;
-
 public class BatchInserterImpl implements BatchInserter
 {
     private static final long MAX_NODE_ID = IdType.NODE.getMaxValue();
@@ -102,7 +103,7 @@ public class BatchInserterImpl implements BatchInserter
 
         params = new ConfigurationDefaults( GraphDatabaseSettings.class ).apply( params );
         Config config = new Config( params );
-        boolean dump = config.getBoolean( GraphDatabaseSettings.dump_configuration );
+        boolean dump = config.get( GraphDatabaseSettings.dump_configuration );
         this.storeDir = storeDir;
         this.idGeneratorFactory = new DefaultIdGeneratorFactory();
 

@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+
 import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -186,7 +187,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         config = conf;
         this.providers = providers;
 
-        readOnly = conf.getBoolean( Configuration.read_only );
+        readOnly = conf.get( Configuration.read_only );
         this.lockManager = lockManager;
         this.lockReleaser = lockReleaser;
         msgLog = stringLogger;

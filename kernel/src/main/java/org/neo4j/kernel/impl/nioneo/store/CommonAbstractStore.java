@@ -27,6 +27,7 @@ import java.nio.channels.OverlappingFileLockException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.UTF8;
@@ -104,7 +105,7 @@ public abstract class CommonAbstractStore
         this.fileSystemAbstraction = fileSystemAbstraction;
         this.idType = idType;
         this.stringLogger = stringLogger;
-        grabFileLock = configuration.getBoolean( Configuration.grab_file_lock );
+        grabFileLock = configuration.get( Configuration.grab_file_lock );
 
         checkStorage();
         checkVersion(); // Overriden in NeoStore
@@ -135,8 +136,8 @@ public abstract class CommonAbstractStore
 
     protected void checkStorage()
     {
-        readOnly = configuration.getBoolean( Configuration.read_only );
-        backupSlave = configuration.getBoolean( Configuration.backup_slave );
+        readOnly = configuration.get( Configuration.read_only );
+        backupSlave = configuration.get( Configuration.backup_slave );
         if ( !fileSystemAbstraction.fileExists( storageFileName ) )
         {
             throw new IllegalStateException( "No such store[" + storageFileName
@@ -210,7 +211,7 @@ public abstract class CommonAbstractStore
 
         setWindowPool( new PersistenceWindowPool( getStorageFileName(),
             getEffectiveRecordSize(), getFileChannel(), calculateMappedMemory(configuration.getParams(), storageFileName ),
-            configuration.getBoolean( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
+            configuration.get( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
     }
 
     protected abstract int getEffectiveRecordSize();
