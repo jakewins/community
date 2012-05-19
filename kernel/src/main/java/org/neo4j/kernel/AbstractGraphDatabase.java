@@ -48,7 +48,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.factory.Default;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.IndexManager;
@@ -86,7 +85,6 @@ import org.neo4j.kernel.impl.core.TransactionEventsSyncHook;
 import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
@@ -130,6 +128,9 @@ public abstract class AbstractGraphDatabase
 {
     public static class Configuration
     {
+        public static final GraphDatabaseSetting.PathSetting store_dir = GraphDatabaseSettings.store_dir;
+        public static final GraphDatabaseSetting.PathSetting neo_store = GraphDatabaseSettings.neo_store;
+        public static final GraphDatabaseSetting.PathSetting logical_log = GraphDatabaseSettings.logical_log;
         public static final GraphDatabaseSetting.BooleanSetting dump_configuration = GraphDatabaseSettings.dump_configuration;
         public static final GraphDatabaseSetting.BooleanSetting read_only = GraphDatabaseSettings.read_only;
         public static final GraphDatabaseSetting.BooleanSetting use_memory_mapped_buffers = GraphDatabaseSettings.use_memory_mapped_buffers;
@@ -137,12 +138,6 @@ public abstract class AbstractGraphDatabase
         public static final GraphDatabaseSettings.CacheTypeSetting cache_type = GraphDatabaseSettings.cache_type;
         public static final GraphDatabaseSetting.BooleanSetting load_kernel_extensions = GraphDatabaseSettings.load_kernel_extensions;
         public static final GraphDatabaseSetting.BooleanSetting ephemeral = new GraphDatabaseSetting.BooleanSetting("ephemeral");
-
-        public static final GraphDatabaseSetting.StringSetting store_dir = new GraphDatabaseSetting.StringSetting( "store_dir",".*","TODO" );
-        public static final GraphDatabaseSetting.StringSetting neo_store = new GraphDatabaseSetting.StringSetting( "neo_store",".*","TODO" );
-        
-        @Default("nioneo_logical.log")
-        public static final GraphDatabaseSetting.StringSetting logical_log = new GraphDatabaseSetting.StringSetting( "logical_log",".*","TODO" );
     }
 
     private static final long MAX_NODE_ID = IdType.NODE.getMaxValue();
@@ -241,14 +236,6 @@ public abstract class AbstractGraphDatabase
 
     private void create()
     {
-        // TODO THIS IS A SMELL - SHOULD BE AVAILABLE THROUGH OTHER MEANS!
-        String separator = System.getProperty( "file.separator" );
-        String store = this.storeDir + separator + NeoStore.DEFAULT_NAME;
-        params.put( Configuration.store_dir.name(), this.storeDir );
-        params.put( Configuration.neo_store.name(), store );
-        String logicalLog = this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
-        params.put( Configuration.logical_log.name(), logicalLog );
-        // END SMELL
 
         fileSystem = life.add(createFileSystemAbstraction());
 
@@ -267,6 +254,9 @@ public abstract class AbstractGraphDatabase
         // Apply defaults to configuration just for logging purposes
         ConfigurationDefaults configurationDefaults = new ConfigurationDefaults( settingsClasses );
 
+        // Tell config where the store dir is
+        params.put( Configuration.store_dir.name(), this.storeDir );
+        
         // Setup configuration
         config = new Config( configurationDefaults.apply( new SystemPropertiesConfiguration(settingsClasses).apply( params ) ) );
 

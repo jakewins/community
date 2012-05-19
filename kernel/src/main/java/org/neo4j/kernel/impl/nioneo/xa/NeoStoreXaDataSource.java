@@ -43,7 +43,6 @@ import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
 import org.neo4j.helpers.collection.Visitor;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
@@ -89,9 +88,9 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         extends LogBackedXaDataSource.Configuration
     {
         public static final GraphDatabaseSetting.BooleanSetting read_only = GraphDatabaseSettings.read_only;
-        public static final GraphDatabaseSetting.StringSetting store_dir = AbstractGraphDatabase.Configuration.store_dir;
-        public static final GraphDatabaseSetting.StringSetting neo_store = AbstractGraphDatabase.Configuration.neo_store;
-        public static final GraphDatabaseSetting.StringSetting logical_log = AbstractGraphDatabase.Configuration.logical_log;
+        public static final GraphDatabaseSetting.PathSetting store_dir = GraphDatabaseSettings.store_dir;
+        public static final GraphDatabaseSetting.PathSetting neo_store = GraphDatabaseSettings.neo_store;
+        public static final GraphDatabaseSetting.PathSetting logical_log = GraphDatabaseSettings.logical_log;
         public static final GraphDatabaseSetting.BooleanSetting intercept_committing_transactions = GraphDatabaseSettings.intercept_committing_transactions;
     }
 

@@ -21,6 +21,7 @@
 package org.neo4j.graphdb.factory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Formatter;
@@ -30,6 +31,7 @@ import java.util.regex.Pattern;
 
 import org.neo4j.helpers.TimeUtil;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.impl.util.FileUtils;
 
 /**
  * Setting types for Neo4j. Actual settings are in GraphDatabaseSettings
@@ -404,20 +406,35 @@ public abstract class GraphDatabaseSetting<T>
         extends StringSetting
     {
         private PathSetting relativeTo;
+        private boolean makeCanonical;
+        private boolean fixIncorrectPathSeparators;
 
-        public PathSetting( String name, String formatMessage )
+        public PathSetting( String name )
         {
-            this( name, formatMessage, null);
+            this( name, null, false, false);
         }
         
         /**
          * @param name
-         * @param formatMessage
-         * @param relativeTo If the configured value is a relative path, make it relative to this config setting.
+         * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
+         * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
          */
-        public PathSetting( String name, String formatMessage, PathSetting relativeTo) {
-            super( name, ".*", formatMessage);
+        public PathSetting( String name, boolean makeCanonical, boolean fixIncorrectPathSeparators)
+        {
+            this( name, null, makeCanonical, fixIncorrectPathSeparators);
+        }
+        
+        /**
+         * @param name
+         * @param relativeTo If the configured value is a relative path, make it relative to this config setting.
+         * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
+         * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
+         */
+        public PathSetting( String name, PathSetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
+            super( name, ".*", "Must be a valid file path.");
             this.relativeTo = relativeTo;
+            this.makeCanonical = makeCanonical;
+            this.fixIncorrectPathSeparators = fixIncorrectPathSeparators;
         }
     
         @Override
@@ -430,13 +447,34 @@ public abstract class GraphDatabaseSetting<T>
         @Override
         public String valueOf(String rawValue, Config config) 
         {
-            if(new File(rawValue).isAbsolute() || relativeTo == null) 
+            if(fixIncorrectPathSeparators) 
             {
-                return rawValue;
-            } else 
+                rawValue = FileUtils.fixSeparatorsInPath(rawValue);
+            }
+            
+            File path = new File(rawValue);
+            
+            if(!path.isAbsolute() && relativeTo != null) 
             {
                 File baseDir = new File(config.get(relativeTo));
-                return new File(baseDir, rawValue).getAbsolutePath();
+                path = new File(baseDir, rawValue);
+            }
+            
+            if(makeCanonical)   
+            {
+                try
+                {
+                    return path.getCanonicalPath();
+                } catch (IOException e)
+                {
+                    throw new IllegalArgumentException(name() + ": unable to resolve canonical path for " + rawValue + ".", e);
+                }
+            } else if( path.isAbsolute()) 
+            {
+                return path.getAbsolutePath();
+            } else 
+            {
+                return rawValue;
             }
         }
     }

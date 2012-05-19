@@ -33,6 +33,8 @@ import org.neo4j.graphdb.factory.GraphDatabaseSetting.OptionsSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.PortSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.StringSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.TimeSpanSetting;
+import org.neo4j.kernel.impl.nioneo.store.NeoStore;
+import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 
 /**
  * Settings for the Community edition of Neo4j. Use this with GraphDatabaseBuilder.
@@ -48,6 +50,19 @@ public abstract class GraphDatabaseSettings
     @Description("The type of cache to use for nodes and relationships")
     @Default( CacheTypeSetting.soft )
     public static final CacheTypeSetting cache_type = new CacheTypeSetting();
+    
+    @Description("The directory the database is stored in")
+    public static final GraphDatabaseSetting.PathSetting store_dir = new GraphDatabaseSetting.PathSetting( "store_dir", true, true );
+    
+    @Description("Base name for storage files, either an absolute path or relative to the store_dir setting.")
+    // TODO: Other code should not be aware of this default value, refactor code depending on this to use what config provides
+    @Default(NeoStore.DEFAULT_NAME)
+    public static final GraphDatabaseSetting.PathSetting neo_store = new GraphDatabaseSetting.PathSetting( "neo_store", store_dir, true, true );
+    
+    @Description("Base name for logical logs, either an absolute path or relative to the store_dir setting.")
+    // TODO: Other code should not be aware of this default value, refactor code depending on this to use what config provides
+    @Default(NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME)
+    public static final GraphDatabaseSetting.PathSetting logical_log = new GraphDatabaseSetting.PathSetting( "logical_log", store_dir, true, true );
 
     @Default( TRUE)
     public static final BooleanSetting load_kernel_extensions = new BooleanSetting("load_kernel_extensions");
