@@ -20,6 +20,8 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.neo4j.helpers.Exceptions.launderedException;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -107,9 +109,18 @@ public abstract class CommonAbstractStore
         this.stringLogger = stringLogger;
         grabFileLock = configuration.get( Configuration.grab_file_lock );
 
-        checkStorage();
-        checkVersion(); // Overriden in NeoStore
-        loadStorage();
+        try
+        {
+            checkStorage();
+            checkVersion(); // Overriden in NeoStore
+            loadStorage();
+        }
+        catch ( Exception e )
+        {
+            if ( fileChannel != null )
+                closeChannel();
+            throw launderedException( e );
+        }
     }
 
     public String getTypeAndVersionDescriptor()
@@ -627,14 +638,7 @@ public abstract class CommonAbstractStore
         }
         if ( (isReadOnly() && !isBackupSlave()) || idGenerator == null || !storeOk )
         {
-            try
-            {
-                fileChannel.close();
-            }
-            catch ( IOException e )
-            {
-                throw new UnderlyingStorageException( e );
-            }
+            closeChannel();
             return;
         }
         long highId = idGenerator.getHighId();
@@ -693,6 +697,18 @@ public abstract class CommonAbstractStore
         {
             throw new UnderlyingStorageException( "Unable to close store "
                 + getStorageFileName(), storedIoe );
+        }
+    }
+
+    private void closeChannel()
+    {
+        try
+        {
+            fileChannel.close();
+        }
+        catch ( IOException e )
+        {
+            throw new UnderlyingStorageException( e );
         }
     }
 
