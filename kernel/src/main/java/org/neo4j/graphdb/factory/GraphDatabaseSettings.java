@@ -52,17 +52,17 @@ public abstract class GraphDatabaseSettings
     public static final CacheTypeSetting cache_type = new CacheTypeSetting();
     
     @Description("The directory the database is stored in")
-    public static final GraphDatabaseSetting.PathSetting store_dir = new GraphDatabaseSetting.PathSetting( "store_dir", true, true );
+    public static final GraphDatabaseSetting.DirectorySetting store_dir = new GraphDatabaseSetting.DirectorySetting( "store_dir", true, true );
     
     @Description("Base name for storage files, either an absolute path or relative to the store_dir setting.")
     // TODO: Other code should not be aware of this default value, refactor code depending on this to use what config provides
     @Default(NeoStore.DEFAULT_NAME)
-    public static final GraphDatabaseSetting.PathSetting neo_store = new GraphDatabaseSetting.PathSetting( "neo_store", store_dir, true, true );
+    public static final GraphDatabaseSetting.FileSetting neo_store = new GraphDatabaseSetting.FileSetting( "neo_store", store_dir, true, true );
     
     @Description("Base name for logical logs, either an absolute path or relative to the store_dir setting.")
     // TODO: Other code should not be aware of this default value, refactor code depending on this to use what config provides
     @Default(NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME)
-    public static final GraphDatabaseSetting.PathSetting logical_log = new GraphDatabaseSetting.PathSetting( "logical_log", store_dir, true, true );
+    public static final GraphDatabaseSetting.FileSetting logical_log = new GraphDatabaseSetting.FileSetting( "logical_log", store_dir, true, true );
 
     @Default( TRUE)
     public static final BooleanSetting load_kernel_extensions = new BooleanSetting("load_kernel_extensions");

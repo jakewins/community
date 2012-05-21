@@ -88,9 +88,9 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         extends LogBackedXaDataSource.Configuration
     {
         public static final GraphDatabaseSetting.BooleanSetting read_only = GraphDatabaseSettings.read_only;
-        public static final GraphDatabaseSetting.PathSetting store_dir = GraphDatabaseSettings.store_dir;
-        public static final GraphDatabaseSetting.PathSetting neo_store = GraphDatabaseSettings.neo_store;
-        public static final GraphDatabaseSetting.PathSetting logical_log = GraphDatabaseSettings.logical_log;
+        public static final GraphDatabaseSetting.DirectorySetting store_dir = GraphDatabaseSettings.store_dir;
+        public static final GraphDatabaseSetting.FileSetting neo_store = GraphDatabaseSettings.neo_store;
+        public static final GraphDatabaseSetting.FileSetting logical_log = GraphDatabaseSettings.logical_log;
         public static final GraphDatabaseSetting.BooleanSetting intercept_committing_transactions = GraphDatabaseSettings.intercept_committing_transactions;
     }
 

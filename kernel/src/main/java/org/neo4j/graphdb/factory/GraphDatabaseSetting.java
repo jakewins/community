@@ -402,14 +402,14 @@ public abstract class GraphDatabaseSetting<T>
         
     }
     
-    public static class PathSetting
+    public static class AbstractPathSetting
         extends StringSetting
     {
-        private PathSetting relativeTo;
+        private DirectorySetting relativeTo;
         private boolean makeCanonical;
         private boolean fixIncorrectPathSeparators;
-
-        public PathSetting( String name )
+    
+        public AbstractPathSetting( String name )
         {
             this( name, null, false, false);
         }
@@ -419,7 +419,7 @@ public abstract class GraphDatabaseSetting<T>
          * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
          * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
          */
-        public PathSetting( String name, boolean makeCanonical, boolean fixIncorrectPathSeparators)
+        public AbstractPathSetting( String name, boolean makeCanonical, boolean fixIncorrectPathSeparators)
         {
             this( name, null, makeCanonical, fixIncorrectPathSeparators);
         }
@@ -430,7 +430,7 @@ public abstract class GraphDatabaseSetting<T>
          * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
          * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
          */
-        public PathSetting( String name, PathSetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
+        public AbstractPathSetting( String name, DirectorySetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
             super( name, ".*", "Must be a valid file path.");
             this.relativeTo = relativeTo;
             this.makeCanonical = makeCanonical;
@@ -476,6 +476,88 @@ public abstract class GraphDatabaseSetting<T>
             {
                 return rawValue;
             }
+        }
+    }
+    
+    public static class FileSetting
+        extends AbstractPathSetting
+    {
+
+        public FileSetting( String name )
+        {
+            super( name, null, false, false);
+        }
+        
+        /**
+         * @param name
+         * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
+         * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
+         */
+        public FileSetting( String name, boolean makeCanonical, boolean fixIncorrectPathSeparators)
+        {
+            super( name, null, makeCanonical, fixIncorrectPathSeparators);
+        }
+        
+        /**
+         * @param name
+         * @param relativeTo If the configured value is a relative path, make it relative to this config setting.
+         * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
+         * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
+         */
+        public FileSetting( String name, DirectorySetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
+            super( name, relativeTo, makeCanonical, fixIncorrectPathSeparators);
+        }
+    
+        @Override
+        public void validate( Locale locale, String value )
+        {
+            if (value == null)
+                throw illegalValue( locale, value );
+            
+            File file = new File(value);
+            if(file.exists() && !file.isFile())
+                throw illegalValue( locale, value );
+        }
+    }
+    
+    public static class DirectorySetting
+        extends AbstractPathSetting
+    {
+
+        public DirectorySetting( String name )
+        {
+            super( name, null, false, false);
+        }
+        
+        /**
+         * @param name
+         * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
+         * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
+         */
+        public DirectorySetting( String name, boolean makeCanonical, boolean fixIncorrectPathSeparators)
+        {
+            super( name, null, makeCanonical, fixIncorrectPathSeparators);
+        }
+        
+        /**
+         * @param name
+         * @param relativeTo If the configured value is a relative path, make it relative to this config setting.
+         * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
+         * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
+         */
+        public DirectorySetting( String name, DirectorySetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
+            super( name, relativeTo, makeCanonical, fixIncorrectPathSeparators);
+        }
+    
+        @Override
+        public void validate( Locale locale, String value )
+        {
+            if (value == null)
+                throw illegalValue( locale, value );
+            
+            File dir = new File(value);
+            if(dir.exists() && !dir.isDirectory())
+                throw illegalValue( locale, value );
         }
     }
     

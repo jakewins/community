@@ -128,9 +128,9 @@ public abstract class AbstractGraphDatabase
 {
     public static class Configuration
     {
-        public static final GraphDatabaseSetting.PathSetting store_dir = GraphDatabaseSettings.store_dir;
-        public static final GraphDatabaseSetting.PathSetting neo_store = GraphDatabaseSettings.neo_store;
-        public static final GraphDatabaseSetting.PathSetting logical_log = GraphDatabaseSettings.logical_log;
+        public static final GraphDatabaseSetting.DirectorySetting store_dir = GraphDatabaseSettings.store_dir;
+        public static final GraphDatabaseSetting.FileSetting neo_store = GraphDatabaseSettings.neo_store;
+        public static final GraphDatabaseSetting.FileSetting logical_log = GraphDatabaseSettings.logical_log;
         public static final GraphDatabaseSetting.BooleanSetting dump_configuration = GraphDatabaseSettings.dump_configuration;
         public static final GraphDatabaseSetting.BooleanSetting read_only = GraphDatabaseSettings.read_only;
         public static final GraphDatabaseSetting.BooleanSetting use_memory_mapped_buffers = GraphDatabaseSettings.use_memory_mapped_buffers;
