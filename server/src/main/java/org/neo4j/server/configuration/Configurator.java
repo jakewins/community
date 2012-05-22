@@ -27,7 +27,7 @@ import org.apache.commons.configuration.Configuration;
 import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.collection.Iterables;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 

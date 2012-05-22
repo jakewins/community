@@ -66,12 +66,12 @@ public class PropertyFileBuilder
         String dbDir = ServerTestUtils.createTempDir().getAbsolutePath();
         String rrdbDir = ServerTestUtils.createTempDir().getAbsolutePath();
         Map<String, String> properties = MapUtil.stringMap(
-                Configurator.DATABASE_LOCATION_PROPERTY_KEY, dbDir,
-                Configurator.RRDB_LOCATION_PROPERTY_KEY, rrdbDir,
-                Configurator.MANAGEMENT_PATH_PROPERTY_KEY, webAdminUri,
-                Configurator.REST_API_PATH_PROPERTY_KEY, webAdminDataUri );
-        if ( portNo != null ) properties.put( Configurator.WEBSERVER_PORT_PROPERTY_KEY, portNo );
-        if ( dbTuningPropertyFile != null ) properties.put( Configurator.DB_TUNING_PROPERTY_FILE_KEY, dbTuningPropertyFile );
+                ServerSettings.database_location.name(), dbDir,
+                ServerSettings.rrdb_location.name(), rrdbDir,
+                ServerSettings.management_path.name(), webAdminUri,
+                ServerSettings.rest_api_path.name(), webAdminDataUri );
+        if ( portNo != null ) properties.put( ServerSettings.webserver_port.name(), portNo );
+        if ( dbTuningPropertyFile != null ) properties.put( ServerSettings.db_tuning_property_file.name(), dbTuningPropertyFile );
         for ( Tuple t : nameValuePairs ) properties.put( t.name, t.value );
         ServerTestUtils.writePropertiesToFile( properties, temporaryConfigFile );
         return temporaryConfigFile;

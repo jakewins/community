@@ -38,6 +38,7 @@ import org.neo4j.kernel.Traversal;
 import org.neo4j.kernel.Uniqueness;
 import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.database.Database;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 public class PagedTraverserTest
 {
@@ -48,7 +49,7 @@ public class PagedTraverserTest
     @Before
     public void clearDb() throws IOException
     {
-        database = new Database( ServerTestUtils.EPHEMERAL_GRAPH_DATABASE_FACTORY, null );
+        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
         createLinkedList( LIST_LENGTH, database );
     }
 

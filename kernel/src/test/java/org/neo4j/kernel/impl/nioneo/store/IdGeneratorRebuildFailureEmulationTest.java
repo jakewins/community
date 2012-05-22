@@ -43,7 +43,8 @@ import org.neo4j.kernel.DefaultIdGeneratorFactory;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.neo4j.test.impl.EphemeralFileSystemAbstraction;
 import org.neo4j.test.subprocess.BreakPoint;
@@ -114,9 +115,11 @@ public class IdGeneratorRebuildFailureEmulationTest
         // emulate the need for rebuilding id generators by deleting it
         fs.deleteFile( file + ".id" );
         NeoStore neostore = null;
+        LifeSupport life = new LifeSupport();
         try
         {
-            neostore = factory.newNeoStore( prefix + File.separator + "neostore" );
+            neostore = life.add( factory.newNeoStore( prefix + File.separator + "neostore" ));
+            life.start();
             // emulate a failure during rebuild:
             emulateFailureOnRebuildOf( neostore );
         }
@@ -128,7 +131,7 @@ public class IdGeneratorRebuildFailureEmulationTest
         {
             // we want close to not misbehave
             // (and for example truncate the file based on the wrong highId)
-            if ( neostore != null ) neostore.close();
+            life.shutdown();
         }
     }
 

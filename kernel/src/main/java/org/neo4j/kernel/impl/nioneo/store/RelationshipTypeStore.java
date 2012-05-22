@@ -25,7 +25,7 @@ import java.nio.channels.FileChannel;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Implementation of the relationship type store. Uses a dynamic store to store
@@ -77,7 +77,7 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
     @Override
     protected void rebuildIdGenerator()
     {
-        logger.fine( "Rebuilding id generator for[" + getStorageFileName()
+        logger.debug( "Rebuilding id generator for[" + getStorageFileName()
             + "] ..." );
         closeIdGenerator();
         if ( fileSystemAbstraction.fileExists( getStorageFileName() + ".id" ) )
@@ -125,7 +125,7 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
                 "Unable to rebuild id generator " + getStorageFileName(), e );
         }
         setHighId( highId );
-        logger.fine( "[" + getStorageFileName() + "] high id=" + getHighId() );
+        logger.debug( "[" + getStorageFileName() + "] high id=" + getHighId() );
         closeIdGenerator();
         openIdGenerator( false );
     }

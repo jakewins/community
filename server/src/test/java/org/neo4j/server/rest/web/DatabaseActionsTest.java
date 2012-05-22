@@ -65,6 +65,7 @@ import org.neo4j.server.rest.repr.NodeRepresentationTest;
 import org.neo4j.server.rest.repr.RelationshipRepresentation;
 import org.neo4j.server.rest.repr.RelationshipRepresentationTest;
 import org.neo4j.server.rest.web.DatabaseActions.RelationshipDirection;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 public class DatabaseActionsTest
 {
@@ -76,7 +77,7 @@ public class DatabaseActionsTest
     @BeforeClass
     public static void clearDb() throws IOException
     {
-        database = new Database( ServerTestUtils.EPHEMERAL_GRAPH_DATABASE_FACTORY, null );
+        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
         graphdbHelper = new GraphDbHelper( database );
         leaseManager = new LeaseManager( new FakeClock() );
         actions = new DatabaseActions( database, leaseManager, ForceMode.forced );

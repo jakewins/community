@@ -24,7 +24,7 @@ import java.util.List;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Implementation of the node store.
@@ -44,7 +44,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
     public NodeStore(String fileName, Config config,
                      IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
     {
-        super(fileName, config, IdType.NODE, idGeneratorFactory, fileSystemAbstraction, stringLogger);
+        super(stringLogger, fileName, config, IdType.NODE, idGeneratorFactory, fileSystemAbstraction);
     }
 
     @Override

@@ -20,6 +20,7 @@
 
 package org.neo4j.graphdb.factory;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Formatter;
 import java.util.Locale;
@@ -42,6 +43,9 @@ public abstract class GraphDatabaseSetting
 
     // Regular expression that matches a duration e.g. 10ms or 5s
     public static final String DURATION = "\\d+(ms|s|m)";
+
+    // Comma separated list
+    public static final String CSV = "([^,]*,)*([^,]*)"; // TODO This can probably be improved
 
     public interface DefaultValue
     {
@@ -291,6 +295,46 @@ public abstract class GraphDatabaseSetting
         public String[] options()
         {
             return options;
+        }
+    }
+
+    public static class FileSetting
+        extends StringSetting
+    {
+        public FileSetting( String name)
+        {
+            // TODO This should be replaced with proper path regex
+            super( name, ANY, "File %s does not exist or is not a valid filename" );
+        }
+
+        @Override
+        public void validate( Locale locale, String value )
+        {
+            File file = new File( value );
+            if (!file.exists() || file.isDirectory())
+                throw illegalValue( locale, value );
+
+            super.validate( locale, value );
+        }
+    }
+
+    public static class DirectorySetting
+        extends StringSetting
+    {
+        public DirectorySetting( String name)
+        {
+            // TODO This should be replaced with proper path regex
+            super( name, ANY, "Directory %s does not exist or is not a valid path" );
+        }
+
+        @Override
+        public void validate( Locale locale, String value )
+        {
+            File file = new File( value );
+            if (!file.exists() || file.isFile())
+                throw illegalValue( locale, value );
+
+            super.validate( locale, value );
         }
     }
 

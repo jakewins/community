@@ -67,7 +67,7 @@ public class PropertyFileConfigurator implements Configurator
     {
         if ( propertiesFile == null )
         {
-            propertiesFile = new File( System.getProperty( Configurator.NEO_SERVER_CONFIG_FILE_KEY ) );
+            propertiesFile = new File( System.getProperty( ServerSettings.neo_server_config_file.name() ) );
         }
 
         try
@@ -99,7 +99,7 @@ public class PropertyFileConfigurator implements Configurator
 
     private void loadDatabaseTuningProperties( File configFile ) throws ConfigurationException
     {
-        String databaseTuningPropertyFileLocation = serverConfiguration.getString( DB_TUNING_PROPERTY_FILE_KEY );
+        String databaseTuningPropertyFileLocation = serverConfiguration.getString( ServerSettings.db_tuning_property_file.name() );
 
         if ( databaseTuningPropertyFileLocation == null )
         {

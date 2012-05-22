@@ -29,6 +29,7 @@ import java.util.Properties;
 import org.junit.Test;
 import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 
 public class ConfigFileMustBePresentRuleTest
 {
@@ -53,7 +54,7 @@ public class ConfigFileMustBePresentRuleTest
     public void shouldPassIfThereIsAConfigFileWhereTheSystemPropertyPoints() throws IOException
     {
         File propertyFile = ServerTestUtils.createTempPropertyFile();
-        ServerTestUtils.writePropertyToFile( Configurator.DATABASE_LOCATION_PROPERTY_KEY, "/tmp/foo.db", propertyFile );
+        ServerTestUtils.writePropertyToFile( ServerSettings.database_location.name(), "/tmp/foo.db", propertyFile );
 
         ConfigFileMustBePresentRule rule = new ConfigFileMustBePresentRule();
         assertTrue( rule.execute( propertiesWithConfigFileLocation( propertyFile ) ) );
@@ -62,13 +63,13 @@ public class ConfigFileMustBePresentRuleTest
 
     private Properties propertiesWithoutConfigFileLocation()
     {
-        System.clearProperty( Configurator.NEO_SERVER_CONFIG_FILE_KEY );
+        System.clearProperty( ServerSettings.neo_server_config_file.name() );
         return System.getProperties();
     }
 
     private Properties propertiesWithConfigFileLocation( File propertyFile )
     {
-        System.setProperty( Configurator.NEO_SERVER_CONFIG_FILE_KEY, propertyFile.getAbsolutePath() );
+        System.setProperty( ServerSettings.neo_server_config_file.name(), propertyFile.getAbsolutePath() );
         return System.getProperties();
     }
 }

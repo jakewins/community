@@ -22,7 +22,7 @@ package org.neo4j.kernel.impl.transaction;
 
 import java.util.Iterator;
 import java.util.List;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 
 /**
@@ -56,12 +56,12 @@ public class TransactionRecovery
         boolean danglingRecordFound = danglingRecordList.hasNext();
         if ( danglingRecordFound )
         {
-            msgLog.logMessage( "Unresolved transactions found in " + txManagerTxLog.getName()+", recovery started...", true );
+            msgLog.warn( "Unresolved transactions found in " + txManagerTxLog.getName()+", recovery started...", true );
 
             // Recover DataSources
             xaDataSourceManager.recover(danglingRecordList);
 
-            msgLog.logMessage( "Recovery completed, all transactions have been " +
+            msgLog.warn( "Recovery completed, all transactions have been " +
                 "resolved to a consistent state." );
         }
         txManagerTxLog.truncate();

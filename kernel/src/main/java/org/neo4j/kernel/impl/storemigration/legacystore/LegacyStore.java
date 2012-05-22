@@ -22,12 +22,14 @@ package org.neo4j.kernel.impl.storemigration.legacystore;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.neo4j.kernel.impl.nioneo.store.IdGeneratorImpl;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class LegacyStore
 {
     public static final String FROM_VERSION = "NeoStore v0.9.9";
 
     private String storageFileName;
+    private StringLogger logger;
     private LegacyNeoStoreReader neoStoreReader;
     private LegacyPropertyStoreReader propertyStoreReader;
     private LegacyNodeStoreReader nodeStoreReader;
@@ -38,23 +40,24 @@ public class LegacyStore
     private LegacyRelationshipTypeStoreReader relationshipTypeStoreReader;
     private LegacyDynamicStoreReader relationshipTypeNameStoreReader;
 
-    public LegacyStore( String storageFileName ) throws IOException
+    public LegacyStore( String storageFileName, StringLogger logger ) throws IOException
     {
         this.storageFileName = storageFileName;
+        this.logger = logger;
         initStorage();
     }
 
     protected void initStorage() throws IOException
     {
-        neoStoreReader = new LegacyNeoStoreReader( getStorageFileName() );
-        propertyStoreReader = new LegacyPropertyStoreReader( getStorageFileName() + ".propertystore.db" );
-        dynamicRecordFetcher = new LegacyDynamicRecordFetcher( getStorageFileName() + ".propertystore.db.strings", getStorageFileName() + ".propertystore.db.arrays" );
+        neoStoreReader = new LegacyNeoStoreReader( logger, getStorageFileName() );
+        propertyStoreReader = new LegacyPropertyStoreReader( logger, getStorageFileName() + ".propertystore.db" );
+        dynamicRecordFetcher = new LegacyDynamicRecordFetcher( logger, getStorageFileName() + ".propertystore.db.strings", getStorageFileName() + ".propertystore.db.arrays" );
         nodeStoreReader = new LegacyNodeStoreReader( getStorageFileName() + ".nodestore.db" );
         relationshipStoreReader = new LegacyRelationshipStoreReader( getStorageFileName() + ".relationshipstore.db" );
         relationshipTypeStoreReader = new LegacyRelationshipTypeStoreReader( getStorageFileName() + ".relationshiptypestore.db" );
-        relationshipTypeNameStoreReader = new LegacyDynamicStoreReader( getStorageFileName() + ".relationshiptypestore.db.names", LegacyDynamicStoreReader.FROM_VERSION_STRING );
+        relationshipTypeNameStoreReader = new LegacyDynamicStoreReader( logger, getStorageFileName() + ".relationshiptypestore.db.names", LegacyDynamicStoreReader.FROM_VERSION_STRING );
         propertyIndexStoreReader = new LegacyPropertyIndexStoreReader( getStorageFileName() + ".propertystore.db.index" );
-        propertyIndexKeyStoreReader = new LegacyDynamicStoreReader( getStorageFileName() + ".propertystore.db.index.keys", LegacyDynamicStoreReader.FROM_VERSION_STRING );
+        propertyIndexKeyStoreReader = new LegacyDynamicStoreReader( logger, getStorageFileName() + ".propertystore.db.index.keys", LegacyDynamicStoreReader.FROM_VERSION_STRING );
     }
 
     public String getStorageFileName()

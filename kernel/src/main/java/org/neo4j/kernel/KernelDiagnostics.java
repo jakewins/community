@@ -27,7 +27,7 @@ import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 import org.neo4j.kernel.info.DiagnosticsProvider;
@@ -55,12 +55,12 @@ abstract class KernelDiagnostics implements DiagnosticsProvider
         @Override
         void dump( StringLogger logger )
         {
-            logger.logMessage( "Graph Database: " + graphDb.getName() + " " + storeId );
-            logger.logMessage( "Kernel version: " + Version.getKernel() );
-            logger.logMessage( "Neo4j component versions:" );
+            logger.info( "Graph Database: " + graphDb.getName() + " " + storeId );
+            logger.info( "Kernel version: " + Version.getKernel() );
+            logger.info( "Neo4j component versions:" );
             for ( Version componentVersion : Service.load( Version.class ) )
             {
-                logger.logMessage( "  " + componentVersion );
+                logger.info( "  " + componentVersion );
             }
         }
     }
@@ -80,7 +80,7 @@ abstract class KernelDiagnostics implements DiagnosticsProvider
             List<String> lines = new ArrayList<String>(  );
             logStoreFiles( lines, "", storeDir );
 
-            logger.logMessage( Format.logLongMessage("Storage files:", lines ));
+            logger.debug( Format.logLongMessage("Storage files:", lines ));
         }
 
         private static long logStoreFiles( List<String> lines, String prefix, File dir )

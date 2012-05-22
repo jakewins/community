@@ -109,7 +109,7 @@ public class ImpermanentGraphDatabase extends EmbeddedGraphDatabase
     }
     
     @Override
-    protected Logging createStringLogger()
+    protected Logging createLogging()
     {
         ClassicLoggingService logging = new ClassicLoggingService( config );
         life.add( logging );

@@ -54,7 +54,7 @@ public class ServerConfigurator implements Configurator
 
     public ServerConfigurator( GraphDatabaseAPI db )
     {
-        config.addProperty( DATABASE_LOCATION_PROPERTY_KEY, db.getStoreDir() );
+        config.addProperty( ServerSettings.database_location.name(), db.getStoreDir() );
     }
 
     @Override

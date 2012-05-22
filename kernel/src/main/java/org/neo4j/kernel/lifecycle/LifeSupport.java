@@ -25,7 +25,7 @@ import java.util.List;
 import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.collection.Iterables;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Support class for handling collections of Lifecycle instances. Manages the transitions from one state to another.
@@ -336,7 +336,7 @@ public class LifeSupport
                 return lifecycleInstance.toString();
             }
         }, instances ) );
-        logger.logMessage( msg );
+        logger.debug( msg );
     }
 
     private LifecycleException causedBy( LifecycleException exception, LifecycleException chainedLifecycleException )

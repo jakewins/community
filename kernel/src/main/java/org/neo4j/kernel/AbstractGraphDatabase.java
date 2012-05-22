@@ -105,7 +105,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvi
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.lifecycle.Lifecycle;
@@ -136,7 +136,7 @@ public abstract class AbstractGraphDatabase
         public static final GraphDatabaseSetting.BooleanSetting load_kernel_extensions = GraphDatabaseSettings.load_kernel_extensions;
         public static final GraphDatabaseSetting.BooleanSetting ephemeral = new GraphDatabaseSetting.BooleanSetting("ephemeral");
 
-        public static final GraphDatabaseSetting.StringSetting store_dir = new GraphDatabaseSetting.StringSetting( "store_dir",".*","TODO" );
+        public static final GraphDatabaseSetting.FileSetting store_dir = new GraphDatabaseSetting.FileSetting( "store_dir");
         public static final GraphDatabaseSetting.StringSetting neo_store = new GraphDatabaseSetting.StringSetting( "neo_store",".*","TODO" );
         public static final GraphDatabaseSetting.StringSetting logical_log = new GraphDatabaseSetting.StringSetting( "logical_log",".*","TODO" );
     }
@@ -244,6 +244,7 @@ public abstract class AbstractGraphDatabase
         // Get the list of settings classes for extensions
         List<Class<?>> settingsClasses = new ArrayList<Class<?>>();
         settingsClasses.add( GraphDatabaseSettings.class );
+        settingsClasses.add( ClassicLoggingService.Configuration.class );
         for( KernelExtension kernelExtension : kernelExtensions )
         {
             Class settingsClass = kernelExtension.getSettingsClass();
@@ -260,7 +261,7 @@ public abstract class AbstractGraphDatabase
         config = new Config( configurationDefaults.apply( new SystemPropertiesConfiguration(settingsClasses).apply( params ) ) );
 
         // Create logger
-        this.logging = createStringLogger();
+        this.logging = createLogging();
 
         // Collect system properties, migrate settings and then apply defaults again
         ConfigurationMigrator configurationMigrator = new ConfigurationMigrator( logging.getLogger( Loggers.CONFIG ) );
@@ -303,7 +304,7 @@ public abstract class AbstractGraphDatabase
 
         if (readOnly)
         {
-            txManager = new ReadOnlyTxManager(xaDataSourceManager);
+            txManager = new ReadOnlyTxManager(logging.getLogger( Loggers.TXMANAGER ), xaDataSourceManager);
 
         } else
         {
@@ -343,13 +344,13 @@ public abstract class AbstractGraphDatabase
         syncHook = new DefaultTxEventSyncHookFactory();
 
         // TODO Cyclic dependency! lockReleaser is null here
-        persistenceManager = new PersistenceManager(txManager,
+        persistenceManager = new PersistenceManager(logging.getLogger( Loggers.PERSISTENCE_MANAGER ), txManager,
                 persistenceSource, syncHook, lockReleaser );
 
         propertyIndexManager = life.add(new PropertyIndexManager(
                 txManager, persistenceManager, persistenceSource));
 
-        lockReleaser = new LockReleaser(lockManager, txManager, propertyIndexManager);
+        lockReleaser = new LockReleaser(logging.getLogger( Loggers.LOCKING ), lockManager, txManager, propertyIndexManager);
         persistenceManager.setLockReleaser(lockReleaser); // TODO This cyclic dep needs to be refactored
 
         relationshipTypeHolder = new RelationshipTypeHolder( txManager,
@@ -444,12 +445,12 @@ public abstract class AbstractGraphDatabase
     {
         if ( readOnly )
         {
-            return new ReadOnlyNodeManager( config, this, lockManager, lockReleaser, txManager, persistenceManager,
+            return new ReadOnlyNodeManager( logging.getLogger( Loggers.NODEMANAGER ), config, this, lockManager, lockReleaser, txManager, persistenceManager,
                     persistenceSource, relationshipTypeHolder, caches, propertyIndexManager, createNodeLookup(),
                     createRelationshipLookups() );
         }
 
-        return new NodeManager( config, this, lockManager, lockReleaser, txManager, persistenceManager,
+        return new NodeManager( logging.getLogger( Loggers.NODEMANAGER ), config, this, lockManager, lockReleaser, txManager, persistenceManager,
                 persistenceSource, relationshipTypeHolder, caches, propertyIndexManager, createNodeLookup(),
                 createRelationshipLookups() );
     }
@@ -458,7 +459,7 @@ public abstract class AbstractGraphDatabase
     {
         if ( readOnly )
         {
-            return new ReadOnlyNodeManager( config, this, lockManager, lockReleaser, txManager, persistenceManager,
+            return new ReadOnlyNodeManager( logging.getLogger( Loggers.NODEMANAGER ), config, this, lockManager, lockReleaser, txManager, persistenceManager,
                     persistenceSource, relationshipTypeHolder, caches, propertyIndexManager, createNodeLookup(),
                     createRelationshipLookups() )
             {
@@ -507,7 +508,7 @@ public abstract class AbstractGraphDatabase
             };
         }
 
-        return new NodeManager( config, this, lockManager, lockReleaser, txManager, persistenceManager,
+        return new NodeManager( logging.getLogger( Loggers.NODEMANAGER ), config, this, lockManager, lockReleaser, txManager, persistenceManager,
                 persistenceSource, relationshipTypeHolder, caches, propertyIndexManager, createNodeLookup(),
                 createRelationshipLookups() )
         {
@@ -708,7 +709,7 @@ public abstract class AbstractGraphDatabase
         return new LockManager(ragManager);
     }
 
-    protected Logging createStringLogger()
+    protected Logging createLogging()
     {
         try
         {
@@ -1363,7 +1364,7 @@ public abstract class AbstractGraphDatabase
             throws Throwable
         {
             // TODO: Starting database. Make sure none can access it through lock or CAS
-            msgLog.logMessage( "Started - database is now available" );
+            msgLog.info( "Started - database is now available" );
         }
 
         @Override
@@ -1371,7 +1372,7 @@ public abstract class AbstractGraphDatabase
             throws Throwable
         {
             // TODO: Starting database. Make sure none can access it through lock or CAS
-            msgLog.logMessage( "Stopping - database is now unavailable" );
+            msgLog.info( "Stopping - database is now unavailable" );
         }
 
         @Override
@@ -1430,11 +1431,11 @@ public abstract class AbstractGraphDatabase
                                         life.stop();
                                         life.start();
 
-                                        msgLog.logMessage( "Database restarted with the following configuration changes:" + change );
+                                        msgLog.info( "Database restarted with the following configuration changes:" + change );
                                     }
                                     catch( LifecycleException e )
                                     {
-                                        msgLog.logMessage( "Could not restart database", e );
+                                        msgLog.error( "Could not restart database", e );
                                     }
                                 }
                             } );

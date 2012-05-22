@@ -31,7 +31,7 @@ import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class StoreUpgrader
 {
@@ -109,10 +109,10 @@ public class StoreUpgrader
 
         Config upgradeConfiguration = new Config( upgradeConfig );
         
-        NeoStore neoStore = new StoreFactory(upgradeConfiguration, idGeneratorFactory, fileSystemAbstraction, null, StringLogger.DEV_NULL, null).createNeoStore(upgradeFileName);
+        NeoStore neoStore = new StoreFactory(upgradeConfiguration, idGeneratorFactory, fileSystemAbstraction, null, StringLogger.SYSTEM, null).createNeoStore(upgradeFileName);
         try
         {
-            storeMigrator.migrate( new LegacyStore( storageFileName ), neoStore );
+            storeMigrator.migrate( new LegacyStore( storageFileName, StringLogger.SYSTEM ), neoStore );
         }
         catch ( IOException e )
         {

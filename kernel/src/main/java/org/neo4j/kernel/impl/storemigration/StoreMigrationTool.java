@@ -36,7 +36,7 @@ import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class StoreMigrationTool
 {
@@ -50,7 +50,7 @@ public class StoreMigrationTool
 
     private void run( String legacyStoreDirectory, String targetStoreDirectory ) throws IOException
     {
-        LegacyStore legacyStore = new LegacyStore( new File( new File( legacyStoreDirectory ), NeoStore.DEFAULT_NAME ).getPath() );
+        LegacyStore legacyStore = new LegacyStore( new File( new File( legacyStoreDirectory ), NeoStore.DEFAULT_NAME ).getPath(), StringLogger.SYSTEM );
 
         Map<String,String> config = new HashMap<String,String>();
 
@@ -75,7 +75,7 @@ public class StoreMigrationTool
 
         long startTime = System.currentTimeMillis();
 
-        new StoreMigrator( new VisibleMigrationProgressMonitor( System.out ) ) .migrate( legacyStore, neoStore );
+        new StoreMigrator( new VisibleMigrationProgressMonitor( StringLogger.SYSTEM, System.out ) ) .migrate( legacyStore, neoStore );
 
         long duration = System.currentTimeMillis() - startTime;
         System.out.printf( "Migration completed in %d s%n", duration / 1000 );

@@ -67,7 +67,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransactionFactory;
 import org.neo4j.kernel.impl.util.ArrayMap;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.info.DiagnosticsPhase;
@@ -148,7 +148,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource implements Lifec
         {
             if ( phase.isInitialization() || phase.isExplicitlyRequested() )
             {
-                log.logMessage( Format.logLongMessage(message, new Iterable<String>()
+                log.debug( Format.logLongMessage(message, new Iterable<String>()
                 {
                     @Override
                     public Iterator<String> iterator()
@@ -276,7 +276,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource implements Lifec
             }
             catch ( Exception closeException )
             {
-                msgLog.logMessage( "Couldn't close neostore after startup failure" );
+                msgLog.error( "Couldn't close neostore after startup failure" );
             }
             throw Exceptions.launderedException( e );
         }

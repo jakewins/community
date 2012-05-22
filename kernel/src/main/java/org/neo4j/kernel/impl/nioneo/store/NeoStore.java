@@ -26,7 +26,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.IdGeneratorFactory;
@@ -35,7 +34,7 @@ import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
 import org.neo4j.kernel.impl.transaction.TxHook;
 import org.neo4j.kernel.impl.util.Bits;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * This class contains the references to the "NodeStore,RelationshipStore,
@@ -79,7 +78,7 @@ public class NeoStore extends AbstractStore
                     StringLogger stringLogger, TxHook txHook,
                     RelationshipTypeStore relTypeStore, PropertyStore propStore, RelationshipStore relStore, NodeStore nodeStore)
     {
-        super( fileName, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, fileSystemAbstraction, stringLogger);
+        super( stringLogger, fileName, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, fileSystemAbstraction);
         this.fileName = fileName;
         this.conf = conf;
         this.lastCommittedTxIdSetter = lastCommittedTxIdSetter;
@@ -214,26 +213,27 @@ public class NeoStore extends AbstractStore
      */
     @Override
     protected void closeStorage()
+        throws Throwable
     {
         if ( lastCommittedTxIdSetter != null ) lastCommittedTxIdSetter.close();
         if ( relTypeStore != null )
         {
-            relTypeStore.close();
+            relTypeStore.shutdown();
             relTypeStore = null;
         }
         if ( propStore != null )
         {
-            propStore.close();
+            propStore.shutdown();
             propStore = null;
         }
         if ( relStore != null )
         {
-            relStore.close();
+            relStore.shutdown();
             relStore = null;
         }
         if ( nodeStore != null )
         {
-            nodeStore.close();
+            nodeStore.shutdown();
             nodeStore = null;
         }
     }
@@ -429,7 +429,7 @@ public class NeoStore extends AbstractStore
             }
             catch ( RuntimeException e )
             {
-                logger.log( Level.WARNING, "Could not set last committed tx id", e );
+                logger.warn( "Could not set last committed tx id", e );
             }
         }
         lastCommittedTx = txId;
@@ -603,8 +603,6 @@ public class NeoStore extends AbstractStore
         relStore.logVersions( msgLog );
         relTypeStore.logVersions( msgLog );
         propStore.logVersions(msgLog  );
-
-        stringLogger.flush();
     }
 
     @Override
@@ -615,7 +613,6 @@ public class NeoStore extends AbstractStore
         relStore.logIdUsage(msgLog );
         relTypeStore.logIdUsage( msgLog);
         propStore.logIdUsage( msgLog );
-        stringLogger.flush();
     }
 
     public NeoStoreRecord asRecord()

@@ -27,7 +27,7 @@ import java.util.List;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public abstract class AbstractNameStore<T extends AbstractNameRecord> extends AbstractStore implements Store, RecordStore<T>
 {
@@ -44,7 +44,7 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
                              IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
                              DynamicStringStore nameStore)
     {
-        super( fileName, configuration, idType, idGeneratorFactory, fileSystemAbstraction, stringLogger );
+        super( stringLogger, fileName, configuration, idType, idGeneratorFactory, fileSystemAbstraction);
         this.nameStore = nameStore;
     }
 
@@ -100,10 +100,11 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
 
     @Override
     protected void closeStorage()
+        throws Throwable
     {
         if ( nameStore != null )
         {
-            nameStore.close();
+            nameStore.shutdown();
             nameStore = null;
         }
     }

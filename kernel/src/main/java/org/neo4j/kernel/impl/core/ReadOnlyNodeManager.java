@@ -30,16 +30,17 @@ import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class ReadOnlyNodeManager extends NodeManager
 {
-    public ReadOnlyNodeManager(Config config, GraphDatabaseService graphDb, LockManager lockManager, LockReleaser lockReleaser,
+    public ReadOnlyNodeManager(StringLogger logger, Config config, GraphDatabaseService graphDb, LockManager lockManager, LockReleaser lockReleaser,
                                TransactionManager transactionManager, PersistenceManager persistenceManager,
                                EntityIdGenerator idGenerator, RelationshipTypeHolder relationshipTypeHolder,
                                Caches caches, PropertyIndexManager propertyIndexManager,
                                NodeProxy.NodeLookup nodeLookup, RelationshipProxy.RelationshipLookups relationshipLookups)
     {
-        super(config, graphDb, lockManager, lockReleaser, transactionManager, persistenceManager, idGenerator,
+        super( logger, config, graphDb, lockManager, lockReleaser, transactionManager, persistenceManager, idGenerator,
                 relationshipTypeHolder, caches, propertyIndexManager, nodeLookup, relationshipLookups);
     }
 

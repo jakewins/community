@@ -32,7 +32,7 @@ import org.neo4j.helpers.Exceptions;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 import org.neo4j.kernel.impl.util.ArrayMap;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.lifecycle.Lifecycle;
 
 public class ReadOnlyTxManager extends AbstractTransactionManager

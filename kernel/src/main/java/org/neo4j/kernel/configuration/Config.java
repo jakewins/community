@@ -30,7 +30,7 @@ import org.neo4j.helpers.Function;
 import org.neo4j.helpers.TimeUtil;
 import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.kernel.impl.annotations.Documented;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 import org.neo4j.kernel.info.DiagnosticsProvider;
 
@@ -362,7 +362,7 @@ public class Config implements DiagnosticsProvider
     {
         if ( phase.isInitialization() || phase.isExplicitlyRequested() )
         {
-            log.logMessage( logLongMessage( "Neo4j Kernel properties:", Iterables.map( new Function<Map.Entry<String, String>, String>()
+            log.info( logLongMessage( "Neo4j Kernel properties:", Iterables.map( new Function<Map.Entry<String, String>, String>()
             {
                 public String map( Map.Entry<String, String> stringStringEntry )
                 {

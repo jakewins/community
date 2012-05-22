@@ -31,7 +31,7 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * An abstract representation of a store. A store is a file that contains
@@ -72,9 +72,9 @@ public abstract class AbstractStore extends CommonAbstractStore
         }
     }
 
-    public AbstractStore( String fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger )
+    public AbstractStore( StringLogger logger, String fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
     {
-        super( fileName, conf, idType, idGeneratorFactory, fileSystemAbstraction, stringLogger );
+        super( logger, fileName, conf, idType, idGeneratorFactory, fileSystemAbstraction );
         this.conf = conf;
     }
 
@@ -163,7 +163,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             throw new ReadOnlyDbException();
         }
 
-        logger.fine( "Rebuilding id generator for[" + getStorageFileName()
+        logger.debug( "Rebuilding id generator for[" + getStorageFileName()
             + "] ..." );
         closeIdGenerator();
         if ( fileSystemAbstraction.fileExists( getStorageFileName() + ".id" ) )
@@ -221,10 +221,8 @@ public abstract class AbstractStore extends CommonAbstractStore
                 "Unable to rebuild id generator " + getStorageFileName(), e );
         }
         setHighId( highId + 1 );
-        stringLogger.logMessage( getStorageFileName() + " rebuild id generator, highId=" + getHighId() +
+        logger.debug( getStorageFileName() + " rebuild id generator, highId=" + getHighId() +
                 " defragged count=" + defraggedCount, true );
-        logger.fine( "[" + getStorageFileName() + "] high id=" + getHighId()
-            + " (defragged=" + defraggedCount + ")" );
         closeIdGenerator();
         openIdGenerator( false );
     }

@@ -37,7 +37,8 @@ import org.neo4j.kernel.impl.storemigration.StoreUpgrader;
 import org.neo4j.kernel.impl.storemigration.UpgradableDatabase;
 import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
 import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
 * Factory for Store implementations. Can also be used to create empty stores.
@@ -93,7 +94,7 @@ public class StoreFactory
     private void tryToUpgradeStores( String fileName )
     {
         new StoreUpgrader(config, stringLogger, new ConfigMapUpgradeConfiguration(config),
-                new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( System.out ) ),
+                new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( stringLogger, System.out ) ),
                 new DatabaseFiles(), idGeneratorFactory, fileSystemAbstraction ).attemptUpgrade( fileName );
     }
 
@@ -184,11 +185,19 @@ public class StoreFactory
     private void createNodeStore( String fileName )
     {
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( NodeStore.TYPE_DESCRIPTOR ) );
-        NodeStore store = newNodeStore( fileName );
-        NodeRecord nodeRecord = new NodeRecord( store.nextId(), Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
-        nodeRecord.setInUse( true );
-        store.updateRecord( nodeRecord );
-        store.close();
+        LifeSupport life = new LifeSupport();
+        NodeStore store = life.add( newNodeStore( fileName ) );
+        try
+        {
+            life.start();
+            NodeRecord nodeRecord = new NodeRecord( store.nextId(), Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
+            nodeRecord.setInUse( true );
+            store.updateRecord( nodeRecord );
+        }
+        finally
+        {
+            life.shutdown();
+        }
     }
 
     /**
@@ -241,8 +250,17 @@ public class StoreFactory
     {
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( RelationshipTypeStore.TYPE_DESCRIPTOR ));
         createDynamicStringStore( fileName + ".names", AbstractNameStore.NAME_STORE_BLOCK_SIZE, IdType.RELATIONSHIP_TYPE_BLOCK);
-        RelationshipTypeStore store = newRelationshipTypeStore( fileName );
-        store.close();
+
+        LifeSupport life = new LifeSupport();
+        RelationshipTypeStore store = life.add( newRelationshipTypeStore( fileName ) );
+        try
+        {
+            life.start();
+        }
+        finally
+        {
+            life.shutdown();
+        }
     }
 
     private void createDynamicStringStore( String fileName, int blockSize, IdType idType )

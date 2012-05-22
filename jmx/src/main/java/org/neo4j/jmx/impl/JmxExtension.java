@@ -28,7 +28,7 @@ import javax.management.remote.JMXServiceURL;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.KernelData;
 import org.neo4j.kernel.KernelExtension;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.logging.Logging;
 
 import static java.lang.management.ManagementFactory.*;

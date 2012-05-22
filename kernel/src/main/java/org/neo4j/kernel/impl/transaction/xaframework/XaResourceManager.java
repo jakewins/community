@@ -37,7 +37,7 @@ import javax.transaction.xa.Xid;
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.transaction.xaframework.LogEntry.Start;
 import org.neo4j.kernel.impl.util.ArrayMap;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 // make package access?
 public class XaResourceManager
@@ -603,7 +603,7 @@ public class XaResourceManager
 
     synchronized void checkXids() throws IOException
     {
-        msgLog.logMessage( "XaResourceManager[" + name + "] sorting " +
+        msgLog.info( "XaResourceManager[" + name + "] sorting " +
                 xidMap.size() + " xids" );
         Iterator<Xid> keyIterator = xidMap.keySet().iterator();
         LinkedList<Xid> xids = new LinkedList<Xid>();
@@ -674,7 +674,7 @@ public class XaResourceManager
     {
         if ( log.scanIsComplete() && recoveredTxCount == 0 )
         {
-            msgLog.logMessage( "XaResourceManager[" + name + "] checkRecoveryComplete " + xidMap.size() + " xids" );
+            msgLog.info( "XaResourceManager[" + name + "] checkRecoveryComplete " + xidMap.size() + " xids" );
             // log.makeNewLog();
             tf.recoveryComplete();
             try
@@ -704,7 +704,7 @@ public class XaResourceManager
                 // TODO Why only printStackTrace?
                 e.printStackTrace();
             }
-            msgLog.logMessage( "XaResourceManager[" + name + "] recovery completed." );
+            msgLog.info( "XaResourceManager[" + name + "] recovery completed." );
         }
     }
 

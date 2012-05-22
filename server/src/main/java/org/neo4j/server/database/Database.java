@@ -25,6 +25,7 @@ import java.util.Map;
 import org.neo4j.ext.udc.UdcSettings;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.IndexManager;
@@ -51,43 +52,19 @@ public class Database
         graph = db;
     }
 
-    public Database( GraphDatabaseFactory factory, String databaseStoreDirectory )
+    public Database( GraphDatabaseBuilder factory)
     {
-        this( createDatabase( factory, databaseStoreDirectory, null ) );
-        log.warn(
-                "No database tuning properties set in the property file, using defaults. Please specify the performance properties file with org.neo4j.server.db.tuning.properties in the server properties file [%s].",
-                System.getProperty( "org.neo4j.server.properties" ) );
-    }
+        if (!factory.hasConfig( ShellSettings.remote_shell_enabled ))
+            factory.setConfig( ShellSettings.remote_shell_enabled, GraphDatabaseSetting.TRUE );
 
-    public Database( GraphDatabaseFactory factory, String databaseStoreDirectory,
-            Map<String, String> databaseTuningProperties )
-    {
-        this( createDatabase( factory, databaseStoreDirectory, databaseTuningProperties ) );
-    }
+        if (!factory.hasConfig( GraphDatabaseSettings.keep_logical_logs ))
+            factory.setConfig( GraphDatabaseSettings.keep_logical_logs, GraphDatabaseSetting.TRUE );
+        factory.setConfig( UdcSettings.udc_source, "server" );
 
-    private static GraphDatabaseAPI createDatabase( GraphDatabaseFactory factory, String databaseStoreDirectory,
-            Map<String, String> databaseProperties )
-    {
+        graph = (GraphDatabaseAPI) factory.newGraphDatabase();
+        databaseStoreDirectory = graph.getStoreDir();
+
         log.info( "Using database at " + databaseStoreDirectory );
-
-        if ( databaseProperties == null )
-        {
-            databaseProperties = new HashMap<String, String>();
-        }
-
-        putIfAbsent( databaseProperties, ShellSettings.remote_shell_enabled.name(), GraphDatabaseSetting.TRUE );
-        putIfAbsent( databaseProperties, GraphDatabaseSettings.keep_logical_logs.name(), GraphDatabaseSetting.TRUE );
-        databaseProperties.put( UdcSettings.udc_source.name(), "server" );
-
-        return factory.createDatabase( databaseStoreDirectory, databaseProperties );
-    }
-
-    private static void putIfAbsent( Map<String, String> databaseProperties, String configKey, String configValue )
-    {
-        if ( databaseProperties.get( configKey ) == null )
-        {
-            databaseProperties.put( configKey, configValue );
-        }
     }
 
     public void startup()

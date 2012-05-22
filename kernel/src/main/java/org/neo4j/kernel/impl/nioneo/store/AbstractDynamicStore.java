@@ -31,7 +31,7 @@ import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * An abstract representation of a dynamic store. The difference between a
@@ -62,10 +62,10 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
     private Config conf;
     private int blockSize;
 
-    public AbstractDynamicStore( String fileName, Config conf, IdType idType,
-                                 IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
+    public AbstractDynamicStore( StringLogger logger, String fileName, Config conf, IdType idType,
+                                 IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
     {
-        super( fileName, conf, idType, idGeneratorFactory, fileSystemAbstraction, stringLogger );
+        super( logger, fileName, conf, idType, idGeneratorFactory, fileSystemAbstraction );
         this.conf = conf;
     }
 
@@ -467,7 +467,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
             throw new InvalidRecordException( "Illegal blockSize: " +
                 getBlockSize() );
         }
-        logger.fine( "Rebuilding id generator for[" + getStorageFileName()
+        logger.debug( "Rebuilding id generator for[" + getStorageFileName()
             + "] ..." );
         closeIdGenerator();
         if ( fileSystemAbstraction.fileExists( getStorageFileName() + ".id" ) )
@@ -525,13 +525,8 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
                 "Unable to rebuild id generator " + getStorageFileName(), e );
         }
         setHighId( highId + 1 );
-        logger.fine( "[" + getStorageFileName() + "] high id=" + getHighId()
+        logger.debug( "[" + getStorageFileName() + "] high id=" + getHighId()
             + " (defragged=" + defraggedCount + ")" );
-        if ( stringLogger != null )
-        {
-            stringLogger.logMessage( getStorageFileName() + " rebuild id generator, highId=" + getHighId() +
-                    " defragged count=" + defraggedCount, true );
-        }
         closeIdGenerator();
         openIdGenerator( false );
     }

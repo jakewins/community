@@ -21,7 +21,7 @@ package org.neo4j.kernel.guard;
 
 import static java.lang.System.currentTimeMillis;
 
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class Guard
 {
@@ -99,7 +99,7 @@ public class Guard
 
             if ( max < opsCount )
             {
-                logger.logMessage( "guard-timeout: node-ops: more than " + max );
+                logger.warn( "guard-timeout: node-ops: more than " + max );
                 throw new GuardOperationsCountException( opsCount );
             }
         }
@@ -128,7 +128,7 @@ public class Guard
             if ( valid < currentTimeMillis() )
             {
                 final long overtime = currentTimeMillis() - valid;
-                logger.logMessage( "guard-timeout:" + (valid - start) + "(+" + overtime + ")ms" );
+                logger.warn( "guard-timeout:" + (valid - start) + "(+" + overtime + ")ms" );
                 throw new GuardTimeoutException( overtime );
             }
         }

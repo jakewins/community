@@ -32,7 +32,7 @@ import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Implementation of the property store. This implementation has two dynamic
@@ -61,10 +61,10 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
     private PropertyIndexStore propertyIndexStore;
     private DynamicArrayStore arrayPropertyStore;
 
-    public PropertyStore(String fileName, Config configuration, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
+    public PropertyStore(String fileName, Config configuration, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger logger,
                          DynamicStringStore stringPropertyStore, PropertyIndexStore propertyIndexStore, DynamicArrayStore arrayPropertyStore)
     {
-        super( fileName, configuration, IdType.PROPERTY, idGeneratorFactory, fileSystemAbstraction, stringLogger );
+        super( logger, fileName, configuration, IdType.PROPERTY, idGeneratorFactory, fileSystemAbstraction );
         this.stringPropertyStore = stringPropertyStore;
         this.propertyIndexStore = propertyIndexStore;
         this.arrayPropertyStore = arrayPropertyStore;
@@ -107,20 +107,21 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
 
     @Override
     protected void closeStorage()
+        throws Throwable
     {
         if ( stringPropertyStore != null )
         {
-            stringPropertyStore.close();
+            stringPropertyStore.shutdown();
             stringPropertyStore = null;
         }
         if ( propertyIndexStore != null )
         {
-            propertyIndexStore.close();
+            propertyIndexStore.shutdown();
             propertyIndexStore = null;
         }
         if ( arrayPropertyStore != null )
         {
-            arrayPropertyStore.close();
+            arrayPropertyStore.shutdown();
             arrayPropertyStore = null;
         }
     }

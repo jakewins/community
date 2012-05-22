@@ -21,7 +21,7 @@ package org.neo4j.server.modules;
 
 import static org.neo4j.server.JAXRSHelper.listFrom;
 
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.logging.Logger;

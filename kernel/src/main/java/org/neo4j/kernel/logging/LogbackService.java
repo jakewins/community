@@ -29,7 +29,6 @@ import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.RestartOnChange;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 import org.slf4j.Logger;
@@ -150,15 +149,43 @@ public class LogbackService
         }
 
         @Override
-        public void addRotationListener( Runnable listener )
+        public void logMessage( Level level, String msg )
         {
-            // Ignore
+            switch (level)
+            {
+                case DEBUG:
+                    logger.debug( msg );
+                    return;
+                case INFO:
+                    logger.info( msg );
+                    return;
+                case WARN:
+                    logger.warn( msg );
+                    return;
+                case ERROR:
+                    logger.error( msg );
+                    return;
+            }
         }
 
         @Override
-        public void flush()
+        public void logMessage( Level level, String msg, Throwable throwable )
         {
-            // Ignore
+            switch (level)
+            {
+                case DEBUG:
+                    logger.debug( msg );
+                    return;
+                case INFO:
+                    logger.info( msg );
+                    return;
+                case WARN:
+                    logger.warn( msg );
+                    return;
+                case ERROR:
+                    logger.error( msg );
+                    return;
+            }
         }
 
         @Override

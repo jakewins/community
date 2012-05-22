@@ -41,9 +41,10 @@ import org.neo4j.kernel.impl.storemigration.StoreUpgrader;
 import org.neo4j.kernel.impl.storemigration.UpgradableDatabase;
 import org.neo4j.kernel.impl.storemigration.UpgradeNotAllowedByConfigurationException;
 import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.PropertyFileConfigurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
 import org.neo4j.server.configuration.validation.Validator;
 import org.neo4j.server.logging.Logger;
@@ -79,7 +80,7 @@ public class PreStartupStoreUpgrader
             HashMap<String, String> config = new HashMap<String, String>( configurator.getDatabaseTuningProperties() );
 
             String dbLocation = new File( configurator.configuration()
-                    .getString( Configurator.DATABASE_LOCATION_PROPERTY_KEY ) ).getAbsolutePath();
+                    .getString( ServerSettings.database_location.name() ) ).getAbsolutePath();
 
             if ( new CurrentDatabase().storeFilesAtCurrentVersion( new File( dbLocation ) ) )
             {
@@ -101,7 +102,7 @@ public class PreStartupStoreUpgrader
             FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
             Config conf = new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(config) );
             StoreUpgrader storeUpgrader = new StoreUpgrader( conf, StringLogger.SYSTEM,new ConfigMapUpgradeConfiguration( conf ),
-                    new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( out ) ),
+                    new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( StringLogger.SYSTEM, out ) ),
                     new DatabaseFiles(), new DefaultIdGeneratorFactory(), fileSystem );
 
             try
@@ -130,8 +131,7 @@ public class PreStartupStoreUpgrader
 
     protected Configurator getConfigurator()
     {
-        File configFile = new File( systemProperties.getProperty( Configurator.NEO_SERVER_CONFIG_FILE_KEY,
-                Configurator.DEFAULT_CONFIG_DIR ) );
+        File configFile = new File( systemProperties.getProperty( ServerSettings.neo_server_config_file.name() ) );
         return new PropertyFileConfigurator( new Validator( new DatabaseLocationMustBeSpecifiedRule() ), configFile );
     }
 

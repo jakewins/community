@@ -27,13 +27,30 @@ package org.neo4j.kernel.lifecycle;
 public class LifecycleException
     extends RuntimeException
 {
+    private Object instance;
     LifecycleStatus from;
     LifecycleStatus to;
     
     public LifecycleException( Object instance, LifecycleStatus from, LifecycleStatus to, Throwable cause )
     {
         super("Failed to transition "+instance.toString()+" from "+from.name()+" to "+to.name(), cause);
+        this.instance = instance;
         this.from = from;
         this.to = to;
+    }
+
+    public Object getInstance()
+    {
+        return instance;
+    }
+
+    public LifecycleStatus getFrom()
+    {
+        return from;
+    }
+
+    public LifecycleStatus getTo()
+    {
+        return to;
     }
 }

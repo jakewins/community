@@ -21,7 +21,7 @@
 package org.neo4j.kernel.configuration;
 
 import org.junit.Test;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;

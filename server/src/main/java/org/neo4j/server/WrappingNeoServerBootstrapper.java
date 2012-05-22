@@ -23,11 +23,15 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.ServerConfigurator;
 import org.neo4j.server.database.GraphDatabaseFactory;
+import org.neo4j.server.configuration.EmbeddedServerConfigurator;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
@@ -143,10 +147,22 @@ public class WrappingNeoServerBootstrapper extends Bootstrapper
         return new GraphDatabaseFactory()
         {
             @Override
-            public GraphDatabaseAPI createDatabase( String databaseStoreDirectory,
-                    Map<String, String> databaseProperties )
+            public GraphDatabaseService newEmbeddedDatabase( String path )
             {
-                return db;
+                return super.newEmbeddedDatabase( path );
+            }
+
+            @Override
+            public GraphDatabaseBuilder newEmbeddedDatabaseBuilder( String path )
+            {
+                return new GraphDatabaseBuilder( new GraphDatabaseBuilder.DatabaseCreator()
+                {
+                    @Override
+                    public GraphDatabaseService newDatabase( Map<String, String> config )
+                    {
+                        return db;
+                    }
+                } );
             }
         };
     }

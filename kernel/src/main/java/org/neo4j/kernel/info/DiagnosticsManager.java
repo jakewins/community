@@ -28,7 +28,8 @@ import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.helpers.collection.Visitor;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.FileStringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor.VisitableDiagnostics;
 import org.neo4j.kernel.lifecycle.Lifecycle;
 
@@ -60,14 +61,20 @@ public final class DiagnosticsManager implements Iterable<DiagnosticsProvider>, 
 
     public DiagnosticsManager( StringLogger logger )
     {
-        ( this.logger = logger ).addRotationListener( new Runnable()
+        this.logger = logger;
+
+        if (logger instanceof FileStringLogger )
         {
-            @Override
-            public void run()
+            ((FileStringLogger)logger).addRotationListener( new Runnable()
             {
-                dumpAll( DiagnosticsPhase.LOG_ROTATION );
-            }
-        } );
+                @Override
+                public void run()
+                {
+                    dumpAll( DiagnosticsPhase.LOG_ROTATION );
+                }
+            } );
+        }
+
         providers.add( new DiagnosticsProvider(/*self*/)
         {
             @Override

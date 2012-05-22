@@ -20,9 +20,14 @@
 
 package org.neo4j.kernel.logging;
 
+import java.io.File;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.Default;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 
 /**
@@ -32,13 +37,32 @@ public class ClassicLoggingService
     extends LifecycleAdapter
     implements Logging
 {
-    private Config config;
+    public static final class Configuration
+    {
+        public static final GraphDatabaseSetting.FileSetting store_dir = AbstractGraphDatabase.Configuration.store_dir;
+
+        @Default(""+(100 * 1024 * 1024))
+        public static final GraphDatabaseSetting.IntegerSetting threshold_for_rotation = new GraphDatabaseSetting.IntegerSetting( "logging.threshold_for_rotation", "Must be valid number", 1, null );
+    }
+
+    public static final String DEFAULT_NAME = "messages.log";
+
     protected StringLogger stringLogger;
+
+    public ClassicLoggingService()
+    {
+        stringLogger = StringLogger.DEV_NULL;
+    }
+
+    public ClassicLoggingService(OutputStream out)
+    {
+        stringLogger = new FileStringLogger( new PrintWriter( out));
+    }
 
     public ClassicLoggingService(Config config)
     {
-        this.config = config;
-        stringLogger = StringLogger.logger( config.get( AbstractGraphDatabase.Configuration.store_dir ) );
+        stringLogger = new FileStringLogger( new File( config.get( Configuration.store_dir ), DEFAULT_NAME ).getAbsolutePath(),
+                                              config.getInteger( Configuration.threshold_for_rotation ) );
     }
 
     @Override

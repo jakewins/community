@@ -70,8 +70,8 @@ public class LogbackServiceTest
             Logging logging = life.add( new LogbackService(config));
             life.start();
 
-            logging.getLogger( "foo" ).logMessage( "TEST" );
-            logging.getLogger( "neo4j.test" ).logMessage( "TEST" );
+            logging.getLogger( "foo" ).info( "TEST" );
+            logging.getLogger( "neo4j.test" ).info( "TEST" );
         }
         finally
         {
@@ -123,8 +123,8 @@ public class LogbackServiceTest
             Logging logging = life.add( new LogbackService(config));
             life.start();
 
-            logging.getLogger( "foo" ).logMessage( "TEST" );
-            logging.getLogger( "neo4j" ).logMessage( "TEST" );
+            logging.getLogger( "foo" ).info( "TEST" );
+            logging.getLogger( "neo4j" ).info( "TEST" );
         }
         finally
         {

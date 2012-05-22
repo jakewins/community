@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.Args;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static java.util.regex.Pattern.*;
 
@@ -109,10 +109,10 @@ public class ConfigurationMigrator
         if (!anyDeprecatedSettings)
         {
             anyDeprecatedSettings = true;
-            messageLog.logMessage( "WARNING! Deprecated configuration options used. See manual for details" );
+            messageLog.warn( "WARNING! Deprecated configuration options used. See manual for details" );
         }
 
-        messageLog.logMessage( message );
+        messageLog.warn( message );
     }
 
     private Integer parseBackupPort( String backupConfigValue )

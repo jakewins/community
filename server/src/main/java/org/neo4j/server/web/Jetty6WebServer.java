@@ -56,6 +56,8 @@ import org.mortbay.jetty.servlet.SessionHandler;
 import org.mortbay.jetty.webapp.WebAppContext;
 import org.mortbay.resource.Resource;
 import org.mortbay.thread.QueuedThreadPool;
+import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.server.NeoServer;
 import org.neo4j.kernel.guard.Guard;
 import org.neo4j.server.NeoServer;
 import org.neo4j.server.configuration.Configurator;
@@ -68,7 +70,10 @@ import org.neo4j.server.rest.web.AllowAjaxFilter;
 import org.neo4j.server.security.KeyStoreInformation;
 import org.neo4j.server.security.SslSocketConnectorFactory;
 
-public class Jetty6WebServer implements WebServer
+import com.sun.jersey.api.core.ResourceConfig;
+import com.sun.jersey.spi.container.servlet.ServletContainer;
+
+public class Jetty6WebServer implements WebServer, Lifecycle
 {
     private static final int DEFAULT_HTTPS_PORT = 7473;
     public static final Logger log = Logger.getLogger( Jetty6WebServer.class );
@@ -120,6 +125,22 @@ public class Jetty6WebServer implements WebServer
     }
 
     @Override
+    public void start()
+    {
+        if ( jetty == null )
+        {
+            throw new IllegalStateException( "Jetty not initialized." );
+        }
+        MovedContextHandler redirector = new MovedContextHandler();
+
+        jetty.addHandler( redirector );
+
+        loadAllMounts();
+
+        startJetty();
+    }
+
+    @Override
     public void stop()
     {
         try
@@ -131,6 +152,12 @@ public class Jetty6WebServer implements WebServer
         {
             throw new RuntimeException( e );
         }
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
     }
 
     @Override
@@ -178,22 +205,6 @@ public class Jetty6WebServer implements WebServer
     public void setNeoServer( NeoServer server )
     {
         this.server = server;
-    }
-
-    @Override
-    public void start()
-    {
-        if ( jetty == null )
-        {
-            throw new IllegalStateException( "Jetty not initialized." );
-        }
-        MovedContextHandler redirector = new MovedContextHandler();
-
-        jetty.addHandler( redirector );
-
-        loadAllMounts();
-
-        startJetty();
     }
 
     @Override

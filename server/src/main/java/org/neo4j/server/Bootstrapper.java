@@ -20,16 +20,30 @@
 package org.neo4j.server;
 
 import java.io.File;
-
+import java.io.IOException;
+import java.util.Map;
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.graphdb.TransactionFailureException;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.helpers.Service;
 import org.neo4j.helpers.collection.IteratorUtil;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.configuration.ConfigurationDefaults;
+import org.neo4j.kernel.configuration.SystemPropertiesConfiguration;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.kernel.lifecycle.LifecycleException;
+import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.LogbackService;
+import org.neo4j.kernel.logging.Loggers;
+import org.neo4j.kernel.logging.Logging;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.PropertyFileConfigurator;
+import org.neo4j.server.configuration.ServerConfigurationMigrator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
 import org.neo4j.server.configuration.validation.Validator;
-import org.neo4j.server.database.GraphDatabaseFactory;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.modules.ServerModule;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
@@ -37,6 +51,7 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
 import org.neo4j.server.web.Jetty6WebServer;
 
 public abstract class Bootstrapper
+    implements Lifecycle
 {
     public static final Integer OK = 0;
     public static final Integer WEB_SERVER_STARTUP_ERROR_CODE = 1;
@@ -44,15 +59,29 @@ public abstract class Bootstrapper
 
     private static Logger log = Logger.getLogger( NeoServerBootstrapper.class );
 
+    LifeSupport life = new LifeSupport();
+
     protected NeoServerWithEmbeddedWebServer server;
 
     public static void main( String[] args )
     {
-        Bootstrapper bootstrapper = loadMostDerivedBootstrapper();
-        Integer exit = bootstrapper.start( args );
-        if ( exit != 0 )
+        LifeSupport life = new LifeSupport();
+
+        Bootstrapper bootstrapper = life.add( loadMostDerivedBootstrapper() );
+
+        try
         {
-            System.exit( exit );
+            life.start();
+        }
+        catch( LifecycleException e )
+        {
+            if (e.getCause() instanceof TransactionFailureException)
+            {
+                System.exit( GRAPH_DATABASE_STARTUP_ERROR_CODE );
+            } else
+            {
+                System.exit(WEB_SERVER_STARTUP_ERROR_CODE);
+            }
         }
     }
 
@@ -71,24 +100,18 @@ public abstract class Bootstrapper
         // Do nothing, required by the WrapperListener interface
     }
 
-    public Integer start()
-    {
-        return start( new String[0] );
-    }
-
-    public Integer start( String[] args )
+    public void start()
     {
         try
         {
             StartupHealthCheck startupHealthCheck = new StartupHealthCheck( rules() );
-            Jetty6WebServer webServer = new Jetty6WebServer();
-            server = new NeoServerWithEmbeddedWebServer( this, startupHealthCheck,
-                    getConfigurator(), webServer, getServerModules() );
-            server.start();
+            Jetty6WebServer webServer = life.add( new Jetty6WebServer());
+            server = life.add( new NeoServerWithEmbeddedWebServer( this, startupHealthCheck,
+                    getConfigurator(), webServer, getServerModules() ));
+
+            life.start();
 
             addShutdownHook();
-
-            return OK;
         }
         catch ( TransactionFailureException tfe )
         {
@@ -96,13 +119,13 @@ public abstract class Bootstrapper
             log.error( String.format( "Failed to start Neo Server on port [%d], because ", server.getWebServerPort() )
                        + tfe + ". Another process may be using database location " + server.getDatabase()
                                .getLocation() );
-            return GRAPH_DATABASE_STARTUP_ERROR_CODE;
+            throw tfe;
         }
         catch ( Exception e )
         {
             log.error(e);
             log.error( "Failed to start Neo Server on port [%s]", server.getWebServerPort() );
-            return WEB_SERVER_STARTUP_ERROR_CODE;
+            throw e;
         }
     }
 
@@ -162,9 +185,24 @@ public abstract class Bootstrapper
 
     protected Configurator getConfigurator()
     {
-        File configFile = new File( System.getProperty( Configurator.NEO_SERVER_CONFIG_FILE_KEY,
-                Configurator.DEFAULT_CONFIG_DIR ) );
+        File configFile = new File( System.getProperty( ServerSettings.neo_server_config_file.name()) );
         return new PropertyFileConfigurator( new Validator( new DatabaseLocationMustBeSpecifiedRule() ), configFile );
+    }
+
+    protected Config getConfig()
+        throws IOException
+    {
+        File configFile = new File( System.getProperty( ServerSettings.neo_server_config_file.name()) );
+
+        Map<String,String> props = MapUtil.load( configFile );
+
+        ServerConfigurationMigrator configurationMigrator = new ServerConfigurationMigrator( logging.getLogger( Loggers.CONFIG ) );
+        ConfigurationDefaults configurationDefaults = new ConfigurationDefaults( ServerSettings.class );
+        Map<String,String> configParams = configurationDefaults.apply(configurationMigrator.migrateConfiguration( new SystemPropertiesConfiguration(ServerSettings.class).apply( props )));
+
+        props = new ConfigurationDefaults( ServerSettings.class ).apply( props );
+
+        return new Config( props );
     }
 
     protected boolean isMoreDerivedThan( Bootstrapper other )
@@ -178,5 +216,18 @@ public abstract class Bootstrapper
     {
         return IteratorUtil.asCollection( getHealthCheckRules() )
                 .toArray( new StartupHealthCheckRule[0] );
+    }
+
+    protected Logging createLogging()
+    {
+        try
+        {
+            getClass().getClassLoader().loadClass("ch.qos.logback.classic.LoggerContext");
+            return life.add( new LogbackService( config ));
+        }
+        catch( ClassNotFoundException e )
+        {
+            return life.add( new ClassicLoggingService(config));
+        }
     }
 }

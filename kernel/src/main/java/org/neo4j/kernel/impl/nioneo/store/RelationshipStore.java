@@ -24,7 +24,7 @@ import java.util.List;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Implementation of the relationship store.
@@ -46,7 +46,7 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
 
     public RelationshipStore(String fileName, Config configuration, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
     {
-        super(fileName, configuration, IdType.RELATIONSHIP, idGeneratorFactory, fileSystemAbstraction, stringLogger);
+        super(stringLogger, fileName, configuration, IdType.RELATIONSHIP, idGeneratorFactory, fileSystemAbstraction);
     }
 
     @Override
@@ -71,12 +71,6 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
     public int getRecordHeaderSize()
     {
         return getRecordSize();
-    }
-
-    @Override
-    public void close()
-    {
-        super.close();
     }
 
     public RelationshipRecord getRecord( long id )

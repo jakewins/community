@@ -197,7 +197,7 @@ public class NodeImpl extends ArrayBasedPrimitive
             }
             else
             {
-                iterator = src != null ? src.iterator( direction ) : empty( typeName ).iterator( direction );
+                iterator = src != null ? src.iterator( direction ) : RelIdArray.empty( typeName ).iterator( direction );
             }
             relTypeList.add( iterator );
         }

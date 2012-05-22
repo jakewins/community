@@ -37,6 +37,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 
 public class PreStartupStoreUpgraderTest
 {
@@ -128,13 +129,13 @@ public class PreStartupStoreUpgraderTest
         databaseProperties.store( new FileWriter( databasePropertiesFileName ), null );
 
         Properties serverProperties = new Properties();
-        serverProperties.setProperty( Configurator.DATABASE_LOCATION_PROPERTY_KEY, STORE_DIRECTORY );
-        serverProperties.setProperty( Configurator.DB_TUNING_PROPERTY_FILE_KEY, databasePropertiesFileName );
+        serverProperties.setProperty( ServerSettings.database_location.name(), STORE_DIRECTORY );
+        serverProperties.setProperty( ServerSettings.db_tuning_property_file.name(), databasePropertiesFileName );
         String serverPropertiesFileName = HOME_DIRECTORY + "/conf/neo4j-server.properties";
         serverProperties.store( new FileWriter( serverPropertiesFileName ), null );
 
         Properties systemProperties = new Properties();
-        systemProperties.put( Configurator.NEO_SERVER_CONFIG_FILE_KEY, serverPropertiesFileName );
+        systemProperties.put( ServerSettings.neo_server_config_file.name(), serverPropertiesFileName );
         return systemProperties;
     }
 

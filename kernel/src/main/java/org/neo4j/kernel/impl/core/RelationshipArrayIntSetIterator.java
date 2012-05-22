@@ -25,7 +25,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.kernel.impl.util.ArrayIntSet;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 class RelationshipArrayIntSetIterator implements Iterable<Relationship>,
     Iterator<Relationship>

@@ -50,6 +50,17 @@ public class GraphDatabaseBuilder
     }
 
     /**
+     * Check whether a particular setting has already been set
+     *
+     * @param setting to be checked
+     * @return true if setting has been configured already
+     */
+    public boolean hasConfig(GraphDatabaseSetting setting)
+    {
+        return config.containsKey( setting.name() );
+    }
+
+    /**
      * Set a database setting to a particular value.
      *
      * @param setting

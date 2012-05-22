@@ -17,33 +17,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server.modules;
 
-import org.mortbay.jetty.Server;
+package org.neo4j.server.configuration;
+
+import java.util.Map;
+import org.neo4j.kernel.configuration.ConfigurationMigrator;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.statistic.StatisticCollector;
-import org.neo4j.server.statistic.StatisticFilter;
-import org.neo4j.server.statistic.StatisticStartupListener;
 
-public class StatisticModule implements ServerModule
+/**
+ * Migrates Neo4j Server configuration
+ */
+public class ServerConfigurationMigrator
+    extends ConfigurationMigrator
 {
-    private StatisticStartupListener listener;
-
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    public ServerConfigurationMigrator( StringLogger messageLog )
     {
-        Server jetty = neoServer.getWebServer().getJetty();
-
-        StatisticCollector statisticCollector =
-                neoServer.getDatabase().statisticCollector();
-
-        listener = new StatisticStartupListener( jetty,
-                new StatisticFilter( statisticCollector ) );
-        jetty.addLifeCycleListener( listener );
+        super( messageLog );
     }
 
-    public void stop()
+    @Override
+    public Map<String, String> migrateConfiguration( Map<String, String> inputParams )
     {
-        listener.stop();
+        // No rules for now
+        return inputParams;
     }
 }

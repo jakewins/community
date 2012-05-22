@@ -19,8 +19,6 @@
  */
 package org.neo4j.server.statistic;
 
-import org.neo4j.server.logging.Logger;
-
 /**
  * statistics-collector will keep n-statistic records
  *
@@ -29,9 +27,6 @@ import org.neo4j.server.logging.Logger;
  */
 public class StatisticCollector
 {
-
-    private static final Logger LOG = Logger.getLogger( StatisticCollector.class );
-
     private volatile long start = System.currentTimeMillis();
     private volatile long count = 0;
     private volatile StatisticData currentSize = new StatisticData();

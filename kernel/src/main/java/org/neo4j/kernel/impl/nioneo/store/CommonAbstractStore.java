@@ -36,13 +36,15 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Contains common implementation for {@link AbstractStore} and
  * {@link AbstractDynamicStore}.
  */
 public abstract class CommonAbstractStore
+    implements Lifecycle
 {
     public static abstract class Configuration
     {
@@ -65,7 +67,6 @@ public abstract class CommonAbstractStore
 
     protected final String storageFileName;
     private final IdType idType;
-    protected StringLogger stringLogger;
     private IdGenerator idGenerator = null;
     private FileChannel fileChannel = null;
     private PersistenceWindowPool windowPool;
@@ -95,7 +96,7 @@ public abstract class CommonAbstractStore
      *            The Id used to index into this store
      */
     public CommonAbstractStore( StringLogger logger, String fileName, Config configuration, IdType idType,
-                                IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
+                                IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
     {
         this.logger = logger;
         this.storageFileName = fileName;
@@ -103,7 +104,18 @@ public abstract class CommonAbstractStore
         this.idGeneratorFactory = idGeneratorFactory;
         this.fileSystemAbstraction = fileSystemAbstraction;
         this.idType = idType;
-        this.stringLogger = stringLogger;
+    }
+
+    @Override
+    public void init()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void start()
+        throws Throwable
+    {
         grabFileLock = configuration.getBoolean( Configuration.grab_file_lock );
 
         try
@@ -118,6 +130,97 @@ public abstract class CommonAbstractStore
                 closeChannel();
             throw launderedException( e );
         }
+    }
+
+    @Override
+    public void stop()
+        throws Throwable
+    {
+        if ( fileChannel == null )
+        {
+            return;
+        }
+        closeStorage();
+        if ( windowPool != null )
+        {
+            windowPool.close();
+            windowPool = null;
+        }
+        if ( (isReadOnly() && !isBackupSlave()) || idGenerator == null || !storeOk )
+        {
+            try
+            {
+                fileChannel.close();
+            }
+            catch ( IOException e )
+            {
+                throw new UnderlyingStorageException( e );
+            }
+            return;
+        }
+        long highId = idGenerator.getHighId();
+        int recordSize = -1;
+        if ( this instanceof AbstractDynamicStore )
+        {
+            recordSize = ((AbstractDynamicStore) this).getBlockSize();
+        }
+        else if ( this instanceof AbstractStore )
+        {
+            recordSize = ((AbstractStore) this).getRecordSize();
+        }
+        idGenerator.close( true );
+        boolean success = false;
+        IOException storedIoe = null;
+        // hack for WINBLOWS
+        if ( !readOnly || backupSlave )
+        {
+            for ( int i = 0; i < 10; i++ )
+            {
+                try
+                {
+                    fileChannel.position( highId * recordSize );
+                    ByteBuffer buffer = ByteBuffer.wrap(
+                        UTF8.encode( getTypeAndVersionDescriptor() ) );
+                    fileChannel.write( buffer );
+                    fileChannel.truncate( fileChannel.position() );
+                    fileChannel.force( false );
+                    releaseFileLockAndCloseFileChannel();
+                    success = true;
+                    break;
+                }
+                catch ( IOException e )
+                {
+                    storedIoe = e;
+                    System.gc();
+                }
+            }
+        }
+        else
+        {
+            releaseFileLockAndCloseFileChannel();
+            success = true;
+//=======
+//            try
+//            {
+//                fileChannel.close();
+//            }
+//            catch ( IOException e )
+//            {
+//                logger.log( Level.WARNING, "Could not close fileChannel [" + storageFileName + "]", e );
+//            }
+//>>>>>>> parent of 739f974... Change start-up sequence so that version number in neostore gets checked, not just in the child stores
+        }
+        if ( !success )
+        {
+            throw new UnderlyingStorageException( "Unable to close store "
+                + getStorageFileName(), storedIoe );
+        }
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
     }
 
     public StringLogger getLogger()
@@ -254,10 +357,7 @@ public abstract class CommonAbstractStore
         {
             if ( !getStoreOk() )
             {
-                if ( stringLogger != null )
-                {
-                    stringLogger.logMessage( getStorageFileName() + " non clean shutdown detected", true );
-                }
+                logger.warn( getStorageFileName() + " non clean shutdown detected", true );
             }
         }
     }
@@ -307,6 +407,7 @@ public abstract class CommonAbstractStore
      * This default implementation does nothing.
      */
     protected void closeStorage()
+        throws Throwable
     {
     }
 
@@ -628,78 +729,7 @@ public abstract class CommonAbstractStore
      */
     public void close()
     {
-        if ( fileChannel == null )
-        {
-            return;
-        }
-        closeStorage();
-        if ( windowPool != null )
-        {
-            windowPool.close();
-            windowPool = null;
-        }
-        if ( (isReadOnly() && !isBackupSlave()) || idGenerator == null || !storeOk )
-        {
-            closeChannel();
-            return;
-        }
-        long highId = idGenerator.getHighId();
-        int recordSize = -1;
-        if ( this instanceof AbstractDynamicStore )
-        {
-            recordSize = ((AbstractDynamicStore) this).getBlockSize();
-        }
-        else if ( this instanceof AbstractStore )
-        {
-            recordSize = ((AbstractStore) this).getRecordSize();
-        }
-        idGenerator.close( true );
-        boolean success = false;
-        IOException storedIoe = null;
-        // hack for WINBLOWS
-        if ( !readOnly || backupSlave )
-        {
-            for ( int i = 0; i < 10; i++ )
-            {
-                try
-                {
-                    fileChannel.position( highId * recordSize );
-                    ByteBuffer buffer = ByteBuffer.wrap(
-                        UTF8.encode( getTypeAndVersionDescriptor() ) );
-                    fileChannel.write( buffer );
-                    fileChannel.truncate( fileChannel.position() );
-                    fileChannel.force( false );
-                    releaseFileLockAndCloseFileChannel();
-                    success = true;
-                    break;
-                }
-                catch ( IOException e )
-                {
-                    storedIoe = e;
-                    System.gc();
-                }
-            }
-        }
-        else
-        {
-            releaseFileLockAndCloseFileChannel();
-            success = true;
-//=======
-//            try
-//            {
-//                fileChannel.close();
-//            }
-//            catch ( IOException e )
-//            {
-//                logger.log( Level.WARNING, "Could not close fileChannel [" + storageFileName + "]", e );
-//            }
-//>>>>>>> parent of 739f974... Change start-up sequence so that version number in neostore gets checked, not just in the child stores
-        }
-        if ( !success )
-        {
-            throw new UnderlyingStorageException( "Unable to close store "
-                + getStorageFileName(), storedIoe );
-        }
+        
     }
 
     private void closeChannel()

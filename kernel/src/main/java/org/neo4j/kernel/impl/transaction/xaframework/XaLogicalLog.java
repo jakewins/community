@@ -48,7 +48,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.LogExtractor.TxPosition;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.BufferedFileChannel;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static java.lang.Math.*;
 
@@ -822,8 +822,7 @@ public class XaLogicalLog implements LogLoader
         String recoveryCompletedMessage = "Internal recovery completed, scanned " + logEntriesFound
                 + " log entries. Recovered " + recoveredTxCount
                 + " transactions. Last tx recovered: " + lastRecoveredTx;
-        msgLog.debug( recoveryCompletedMessage );
-        msgLog.logMessage( recoveryCompletedMessage );
+        msgLog.info( recoveryCompletedMessage );
 
         xaRm.checkXids();
         if ( xidIdentMap.size() == 0 )
@@ -1421,7 +1420,7 @@ public class XaLogicalLog implements LogLoader
         {
             long firstEntryPosition = getFirstStartEntry( endPosition );
             fileChannel.position( firstEntryPosition );
-            msgLog.logMessage( "Rotate log first start entry @ pos=" +
+            msgLog.debug( "Rotate log first start entry @ pos=" +
                     firstEntryPosition + " out of " + xidIdentMap );
         }
 
@@ -1430,7 +1429,7 @@ public class XaLogicalLog implements LogLoader
 
         newLogBuffer.force();
         newLog.position( newLogBuffer.getFileChannelPosition() );
-        msgLog.logMessage( "Rotate: old log scanned, newLog @ pos=" +
+        msgLog.debug( "Rotate: old log scanned, newLog @ pos=" +
                 newLog.position(), true );
         newLog.force( false );
         releaseCurrentLogFile();
@@ -1452,7 +1451,7 @@ public class XaLogicalLog implements LogLoader
         fileChannel = newLog;
         positionCache.putHeader( logVersion, lastTx );
         instantiateCorrectWriteBuffer();
-        msgLog.logMessage( "Log rotated, newLog @ pos=" +
+        msgLog.debug( "Log rotated, newLog @ pos=" +
                 writeBuffer.getFileChannelPosition() + ", version " + logVersion +
                 " and last tx " + previousLogLastCommittedTx, true );
         return lastTx;
@@ -1491,7 +1490,7 @@ public class XaLogicalLog implements LogLoader
                     {
                         TxPosition oldPos = positionCache.getStartPosition( commitEntry.getTxId() );
                         TxPosition newPos = cacheTxStartPosition( commitEntry.getTxId(), startEntry, logVersion+1 );
-                        msgLog.logMessage( "Updated tx " + ((LogEntry.Commit) entry ).getTxId() +
+                        msgLog.info( "Updated tx " + ((LogEntry.Commit) entry ).getTxId() +
                                 " from " + oldPos + " to " + newPos );
                     }
                 }
@@ -1506,7 +1505,7 @@ public class XaLogicalLog implements LogLoader
         LogExtractor extractor = new LogExtractor( positionCache, this, cf, txId, txId );
         InMemoryLogBuffer tempBuffer = new InMemoryLogBuffer();
         extractor.extractNext( tempBuffer );
-        ByteBuffer localBuffer = newLogReaderBuffer();
+        ByteBuffer localBuffer = LogExtractor.newLogReaderBuffer();
         for ( LogEntry readEntry = null; (readEntry = LogIoUtils.readEntry( localBuffer, tempBuffer, cf )) != null; )
         {
             if ( readEntry instanceof LogEntry.Commit ) break;

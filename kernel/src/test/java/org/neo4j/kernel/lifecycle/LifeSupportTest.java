@@ -22,7 +22,7 @@ package org.neo4j.kernel.lifecycle;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static org.junit.Assert.*;
 

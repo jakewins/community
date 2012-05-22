@@ -19,7 +19,7 @@
  */
 package org.neo4j.server.modules;
 
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 
 /**

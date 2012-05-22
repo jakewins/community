@@ -21,10 +21,8 @@ package org.neo4j.server;
 
 import java.util.Arrays;
 import java.util.Map;
-
 import org.apache.commons.configuration.Configuration;
-import org.neo4j.kernel.GraphDatabaseAPI;
-import org.neo4j.server.database.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
 import org.neo4j.server.modules.RESTApiModule;
@@ -57,17 +55,6 @@ public class NeoServerBootstrapper extends Bootstrapper
     @Override
     protected GraphDatabaseFactory getGraphDatabaseFactory( Configuration configuration )
     {
-        return new GraphDatabaseFactory()
-        {
-            @Override
-            public GraphDatabaseAPI createDatabase( String databaseStoreDirectory,
-                    Map<String, String> databaseProperties )
-            {
-                return (GraphDatabaseAPI) new org.neo4j.graphdb.factory.GraphDatabaseFactory().
-                    newEmbeddedDatabaseBuilder( databaseStoreDirectory ).
-                    setConfig( databaseProperties ).
-                    newGraphDatabase();
-            }
-        };
+        return new org.neo4j.graphdb.factory.GraphDatabaseFactory();
     }
 }

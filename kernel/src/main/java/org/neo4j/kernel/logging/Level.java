@@ -17,17 +17,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server;
 
-import org.apache.commons.configuration.Configuration;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
+package org.neo4j.kernel.logging;
 
-public class EphemeralNeoServerBootstrapper extends NeoServerBootstrapper
+/**
+* TODO
+*/
+public enum Level
 {
-    @Override
-    protected GraphDatabaseFactory getGraphDatabaseFactory( Configuration configuration )
-    {
-        return new TestGraphDatabaseFactory();
-    }
+    DEBUG,INFO,WARN,ERROR
 }

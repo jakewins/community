@@ -34,7 +34,8 @@ import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.storemigration.StoreMigrator;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static org.junit.Assert.*;
 import static org.junit.internal.matchers.StringContains.*;
@@ -53,21 +54,28 @@ public class StoreVersionTest
         config.put( "neo_store", storeFileName );
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
         StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null);
-        NeoStore neoStore = sf.createNeoStore(storeFileName);
-
-        CommonAbstractStore[] stores = {
-                neoStore.getNodeStore(),
-                neoStore.getRelationshipStore(),
-                neoStore.getRelationshipTypeStore(),
-                neoStore.getPropertyStore(),
-                neoStore.getPropertyStore().getIndexStore()
-        };
-
-        for ( CommonAbstractStore store : stores )
+        LifeSupport life = new LifeSupport();
+        try
         {
-            assertThat( store.getTypeAndVersionDescriptor(), containsString( CommonAbstractStore.ALL_STORES_VERSION ) );
+            NeoStore neoStore = life.add(sf.createNeoStore(storeFileName));
+
+            CommonAbstractStore[] stores = {
+                    neoStore.getNodeStore(),
+                    neoStore.getRelationshipStore(),
+                    neoStore.getRelationshipTypeStore(),
+                    neoStore.getPropertyStore(),
+                    neoStore.getPropertyStore().getIndexStore()
+            };
+
+            for ( CommonAbstractStore store : stores )
+            {
+                assertThat( store.getTypeAndVersionDescriptor(), containsString( CommonAbstractStore.ALL_STORES_VERSION ) );
+            }
         }
-        neoStore.close();
+        finally
+        {
+            life.shutdown();
+        }
     }
 
     @Test

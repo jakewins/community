@@ -27,19 +27,37 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 
+import java.util.Map;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.AbstractGraphDatabase;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.configuration.ConfigurationDefaults;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.Loggers;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class TestStringLogger
 {
+    @Rule
+    public TemporaryFolder temp = new TemporaryFolder();
+
     @Test
     public void makeSureLogsAreRotated() throws Exception
     {
-        String path = "target/test-data/stringlogger";
-        deleteRecursively( new File( path ) );
-        File logFile = new File( path, StringLogger.DEFAULT_NAME );
-        File oldFile = new File( path, StringLogger.DEFAULT_NAME + ".1" );
-        File oldestFile = new File( path, StringLogger.DEFAULT_NAME + ".2" );
-        StringLogger logger = StringLogger.logger( path, 200*1024 );
+        File logFile = new File( temp.getRoot(), ClassicLoggingService.DEFAULT_NAME );
+        File oldFile = new File( temp.getRoot(), ClassicLoggingService.DEFAULT_NAME + ".1" );
+        File oldestFile = new File( temp.getRoot(), ClassicLoggingService.DEFAULT_NAME + ".2" );
+
+        LifeSupport life = new LifeSupport();
+        Map<String,String> config = MapUtil.stringMap( ClassicLoggingService.Configuration.store_dir.name(), temp.getRoot().getAbsolutePath(), ClassicLoggingService.Configuration.threshold_for_rotation.name(), ""+(200*1024) );
+        ClassicLoggingService logging = life.add( new ClassicLoggingService(new Config( new ConfigurationDefaults(ClassicLoggingService.Configuration.class).apply( config ))));
+        life.start();
+
+        StringLogger logger = logging.getLogger( Loggers.NEO4J );
         assertFalse( oldFile.exists() );
         int counter = 0;
         String prefix = "Bogus message ";
@@ -47,10 +65,10 @@ public class TestStringLogger
         // First rotation
         while ( !oldFile.exists() )
         {
-            logger.logMessage( prefix + counter++, true );
+            logger.info( prefix + counter++, true );
         }
         int mark1 = counter-1;
-        logger.logMessage( prefix + counter++, true );
+        logger.info( prefix + counter++, true );
         assertTrue( firstLineOfFile( oldFile ).contains( prefix + "0" ) );
         assertTrue( lastLineOfFile( oldFile ).contains( prefix + mark1 ) );
         assertTrue( firstLineOfFile( logFile ).contains( prefix + (counter-1) ) );
@@ -58,10 +76,10 @@ public class TestStringLogger
         // Second rotation
         while ( !oldestFile.exists() )
         {
-            logger.logMessage( prefix + counter++, true );
+            logger.info( prefix + counter++, true );
         }
         int mark2 = counter-1;
-        logger.logMessage( prefix + counter++, true );
+        logger.info( prefix + counter++, true );
         assertTrue( firstLineOfFile( oldestFile ).contains( prefix + "0" ) );
         assertTrue( lastLineOfFile( oldestFile ).contains( prefix + mark1 ) );
         assertTrue( firstLineOfFile( oldFile ).contains( prefix + (mark1+1) ) );
@@ -73,13 +91,15 @@ public class TestStringLogger
         long previousSize = 0;
         while ( true )
         {
-            logger.logMessage( prefix + counter++, true );
+            logger.info( prefix + counter++, true );
             if ( logFile.length() < previousSize ) break;
             previousSize = logFile.length();
         }
-        assertFalse( new File( path, StringLogger.DEFAULT_NAME + ".3" ).exists() );
+        assertFalse( new File( temp.getRoot(), ClassicLoggingService.DEFAULT_NAME + ".3" ).exists() );
         assertTrue( firstLineOfFile( oldestFile ).contains( prefix + (mark1+1) ) );
         assertTrue( lastLineOfFile( oldestFile ).contains( prefix + mark2 ) );
+
+        life.shutdown();
     }
 
     private String firstLineOfFile( File file ) throws Exception

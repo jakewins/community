@@ -41,7 +41,8 @@ import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static org.junit.Assert.*;
 
@@ -167,7 +168,9 @@ public class TestDynamicStore
         try
         {
             createEmptyStore( dynamicStoreFile(), 30 );
-            DynamicArrayStore store = newStore();
+            LifeSupport life = new LifeSupport();
+            DynamicArrayStore store = life.add( newStore());
+            life.start();
             long blockId = store.nextBlockId();
             Collection<DynamicRecord> records = store.allocateRecords( blockId,
                 new byte[10] );
@@ -175,7 +178,7 @@ public class TestDynamicStore
             {
                 store.updateRecord( record );
             }
-            store.close();
+            life.shutdown();
             /*
              * try { store.allocateRecords( blockId, new byte[10] ); fail(
              * "Closed store should throw exception" ); } catch (
@@ -369,7 +372,9 @@ public class TestDynamicStore
     public void testAddDeleteSequenceEmptyNumberArray()
     {
         createEmptyStore( dynamicStoreFile(), 30 );
-        DynamicArrayStore store = newStore();
+        LifeSupport life = new LifeSupport();
+        DynamicArrayStore store = life.add( newStore() );
+        life.start();
         try
         {
             byte[] emptyToWrite = createBytes( 0 );
@@ -387,7 +392,7 @@ public class TestDynamicStore
         }
         finally
         {
-            store.close();
+            life.shutdown();
             deleteBothFiles();
         }
     }
@@ -396,7 +401,8 @@ public class TestDynamicStore
     public void testAddDeleteSequenceEmptyStringArray()
     {
         createEmptyStore( dynamicStoreFile(), 30 );
-        DynamicArrayStore store = newStore();
+        LifeSupport life = new LifeSupport();
+        DynamicArrayStore store = life.add( newStore() );
         try
         {
             long blockId = create( store, new String[0] );
@@ -414,7 +420,7 @@ public class TestDynamicStore
         }
         finally
         {
-            store.close();
+            life.shutdown();
             deleteBothFiles();
         }
     }

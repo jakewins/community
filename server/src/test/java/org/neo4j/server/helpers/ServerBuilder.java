@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.server.Bootstrapper;
 import org.neo4j.server.EphemeralNeoServerBootstrapper;
@@ -45,6 +46,7 @@ import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.PropertyFileConfigurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
 import org.neo4j.server.configuration.validation.Validator;
 import org.neo4j.server.modules.DiscoveryModule;
@@ -86,7 +88,7 @@ public class ServerBuilder
     private String host = null;
     private String[] securityRuleClassNames;
     private boolean persistent;
-    private Boolean httpsEnabled = false;
+    private boolean httpsEnabled = false;
 
     public static ServerBuilder server()
     {
@@ -147,25 +149,25 @@ public class ServerBuilder
     private void createPropertiesFile( File temporaryConfigFile )
     {
         Map<String, String> properties = MapUtil.stringMap(
-            Configurator.DATABASE_LOCATION_PROPERTY_KEY, dbDir,
-            Configurator.MANAGEMENT_PATH_PROPERTY_KEY, webAdminUri,
-            Configurator.REST_API_PATH_PROPERTY_KEY, webAdminDataUri );
+                ServerSettings.database_location.name(), dbDir,
+                ServerSettings.management_path.name(), webAdminUri,
+                ServerSettings.rest_api_path.name(), webAdminDataUri );
         if ( portNo != null )
         {
-            properties.put( Configurator.WEBSERVER_PORT_PROPERTY_KEY, portNo );
+            properties.put( ServerSettings.webserver_port.name(), portNo );
         }
         if ( host != null )
         {
-            properties.put( Configurator.WEBSERVER_ADDRESS_PROPERTY_KEY, host );
+            properties.put( ServerSettings.webserver_address.name(), host );
         }
         if ( maxThreads != null )
         {
-            properties.put( Configurator.WEBSERVER_MAX_THREADS_PROPERTY_KEY, maxThreads );
+            properties.put( ServerSettings.webserver_max_threads.name(), maxThreads );
         }
 
         if ( thirdPartyPackages.keySet().size() > 0 )
         {
-            properties.put( Configurator.THIRD_PARTY_PACKAGES_KEY, asOneLine( thirdPartyPackages ) );
+            properties.put( ServerSettings.third_party_packages.name(), asOneLine( thirdPartyPackages ) );
         }
 
         if ( autoIndexedNodeKeys != null && autoIndexedNodeKeys.length > 0 )
@@ -185,20 +187,10 @@ public class ServerBuilder
         if ( securityRuleClassNames != null && securityRuleClassNames.length > 0 )
         {
             String propertyKeys = org.apache.commons.lang.StringUtils.join( securityRuleClassNames, "," );
-            properties.put( Configurator.SECURITY_RULES_KEY, propertyKeys );
+            properties.put( ServerSettings.rest_security_rules.name(), propertyKeys );
         }
-
-        if ( httpsEnabled != null )
-        {
-            if ( httpsEnabled )
-            {
-                properties.put( Configurator.WEBSERVER_HTTPS_ENABLED_PROPERTY_KEY, "true" );
-            }
-            else
-            {
-                properties.put( Configurator.WEBSERVER_HTTPS_ENABLED_PROPERTY_KEY, "false" );
-            }
-        }
+        
+        properties.put( ServerSettings.webserver_https_enabled.name(), httpsEnabled ? GraphDatabaseSetting.TRUE : GraphDatabaseSetting.FALSE );        
 
         for ( Object key : arbitraryProperties.keySet() )
         {
@@ -220,19 +212,19 @@ public class ServerBuilder
                 "neostore.propertystore.db.strings.mapped_memory", "130M",
                 "neostore.propertystore.db.arrays.mapped_memory", "130M" );
             writePropertiesToFile( properties, databaseTuningPropertyFile );
-            writePropertyToFile( Configurator.DB_TUNING_PROPERTY_FILE_KEY,
-                databaseTuningPropertyFile.getAbsolutePath(), temporaryConfigFile );
+            writePropertyToFile( ServerSettings.db_tuning_property_file.name(),
+                    databaseTuningPropertyFile.getAbsolutePath(), temporaryConfigFile );
         }
         else if ( action == WhatToDo.CREATE_DANGLING_TUNING_FILE_PROPERTY )
         {
-            writePropertyToFile( Configurator.DB_TUNING_PROPERTY_FILE_KEY, createTempPropertyFile().getAbsolutePath(),
-                temporaryConfigFile );
+            writePropertyToFile( ServerSettings.db_tuning_property_file.name(), createTempPropertyFile().getAbsolutePath(),
+                    temporaryConfigFile );
         }
         else if ( action == WhatToDo.CREATE_CORRUPT_TUNING_FILE )
         {
             File corruptTuningFile = trashFile();
-            writePropertyToFile( Configurator.DB_TUNING_PROPERTY_FILE_KEY, corruptTuningFile.getAbsolutePath(),
-                temporaryConfigFile );
+            writePropertyToFile( ServerSettings.db_tuning_property_file.name(), corruptTuningFile.getAbsolutePath(),
+                    temporaryConfigFile );
         }
     }
 

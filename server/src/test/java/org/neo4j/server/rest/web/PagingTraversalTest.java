@@ -47,6 +47,7 @@ import org.neo4j.server.rest.domain.TraverserReturnType;
 import org.neo4j.server.rest.paging.FakeClock;
 import org.neo4j.server.rest.paging.LeaseManager;
 import org.neo4j.server.rest.repr.formats.JsonFormat;
+import org.neo4j.test.TestGraphDatabaseFactory;
 import org.neo4j.test.server.EntityOutputFormat;
 
 public class PagingTraversalTest
@@ -63,7 +64,7 @@ public class PagingTraversalTest
     @Before
     public void startDatabase() throws IOException
     {
-        database = new Database( ServerTestUtils.EPHEMERAL_GRAPH_DATABASE_FACTORY, null );
+        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
         helper = new GraphDbHelper( database );
         output = new EntityOutputFormat( new JsonFormat(), URI.create( BASE_URI ), null );
         leaseManager = new LeaseManager( new FakeClock() );

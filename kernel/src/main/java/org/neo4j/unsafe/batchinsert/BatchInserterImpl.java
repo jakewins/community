@@ -32,6 +32,8 @@ import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.DefaultFileSystemAbstraction;
 import org.neo4j.kernel.DefaultIdGeneratorFactory;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
@@ -65,7 +67,10 @@ import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.nioneo.store.UnderlyingStorageException;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.Loggers;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static java.lang.Boolean.*;
 import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.*;
@@ -82,6 +87,8 @@ public class BatchInserterImpl implements BatchInserter
     private final PropertyIndexHolder indexHolder;
     private final RelationshipTypeHolder typeHolder;
 
+    private LifeSupport life = new LifeSupport();
+
     private final IdGeneratorFactory idGeneratorFactory;
 
     private final StringLogger msgLog;
@@ -95,25 +102,31 @@ public class BatchInserterImpl implements BatchInserter
         Map<String,String> stringParams )
     {
         rejectAutoUpgrade( stringParams );
-        msgLog = StringLogger.logger( storeDir );
         Map<String,String> params = getDefaultParams();
         params.put( GraphDatabaseSettings.use_memory_mapped_buffers.name(), GraphDatabaseSetting.BooleanSetting.FALSE );
         final FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
 
         params = new ConfigurationDefaults( GraphDatabaseSettings.class ).apply( params );
+        params.put( AbstractGraphDatabase.Configuration.store_dir.name(), storeDir );
         Config config = new Config( params );
+
+        ClassicLoggingService loggingService = life.add( new ClassicLoggingService( config ));
+
+        life.start();
+        msgLog = loggingService.getLogger( "neo4j.batchinsert" );
+
         boolean dump = config.getBoolean( GraphDatabaseSettings.dump_configuration );
         this.storeDir = storeDir;
         this.idGeneratorFactory = new DefaultIdGeneratorFactory();
 
-        StoreFactory sf = new StoreFactory( config,idGeneratorFactory, fileSystem, null, StringLogger.DEV_NULL, null);
+        StoreFactory sf = new StoreFactory( config,idGeneratorFactory, fileSystem, null, loggingService.getLogger( Loggers.NEOSTORE ), null);
 
         String store = fixPath( storeDir, sf );
         if ( dump )
         {
             dumpConfiguration( params );
         }
-        msgLog.logMessage( Thread.currentThread() + " Starting BatchInserter(" + this + ")" );
+        msgLog.info( Thread.currentThread() + " Starting BatchInserter(" + this + ")" );
         neoStore = sf.newNeoStore(store);
         if ( !neoStore.isStoreOk() )
         {
@@ -685,7 +698,8 @@ public class BatchInserterImpl implements BatchInserter
     {
         neoStore.close();
         msgLog.logMessage( Thread.currentThread() + " Clean shutdown on BatchInserter(" + this + ")", true );
-        msgLog.close();
+
+        life.shutdown();
     }
 
     private Map<String,String> getDefaultParams()

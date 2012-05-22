@@ -34,7 +34,7 @@ import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 import static org.junit.Assert.*;
 
@@ -152,8 +152,8 @@ public class TestStore
 
         public Store( String fileName ) throws IOException
         {
-            super( fileName, new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( MapUtil.stringMap(
-                                "store_dir", "target/var/teststore" ) )), IdType.NODE, ID_GENERATOR_FACTORY, FILE_SYSTEM, StringLogger.DEV_NULL);
+            super( StringLogger.DEV_NULL, fileName, new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( MapUtil.stringMap(
+                                "store_dir", "target/var/teststore" ) )), IdType.NODE, ID_GENERATOR_FACTORY, FILE_SYSTEM);
         }
 
         public int getRecordSize()

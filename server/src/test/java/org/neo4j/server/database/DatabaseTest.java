@@ -49,7 +49,7 @@ public class DatabaseTest
     public void setup() throws Exception
     {
         databaseDirectory = createTempDir();
-        theDatabase = new Database( EMBEDDED_GRAPH_DATABASE_FACTORY, databaseDirectory.getAbsolutePath() );
+        theDatabase = new Database( new org.neo4j.graphdb.factory.GraphDatabaseFactory().newEmbeddedDatabaseBuilder( databaseDirectory.getAbsolutePath() ));
     }
 
     @After
@@ -98,7 +98,7 @@ public class DatabaseTest
     public void shouldComplainIfDatabaseLocationIsAlreadyInUse()
     {
         deletionFailureOk = true;
-        new Database( EMBEDDED_GRAPH_DATABASE_FACTORY, theDatabase.getLocation() );
+        new Database( new org.neo4j.graphdb.factory.GraphDatabaseFactory().newEmbeddedDatabaseBuilder( theDatabase.getLocation() ) );
     }
 
     @Test
@@ -113,9 +113,10 @@ public class DatabaseTest
     {
         int customPort = findFreeShellPortToUse( 8881 );
         File tempDir = createTempDir();
-        Database otherDb = new Database( EMBEDDED_GRAPH_DATABASE_FACTORY, tempDir.getAbsolutePath(), stringMap(
-            ShellSettings.remote_shell_enabled.name(), GraphDatabaseSetting.TRUE,
-            ShellSettings.remote_shell_port.name(), ""+customPort ) );
+        Database otherDb = new Database( new org.neo4j.graphdb.factory.GraphDatabaseFactory().
+            newEmbeddedDatabaseBuilder( tempDir.getAbsolutePath() ).
+                                             setConfig( ShellSettings.remote_shell_enabled, GraphDatabaseSetting.TRUE ).
+                                             setConfig( ShellSettings.remote_shell_port, ""+customPort ));
         otherDb.startup();
 
         // Try to connect with a shell client to that custom port.

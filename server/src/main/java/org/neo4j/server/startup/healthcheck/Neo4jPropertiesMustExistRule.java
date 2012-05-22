@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 
 public class Neo4jPropertiesMustExistRule implements StartupHealthCheckRule
 {
@@ -36,7 +37,7 @@ public class Neo4jPropertiesMustExistRule implements StartupHealthCheckRule
     {
         ran = true;
 
-        String configFilename = properties.getProperty( Configurator.NEO_SERVER_CONFIG_FILE_KEY );
+        String configFilename = properties.getProperty( ServerSettings.neo_server_config_file.name() );
 
         Properties configProperties = new Properties();
         FileInputStream inputStream = null;
