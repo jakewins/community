@@ -64,7 +64,7 @@ public interface Configurator
 
     String RRDB_LOCATION_PROPERTY_KEY = "org.neo4j.server.webadmin.rrdb.location";
     
-    String MANAGEMENT_CONSOLE_ENGINES = "org.neo4j.server.manage.console-engines";
+    String MANAGEMENT_CONSOLE_ENGINES = "org.neo4j.server.manage.console_engines";
     List<String> DEFAULT_MANAGEMENT_CONSOLE_ENGINES = new ArrayList<String>(){
         private static final long serialVersionUID = 6621747998288594121L;
     {
