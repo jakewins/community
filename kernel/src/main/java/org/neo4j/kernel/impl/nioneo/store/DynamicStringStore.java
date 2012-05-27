@@ -39,10 +39,10 @@ public class DynamicStringStore extends AbstractDynamicStore
     public static final String VERSION = "StringPropertyStore v0.A.0";
     public static final String TYPE_DESCRIPTOR = "StringPropertyStore";
 
-    public DynamicStringStore( String fileName, Config configuration, IdType idType,
+    public DynamicStringStore( Config configuration, IdType idType,
                                IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
     {
-        super( stringLogger, fileName, configuration, idType, idGeneratorFactory, fileSystemAbstraction);
+        super( stringLogger, configuration, idType, idGeneratorFactory, fileSystemAbstraction);
     }
     
     @Override

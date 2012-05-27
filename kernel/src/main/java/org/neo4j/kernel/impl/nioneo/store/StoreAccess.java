@@ -23,6 +23,7 @@ package org.neo4j.kernel.impl.nioneo.store;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.MapUtil;
@@ -78,11 +79,17 @@ public class StoreAccess
     public StoreAccess( String path, Map<String, String> params )
     {
         StringLogger logger = initLogger( path );
-        neoStore = life.add( new StoreFactory( new Config( new ConfigurationDefaults( GraphDatabaseSettings.class )
-                                              .apply( requiredParams( params, path ) ) ), new DefaultIdGeneratorFactory(),
-                              new DefaultFileSystemAbstraction(),
-                              new DefaultLastCommittedTxIdSetter(), logger,
-                              new DefaultTxHook() ).attemptNewNeoStore( new File( path, "neostore" ).getAbsolutePath() ));
+        Config config = new Config( new ConfigurationDefaults( GraphDatabaseSettings.class )
+                                              .apply( requiredParams( params, path ) ) );
+
+        neoStore = new StoreFactory(config, 
+                new DefaultLastCommittedTxIdSetter(), 
+                new DefaultIdGeneratorFactory(), 
+                new DefaultFileSystemAbstraction(), 
+                logger, new DefaultTxHook(), life).createNeoStore();
+        
+        life.start();
+        
         initStores( neoStore.getNodeStore(), neoStore.getRelationshipStore(), neoStore.getPropertyStore(),
                     neoStore.getRelationshipTypeStore() );
     }
@@ -114,7 +121,8 @@ public class StoreAccess
     private static Map<String, String> requiredParams( Map<String, String> params, String path )
     {
         params = new HashMap<String, String>( params );
-        params.put( "neo_store", new File( path, "neostore" ).getAbsolutePath() );
+        params.put( NeoStore.Configuration.neo_store.name(), new File( path, "neostore" ).getAbsolutePath() );
+        params.put( GraphDatabaseSettings.allow_store_upgrade.name(), "false");
         return params;
     }
 

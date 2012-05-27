@@ -21,18 +21,16 @@ package org.neo4j.kernel.impl.util;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.neo4j.kernel.impl.util.FileUtils.deleteRecursively;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-
 import java.util.Map;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.lifecycle.LifeSupport;
@@ -53,7 +51,7 @@ public class TestStringLogger
         File oldestFile = new File( temp.getRoot(), ClassicLoggingService.DEFAULT_NAME + ".2" );
 
         LifeSupport life = new LifeSupport();
-        Map<String,String> config = MapUtil.stringMap( ClassicLoggingService.Configuration.store_dir.name(), temp.getRoot().getAbsolutePath(), ClassicLoggingService.Configuration.threshold_for_rotation.name(), ""+(200*1024) );
+        Map<String,String> config = MapUtil.stringMap( ClassicLoggingService.Configuration.store_dir.name(), temp.getRoot().getAbsolutePath(), ClassicLoggingService.Configuration.threshold_for_logging_rotation.name(), ""+(200*1024) );
         ClassicLoggingService logging = life.add( new ClassicLoggingService(new Config( new ConfigurationDefaults(ClassicLoggingService.Configuration.class).apply( config ))));
         life.start();
 

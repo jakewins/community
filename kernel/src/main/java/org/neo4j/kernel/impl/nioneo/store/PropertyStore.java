@@ -27,6 +27,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.IdGeneratorFactory;
@@ -43,7 +45,8 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
     public static abstract class Configuration
         extends AbstractStore.Configuration
     {
-        
+        public static final GraphDatabaseSetting.IntegerSetting string_block_size = GraphDatabaseSettings.string_block_size;
+        public static final GraphDatabaseSetting.IntegerSetting array_block_size = GraphDatabaseSettings.array_block_size;
     }
     
     public static final int DEFAULT_DATA_BLOCK_SIZE = 120;
@@ -61,10 +64,10 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
     private PropertyIndexStore propertyIndexStore;
     private DynamicArrayStore arrayPropertyStore;
 
-    public PropertyStore(String fileName, Config configuration, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger logger,
+    public PropertyStore(Config configuration, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger logger,
                          DynamicStringStore stringPropertyStore, PropertyIndexStore propertyIndexStore, DynamicArrayStore arrayPropertyStore)
     {
-        super( logger, fileName, configuration, IdType.PROPERTY, idGeneratorFactory, fileSystemAbstraction );
+        super( logger, configuration, IdType.PROPERTY, idGeneratorFactory, fileSystemAbstraction );
         this.stringPropertyStore = stringPropertyStore;
         this.propertyIndexStore = propertyIndexStore;
         this.arrayPropertyStore = arrayPropertyStore;
@@ -105,26 +108,26 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
         arrayPropertyStore.unsetRecovered();
     }
 
-    @Override
-    protected void closeStorage()
-        throws Throwable
-    {
-        if ( stringPropertyStore != null )
-        {
-            stringPropertyStore.shutdown();
-            stringPropertyStore = null;
-        }
-        if ( propertyIndexStore != null )
-        {
-            propertyIndexStore.shutdown();
-            propertyIndexStore = null;
-        }
-        if ( arrayPropertyStore != null )
-        {
-            arrayPropertyStore.shutdown();
-            arrayPropertyStore = null;
-        }
-    }
+//    @Override
+//    protected void closeStorage()
+//        throws Throwable
+//    {
+//        if ( stringPropertyStore != null )
+//        {
+//            stringPropertyStore.shutdown();
+//            stringPropertyStore = null;
+//        }
+//        if ( propertyIndexStore != null )
+//        {
+//            propertyIndexStore.shutdown();
+//            propertyIndexStore = null;
+//        }
+//        if ( arrayPropertyStore != null )
+//        {
+//            arrayPropertyStore.shutdown();
+//            arrayPropertyStore = null;
+//        }
+//    }
 
     @Override
     public void flushAll()
@@ -176,6 +179,17 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
     public PropertyIndexStore getIndexStore()
     {
         return propertyIndexStore;
+    }
+    
+    @Override
+    public void start() throws Throwable
+    {
+        super.start();
+        int stringStoreBlockSize = config.getInteger( Configuration.string_block_size );
+        int arrayStoreBlockSize = config.getInteger( Configuration.array_block_size );
+        
+        stringPropertyStore.setCreationBlockSize(stringStoreBlockSize);
+        arrayPropertyStore.setCreationBlockSize(arrayStoreBlockSize);
     }
 
     public void updateRecord( PropertyRecord record, boolean recovered )
@@ -708,6 +722,16 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
         propertyIndexStore.logIdUsage( logger );
         stringPropertyStore.logIdUsage( logger );
         arrayPropertyStore.logIdUsage( logger );
+    }
+    
+    @Override
+    protected void setStorageFileName(String fileName) 
+    {
+        super.setStorageFileName(fileName);
+        
+        stringPropertyStore.setStorageFileName(fileName + ".strings");
+        propertyIndexStore.setStorageFileName(fileName + ".index");
+        arrayPropertyStore.setStorageFileName(fileName + ".arrays");
     }
 
     @Override

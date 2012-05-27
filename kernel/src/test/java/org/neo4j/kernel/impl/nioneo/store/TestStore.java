@@ -20,10 +20,13 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
+
 import org.junit.Test;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.MapUtil;
@@ -35,8 +38,6 @@ import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.logging.StringLogger;
-
-import static org.junit.Assert.*;
 
 public class TestStore
 {
@@ -68,28 +69,31 @@ public class TestStore
     }
     
     @Test
-    public void testCreateStore() throws IOException
+    public void testCreateStore() throws Throwable
     {
         try
         {
             try
             {
-                Store.createStore( null );
+                Store store = Store.createStore( null );
+                store.start();
                 fail( "Null fileName should throw exception" );
             }
             catch ( IllegalArgumentException e )
             { // good
             }
             Store store = Store.createStore( storeFile() );
+            store.start();
+            store.stop();
             try
             {
-                Store.createStore( storeFile() );
+                store.createStorage();
                 fail( "Creating existing store should throw exception" );
             }
             catch ( IllegalStateException e )
             { // good
             }
-            store.close();
+            store.shutdown();
         }
         finally
         {
@@ -112,18 +116,22 @@ public class TestStore
     }
 
     @Test
-    public void testStickyStore() throws IOException
+    public void testStickyStore() throws Throwable
     {
         try
         {
-            Store.createStore( storeFile() ).close();
+            Store createStore = Store.createStore( storeFile() );
+            createStore.start();
+            createStore.stop();
+            
             java.nio.channels.FileChannel fileChannel = new java.io.RandomAccessFile(
                 storeFile(), "rw" ).getChannel();
             fileChannel.truncate( fileChannel.size() - 2 );
             fileChannel.close();
             Store store = new Store( storeFile() );
+            store.start();
             store.makeStoreOk();
-            store.close();
+            store.shutdown();
         }
         finally
         {
@@ -132,12 +140,13 @@ public class TestStore
     }
 
     @Test
-    public void testClose() throws IOException
+    public void testStop() throws Throwable
     {
         try
         {
             Store store = Store.createStore( storeFile() );
-            store.close();
+            store.start();
+            store.stop();
         }
         finally
         {
@@ -152,8 +161,9 @@ public class TestStore
 
         public Store( String fileName ) throws IOException
         {
-            super( StringLogger.DEV_NULL, fileName, new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( MapUtil.stringMap(
+            super( StringLogger.DEV_NULL, new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( MapUtil.stringMap(
                                 "store_dir", "target/var/teststore" ) )), IdType.NODE, ID_GENERATOR_FACTORY, FILE_SYSTEM);
+            this.setStorageFileName(fileName);
         }
 
         public int getRecordSize()
@@ -168,7 +178,6 @@ public class TestStore
 
         public static Store createStore( String fileName) throws IOException
         {
-            new StoreFactory(new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( Collections.<String,String>emptyMap() )), ID_GENERATOR_FACTORY, FILE_SYSTEM, null, StringLogger.DEV_NULL, null).createEmptyStore(fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ));
             return new Store( fileName );
         }
 

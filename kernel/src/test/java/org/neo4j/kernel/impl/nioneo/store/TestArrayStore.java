@@ -38,12 +38,10 @@ import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.DefaultFileSystemAbstraction;
 import org.neo4j.kernel.DefaultIdGeneratorFactory;
-import org.neo4j.kernel.DefaultLastCommittedTxIdSetter;
-import org.neo4j.kernel.DefaultTxHook;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.util.Bits;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.test.TargetDirectory;
 
 public class TestArrayStore
@@ -52,26 +50,25 @@ public class TestArrayStore
     private DynamicArrayStore arrayStore;
     
     @Before
-    public void before() throws Exception
+    public void before() throws Throwable
     {
         dir = TargetDirectory.forTest( getClass() ).directory( "db", true );
         Map<String, String> configParams = MapUtil.stringMap();
         Config config = new Config( configParams );
         DefaultIdGeneratorFactory idGenFactory = new DefaultIdGeneratorFactory();
         DefaultFileSystemAbstraction fs = new DefaultFileSystemAbstraction();
-        StoreFactory factory = new StoreFactory( config,
-                idGenFactory, fs,
-                new DefaultLastCommittedTxIdSetter(), StringLogger.DEV_NULL, new DefaultTxHook() );
         String fileName = new File( dir, "arraystore" ).getAbsolutePath();
-        factory.createDynamicArrayStore( fileName, 120 );
-        arrayStore = new DynamicArrayStore( fileName, config, IdType.ARRAY_BLOCK, idGenFactory, fs, StringLogger.DEV_NULL );
+        arrayStore = new DynamicArrayStore( config, IdType.ARRAY_BLOCK, idGenFactory, fs, StringLogger.DEV_NULL );
+        arrayStore.setStorageFileName(fileName);
+        arrayStore.setCreationBlockSize(120);
+        arrayStore.start();
     }
 
     @After
-    public void after() throws Exception
+    public void after() throws Throwable
     {
         if ( arrayStore != null )
-            arrayStore.close();
+            arrayStore.stop();
     }
     
     @Test

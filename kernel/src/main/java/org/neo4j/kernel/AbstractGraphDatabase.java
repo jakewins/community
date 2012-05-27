@@ -20,6 +20,8 @@
 
 package org.neo4j.kernel;
 
+import static org.neo4j.helpers.Exceptions.launderedException;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -33,7 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
 import javax.transaction.TransactionManager;
+
 import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -105,7 +109,6 @@ import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvi
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.lifecycle.Lifecycle;
@@ -115,9 +118,8 @@ import org.neo4j.kernel.logging.ClassicLoggingService;
 import org.neo4j.kernel.logging.LogbackService;
 import org.neo4j.kernel.logging.Loggers;
 import org.neo4j.kernel.logging.Logging;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.tooling.GlobalGraphOperations;
-
-import static org.neo4j.helpers.Exceptions.*;
 
 /**
  * Base class for all Neo4j databases.
@@ -181,9 +183,9 @@ public abstract class AbstractGraphDatabase
     protected LogBufferFactory logBufferFactory;
     protected AbstractTransactionManager txManager;
     protected TxIdGenerator txIdGenerator;
-    protected StoreFactory storeFactory;
     protected XaFactory xaFactory;
     protected DiagnosticsManager diagnosticsManager;
+    protected NeoStore neoStore;
     protected NeoStoreXaDataSource neoDataSource;
     protected RecoveryVerifier recoveryVerifier;
     protected Guard guard;
@@ -378,7 +380,6 @@ public abstract class AbstractGraphDatabase
         recoveryVerifier = createRecoveryVerifier();
 
         // Factories for things that needs to be created later
-        storeFactory = createStoreFactory();
         xaFactory = new XaFactory(config, txIdGenerator, txManager, logBufferFactory, fileSystem, logging.getLogger( Loggers.XAFACTORY), recoveryVerifier );
 
         // Create DataSource
@@ -391,9 +392,20 @@ public abstract class AbstractGraphDatabase
                 providers.add( Pair.of( provider, prov ) );
             }
         }
+        
+        
+        // Create the storage infrastructure
+        
+        StringLogger neoStoreLog = logging.getLogger( Loggers.NEOSTORE );
+        
+        StoreFactory storeFactory = new StoreFactory(config, lastCommittedTxIdSetter, 
+                idGeneratorFactory, fileSystem, neoStoreLog, txHook, life);
+        
+        // Core storage
+        neoStore = storeFactory.createNeoStore();
 
         neoDataSource = life.add( new NeoStoreXaDataSource( config,
-                storeFactory, fileSystem, lockManager, lockReleaser, logging.getLogger( Loggers.DATASOURCE ), xaFactory, providers, dependencyResolver ));
+                neoStore, lockManager, lockReleaser, logging.getLogger( Loggers.DATASOURCE ), xaFactory, providers, dependencyResolver ));
         xaDataSourceManager.registerDataSource( neoDataSource );
 
         life.add(persistenceSource);
@@ -569,11 +581,6 @@ public abstract class AbstractGraphDatabase
         {
             msgLog.logMessage( "Shutdown failed", throwable );
         }
-    }
-
-    protected StoreFactory createStoreFactory()
-    {
-        return new StoreFactory(config, idGeneratorFactory, fileSystem, lastCommittedTxIdSetter, logging.getLogger( Loggers.NEOSTORE ), txHook);
     }
 
     protected RecoveryVerifier createRecoveryVerifier()
@@ -1248,10 +1255,6 @@ public abstract class AbstractGraphDatabase
             else if( LockReleaser.class.isAssignableFrom( type ) )
             {
                 return (T) lockReleaser;
-            }
-            else if( StoreFactory.class.isAssignableFrom( type ) )
-            {
-                return (T) storeFactory;
             }
             else if( StringLogger.class.isAssignableFrom( type ) )
             {

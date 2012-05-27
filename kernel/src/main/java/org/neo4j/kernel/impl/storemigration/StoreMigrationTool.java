@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
@@ -36,6 +37,7 @@ import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
+import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.logging.StringLogger;
 
 public class StoreMigrationTool
@@ -66,21 +68,27 @@ public class StoreMigrationTool
         }
 
         File targetStoreFile = new File( targetStoreDirectory, NeoStore.DEFAULT_NAME );
-        config.put( "neo_store", targetStoreFile.getPath() );
+        config.put( NeoStore.Configuration.neo_store.name(), targetStoreFile.getPath() );
+        config.put( GraphDatabaseSettings.allow_store_upgrade.name(), "false");
+        
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
 
         config = new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config );
 
-        NeoStore neoStore = new StoreFactory(new Config( config ), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null).createNeoStore(targetStoreFile.getPath());
+        LifeSupport life = new LifeSupport();
+        NeoStore neoStore = new StoreFactory(new Config( config ), null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.SYSTEM, null, life).createNeoStore();
 
-        long startTime = System.currentTimeMillis();
-
-        new StoreMigrator( new VisibleMigrationProgressMonitor( StringLogger.SYSTEM, System.out ) ) .migrate( legacyStore, neoStore );
-
-        long duration = System.currentTimeMillis() - startTime;
-        System.out.printf( "Migration completed in %d s%n", duration / 1000 );
-
-        neoStore.close();
+        try {
+            life.start();
+            long startTime = System.currentTimeMillis();
+    
+            new StoreMigrator( new VisibleMigrationProgressMonitor( StringLogger.SYSTEM, System.out ) ) .migrate( legacyStore, neoStore );
+    
+            long duration = System.currentTimeMillis() - startTime;
+            System.out.printf( "Migration completed in %d s%n", duration / 1000 );
+        } finally {
+            life.shutdown();
+        }
 
         GraphDatabaseService database = new GraphDatabaseFactory().newEmbeddedDatabase( targetStoreDirectoryFile.getPath() );
         database.shutdown();

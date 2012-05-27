@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.UTF8;
@@ -50,7 +51,10 @@ public abstract class AbstractStore extends CommonAbstractStore
         public static final GraphDatabaseSetting.BooleanSetting rebuild_idgenerators_fast = GraphDatabaseSettings.rebuild_idgenerators_fast;
     }
 
-    private Config conf;
+    public AbstractStore( StringLogger logger, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
+    {
+        super( logger, conf, idType, idGeneratorFactory, fileSystemAbstraction );
+    }
 
     /**
      * Returns the fixed size of each record in this store.
@@ -71,11 +75,40 @@ public abstract class AbstractStore extends CommonAbstractStore
             throw new RuntimeException( e );
         }
     }
-
-    public AbstractStore( StringLogger logger, String fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
+    
+    @Override
+    protected void createStorage() throws Throwable 
     {
-        super( logger, fileName, conf, idType, idGeneratorFactory, fileSystemAbstraction );
-        this.conf = conf;
+        String typeAndVersionDescriptor = getTypeAndVersionDescriptor();
+        
+        // sanity checks
+        if ( storageFileName == null )
+        {
+            throw new IllegalArgumentException( "Null filename" );
+        }
+        if ( fileSystemAbstraction.fileExists( storageFileName ) )
+        {
+            throw new IllegalStateException( "Can't create store[" + storageFileName
+                    + "], file already exists" );
+        }
+
+        // write the header
+        try
+        {
+            FileChannel channel = fileSystemAbstraction.create(storageFileName);
+            int endHeaderSize = UTF8.encode(typeAndVersionDescriptor).length;
+            ByteBuffer buffer = ByteBuffer.allocate( endHeaderSize );
+            buffer.put( UTF8.encode( typeAndVersionDescriptor ) ).flip();
+            channel.write( buffer );
+            channel.force( false );
+            channel.close();
+        }
+        catch ( IOException e )
+        {
+            throw new UnderlyingStorageException( "Unable to create store "
+                    + storageFileName, e );
+        }
+        idGeneratorFactory.create( fileSystemAbstraction, storageFileName + ".id" );
     }
 
     @Override
@@ -181,7 +214,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             long fileSize = fileChannel.size();
             int recordSize = getRecordSize();
             boolean fullRebuild = true;
-            if ( conf.getBoolean( Configuration.rebuild_idgenerators_fast) )
+            if ( config.getBoolean( Configuration.rebuild_idgenerators_fast) )
             {
                 fullRebuild = false;
                 highId = findHighIdBackwards();

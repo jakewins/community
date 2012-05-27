@@ -23,9 +23,9 @@ package org.neo4j.kernel.logging;
 import java.io.File;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.factory.Default;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
@@ -41,8 +41,7 @@ public class ClassicLoggingService
     {
         public static final GraphDatabaseSetting.FileSetting store_dir = AbstractGraphDatabase.Configuration.store_dir;
 
-        @Default(""+(100 * 1024 * 1024))
-        public static final GraphDatabaseSetting.IntegerSetting threshold_for_rotation = new GraphDatabaseSetting.IntegerSetting( "logging.threshold_for_rotation", "Must be valid number", 1, null );
+        public static final GraphDatabaseSetting.IntegerSetting threshold_for_logging_rotation = GraphDatabaseSettings.threshold_for_logging_rotation;
     }
 
     public static final String DEFAULT_NAME = "messages.log";
@@ -62,7 +61,7 @@ public class ClassicLoggingService
     public ClassicLoggingService(Config config)
     {
         stringLogger = new FileStringLogger( new File( config.get( Configuration.store_dir ), DEFAULT_NAME ).getAbsolutePath(),
-                                              config.getInteger( Configuration.threshold_for_rotation ) );
+                                              config.getInteger( Configuration.threshold_for_logging_rotation ) );
     }
 
     @Override

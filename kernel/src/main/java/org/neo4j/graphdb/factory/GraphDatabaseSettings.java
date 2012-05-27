@@ -20,8 +20,19 @@
 
 package org.neo4j.graphdb.factory;
 
-import org.neo4j.graphdb.factory.GraphDatabaseSetting.*;
-import static org.neo4j.graphdb.factory.GraphDatabaseSetting.*;
+import static org.neo4j.graphdb.factory.GraphDatabaseSetting.ANY;
+import static org.neo4j.graphdb.factory.GraphDatabaseSetting.DURATION;
+import static org.neo4j.graphdb.factory.GraphDatabaseSetting.FALSE;
+import static org.neo4j.graphdb.factory.GraphDatabaseSetting.SIZE;
+import static org.neo4j.graphdb.factory.GraphDatabaseSetting.TRUE;
+
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.BooleanSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.DefaultValue;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.FloatSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.IntegerSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.OptionsSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.PortSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.StringSetting;
 
 /**
  * Settings for the Community edition of Neo4j. Use this with GraphDatabaseBuilder.
@@ -77,6 +88,11 @@ public abstract class GraphDatabaseSettings
     @Default("4560")
     public static final PortSetting remote_logging_port = new PortSetting( "remote_logging_port" );
 
+    // TODO: Turn this into ByteSizeSetting, and make sure this applies to all logging providers
+    @Description( "Threshold in bytes for when database logs (text logs, for debugging, that is) are rotated." )
+    @Default(""+(100 * 1024 * 1024))
+    public static final GraphDatabaseSetting.IntegerSetting threshold_for_logging_rotation = new GraphDatabaseSetting.IntegerSetting( "logging.threshold_for_rotation", "Must be valid number", 1, null );
+    
     // Indexing
     @Description( "Controls the auto indexing feature for nodes. Setting to false shuts it down unconditionally, while true enables it for every property, "+
                   "subject to restrictions in the configuration." )

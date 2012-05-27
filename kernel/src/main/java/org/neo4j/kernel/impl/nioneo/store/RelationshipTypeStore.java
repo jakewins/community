@@ -22,6 +22,7 @@ package org.neo4j.kernel.impl.nioneo.store;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
@@ -42,10 +43,10 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
     public static final String TYPE_DESCRIPTOR = "RelationshipTypeStore";
     private static final int RECORD_SIZE = 1/*inUse*/ + 4/*nameId*/;
 
-    public RelationshipTypeStore(String fileName, Config config, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
+    public RelationshipTypeStore(Config config, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
                                  DynamicStringStore nameStore)
     {
-        super(fileName, config, IdType.RELATIONSHIP_TYPE, idGeneratorFactory, fileSystemAbstraction, stringLogger, nameStore);
+        super(config, IdType.RELATIONSHIP_TYPE, idGeneratorFactory, fileSystemAbstraction, stringLogger, nameStore);
     }
 
     @Override

@@ -51,9 +51,9 @@ public class DynamicArrayStore extends AbstractDynamicStore
     public static final String VERSION = "ArrayPropertyStore v0.A.0";
     public static final String TYPE_DESCRIPTOR = "ArrayPropertyStore";
 
-    public DynamicArrayStore(String fileName, Config configuration, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
+    public DynamicArrayStore(Config configuration, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
     {
-        super( stringLogger, fileName, configuration, idType, idGeneratorFactory, fileSystemAbstraction);
+        super( stringLogger, configuration, idType, idGeneratorFactory, fileSystemAbstraction);
     }
     
     @Override
@@ -193,5 +193,4 @@ public class DynamicArrayStore extends AbstractDynamicStore
             return result;
         }
     }
-
 }

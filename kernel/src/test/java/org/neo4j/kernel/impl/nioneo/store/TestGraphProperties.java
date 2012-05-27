@@ -20,16 +20,26 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
+import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.arrayAsCollection;
+import static org.neo4j.test.TargetDirectory.forTest;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Future;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -45,18 +55,13 @@ import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.core.GraphProperties;
+import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.neo4j.test.OtherThreadExecutor;
 import org.neo4j.test.ProcessStreamHandler;
 import org.neo4j.test.TargetDirectory;
 import org.neo4j.test.TestGraphDatabaseFactory;
-
-import static java.util.Arrays.*;
-import static org.junit.Assert.*;
-import static org.neo4j.helpers.collection.IteratorUtil.*;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.*;
-import static org.neo4j.test.TargetDirectory.*;
 
 public class TestGraphProperties
 {
@@ -175,7 +180,7 @@ public class TestGraphProperties
     public void firstRecordOtherThanZeroIfNotFirst() throws Exception
     {
         GraphDatabaseAPI db = (GraphDatabaseAPI) new GraphDatabaseFactory().newEmbeddedDatabase( forTest( getClass() ).directory( "zero", true ).getAbsolutePath() );
-        String storeDir = db.getStoreDir();
+        final String storeDir = db.getStoreDir();
         Transaction tx = db.beginTx();
         Node node = db.createNode();
         node.setProperty( "name", "Yo" );
@@ -191,10 +196,16 @@ public class TestGraphProperties
         db.shutdown();
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        NeoStore neoStore = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(Collections.<String,String>emptyMap())), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null).newNeoStore(new File( storeDir, NeoStore.DEFAULT_NAME ).getAbsolutePath());
+        LifeSupport life = new LifeSupport();
+        NeoStore neoStore = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(new HashMap<String,String>(){{
+            put(NeoStore.Configuration.neo_store.name(), new File( storeDir, NeoStore.DEFAULT_NAME ).getAbsolutePath());
+        }})), null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.DEV_NULL, null, life).createNeoStore();
+        life.start();
+        
         long prop = neoStore.getGraphNextProp();
         assertTrue( prop != 0 );
-        neoStore.close();
+        
+        life.stop();
     }
     
     @Test

@@ -20,6 +20,9 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -30,8 +33,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -61,10 +66,8 @@ import org.neo4j.kernel.impl.transaction.xaframework.RecoveryVerifier;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvider;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
-import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.lifecycle.LifeSupport;
-
-import static org.junit.Assert.*;
+import org.neo4j.kernel.logging.StringLogger;
 
 @AbstractNeo4jTestCase.RequiresPersistentGraphDatabase
 public class TestXa extends AbstractNeo4jTestCase
@@ -116,9 +119,14 @@ public class TestXa extends AbstractNeo4jTestCase
         propertyIndexes = new HashMap<String, PropertyIndex>();
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( Collections.<String,String>emptyMap() )), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null);
-        sf.createNeoStore(file( "neo" )).close();
-
+        LifeSupport life = new LifeSupport();
+        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( new HashMap<String,String>(){{
+            put("neo_store", file( "neo" ));
+        }} )), null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.DEV_NULL, null, life);
+        sf.createNeoStore();
+        life.start();
+        life.stop();
+        
         lockManager = getEmbeddedGraphDb().getLockManager();
         lockReleaser = getEmbeddedGraphDb().getLockReleaser();
         ds = newNeoStore();
@@ -403,15 +411,17 @@ public class TestXa extends AbstractNeo4jTestCase
             AbstractGraphDatabase.Configuration.neo_store.name(), file( "neo" ),
             AbstractGraphDatabase.Configuration.logical_log.name(), file( "nioneo_logical.log"))));
 
-        StoreFactory sf = new StoreFactory(config, new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null);
-
+        life = new LifeSupport();
+        StoreFactory sf = new StoreFactory(config, null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.DEV_NULL, null, life);
+        
+        
         PlaceboTm txManager = new PlaceboTm();
         LogBufferFactory logBufferFactory = new DefaultLogBufferFactory();
-        NeoStoreXaDataSource ds = new NeoStoreXaDataSource( config, sf, fileSystem, lockManager, lockReleaser, StringLogger.DEV_NULL,
+        NeoStoreXaDataSource ds = new NeoStoreXaDataSource( config, sf.createNeoStore(), lockManager, lockReleaser, StringLogger.DEV_NULL,
                 new XaFactory(config, TxIdGenerator.DEFAULT, txManager,
                         logBufferFactory, fileSystem, StringLogger.DEV_NULL, RecoveryVerifier.ALWAYS_VALID),
         Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(), null);
-        life = new LifeSupport();
+        
         life.add( ds );
         life.start();
         return ds;

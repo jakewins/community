@@ -20,6 +20,7 @@
 package org.neo4j.kernel.impl.nioneo.store;
 
 import java.util.Iterator;
+
 import org.neo4j.helpers.Predicate;
 import org.neo4j.helpers.ProgressIndicator;
 import org.neo4j.helpers.collection.IterableWrapper;
@@ -44,8 +45,6 @@ public interface RecordStore<R extends AbstractBaseRecord>
     public int getRecordSize();
 
     public int getRecordHeaderSize();
-
-    public void close();
 
     public static final Predicate<AbstractBaseRecord> IN_USE = new Predicate<AbstractBaseRecord>()
     {

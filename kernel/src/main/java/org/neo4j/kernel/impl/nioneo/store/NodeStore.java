@@ -21,6 +21,7 @@ package org.neo4j.kernel.impl.nioneo.store;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
@@ -41,10 +42,10 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
     // in_use(byte)+next_rel_id(int)+next_prop_id(int)
     public static final int RECORD_SIZE = 9;
 
-    public NodeStore(String fileName, Config config,
+    public NodeStore(Config config,
                      IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
     {
-        super(stringLogger, fileName, config, IdType.NODE, idGeneratorFactory, fileSystemAbstraction);
+        super(stringLogger, config, IdType.NODE, idGeneratorFactory, fileSystemAbstraction);
     }
 
     @Override
@@ -248,6 +249,23 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         List<WindowPoolStats> list = new ArrayList<WindowPoolStats>();
         list.add( getWindowPoolStats() );
         return list;
+    }
+    
+    @Override
+    protected void createStorage() throws Throwable {
+        super.createStorage();
+        try {
+            openStorage();
+            checkVersion();
+            loadStorage();
+            
+            // Create reference node
+            NodeRecord nodeRecord = new NodeRecord( nextId(), Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
+            nodeRecord.setInUse( true );
+            updateRecord( nodeRecord );
+        } finally {
+            closeStorage();
+        }
     }
 
 }
