@@ -75,7 +75,7 @@ public class XaFactory
         XaResourceManager rm = new XaResourceManager( xaDataSource, tf, txIdGenerator, txManager, recoveryVerifier, logicalLog );
 
         XaLogicalLog log;
-        if ( config.getBoolean( Configuration.intercept_deserialized_transactions )
+        if ( config.get( Configuration.intercept_deserialized_transactions )
                 && providers != null )
         {
             log = new InterceptingXaLogicalLog( logicalLog, rm, cf, tf, providers, dependencyResolver, logBufferFactory, fileSystemAbstraction, stringLogger );

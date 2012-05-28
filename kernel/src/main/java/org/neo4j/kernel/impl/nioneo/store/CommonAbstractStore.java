@@ -122,9 +122,9 @@ public abstract class CommonAbstractStore
     public void start()
         throws Throwable
     {
-        grabFileLock = config.getBoolean( Configuration.grab_file_lock );
-        readOnly = config.getBoolean( Configuration.read_only );
-        backupSlave = config.getBoolean( Configuration.backup_slave );
+        grabFileLock = config.get( Configuration.grab_file_lock );
+        readOnly = config.get( Configuration.read_only );
+        backupSlave = config.get( Configuration.backup_slave );
         
         try
         {
@@ -275,7 +275,7 @@ public abstract class CommonAbstractStore
 
         setWindowPool( new PersistenceWindowPool( logger,  getStorageFileName(),
             getEffectiveRecordSize(), getFileChannel(), calculateMappedMemory(config.getParams(), storageFileName ),
-            config.getBoolean( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
+            config.get( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
     }
 
     protected abstract int getEffectiveRecordSize();

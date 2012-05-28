@@ -206,11 +206,11 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource implements Lifec
     public void start()
         throws Throwable
     {
-        readOnly = config.getBoolean( Configuration.read_only );
+        readOnly = config.get( Configuration.read_only );
         storeDir = config.get( Configuration.store_dir );
 
         final TransactionFactory tf;
-        boolean shouldIntercept = config.getBoolean( Configuration.intercept_committing_transactions );
+        boolean shouldIntercept = config.get( Configuration.intercept_committing_transactions );
         if ( shouldIntercept && !providers.isEmpty() )
         {
             tf = new InterceptingTransactionFactory( dependencyResolver );
@@ -258,7 +258,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource implements Lifec
             this.idGenerators.put( PropertyIndex.class,
                 neoStore.getPropertyStore().getIndexStore() );
             
-            setKeepLogicalLogsIfSpecified( config.getBoolean( new GraphDatabaseSetting.BooleanSetting( "online_backup_enabled")) ? "true" : config.get( Configuration.keep_logical_logs ), Config.DEFAULT_DATA_SOURCE_NAME );
+            setKeepLogicalLogsIfSpecified( config.get( new GraphDatabaseSetting.BooleanSetting( "online_backup_enabled")) ? "true" : config.get( Configuration.keep_logical_logs ), Config.DEFAULT_DATA_SOURCE_NAME );
             setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
         }
         catch ( Throwable e )

@@ -214,7 +214,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             long fileSize = fileChannel.size();
             int recordSize = getRecordSize();
             boolean fullRebuild = true;
-            if ( config.getBoolean( Configuration.rebuild_idgenerators_fast) )
+            if ( config.get( Configuration.rebuild_idgenerators_fast) )
             {
                 fullRebuild = false;
                 highId = findHighIdBackwards();
