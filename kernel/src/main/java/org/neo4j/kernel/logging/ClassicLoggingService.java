@@ -26,7 +26,6 @@ import java.io.PrintWriter;
 
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 
@@ -39,7 +38,7 @@ public class ClassicLoggingService
 {
     public static final class Configuration
     {
-        public static final GraphDatabaseSetting.FileSetting store_dir = AbstractGraphDatabase.Configuration.store_dir;
+        public static final GraphDatabaseSetting.DirectorySetting store_dir = GraphDatabaseSettings.store_dir;
 
         public static final GraphDatabaseSetting.IntegerSetting threshold_for_logging_rotation = GraphDatabaseSettings.threshold_for_logging_rotation;
     }

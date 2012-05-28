@@ -111,7 +111,7 @@ public class BatchInserterImpl implements BatchInserter
 
         msgLog = loggingService.getLogger( "neo4j.batchinsert" );
 
-        boolean dump = config.getBoolean( GraphDatabaseSettings.dump_configuration );
+        boolean dump = config.get( GraphDatabaseSettings.dump_configuration );
         this.storeDir = storeDir;
         this.idGeneratorFactory = new DefaultIdGeneratorFactory();
 

@@ -66,6 +66,7 @@ public class NeoStore extends AbstractStore
      */
     public static final int RECORD_SIZE = 9;
 
+    @Deprecated // Please use GraphDatabaseSettings#neo_store instead
     public static final String DEFAULT_NAME = "neostore";
 
     private NodeStore nodeStore;

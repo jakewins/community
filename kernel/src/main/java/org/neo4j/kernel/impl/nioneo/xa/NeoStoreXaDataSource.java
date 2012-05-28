@@ -94,6 +94,8 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource implements Lifec
     }
 
     public static final byte BRANCH_ID[] = UTF8.encode( "414141" );
+    
+    @Deprecated // Please use GraphDatabaseSettings#logical_log instead
     public static final String LOGICAL_LOG_DEFAULT_NAME = "nioneo_logical.log";
 
     private final LockManager lockManager;

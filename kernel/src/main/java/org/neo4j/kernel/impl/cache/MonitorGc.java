@@ -23,15 +23,15 @@ package org.neo4j.kernel.impl.cache;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class MonitorGc implements Lifecycle
 {
     public static class Configuration
     {
-        public static final GraphDatabaseSetting.StringSetting gc_monitor_wait_time = GraphDatabaseSettings.gc_monitor_wait_time;
-        public static final GraphDatabaseSetting.StringSetting gc_monitor_threshold = GraphDatabaseSettings.gc_monitor_threshold;
+        public static final GraphDatabaseSetting.TimeSpanSetting gc_monitor_wait_time = GraphDatabaseSettings.gc_monitor_wait_time;
+        public static final GraphDatabaseSetting.TimeSpanSetting gc_monitor_threshold = GraphDatabaseSettings.gc_monitor_threshold;
     }
     
     private final Config config;
@@ -52,7 +52,7 @@ public class MonitorGc implements Lifecycle
     @Override
     public void start() throws Throwable
     {
-        monitorGc = new MeasureDoNothing( "GC-Monitor", logger, config.getDuration( Configuration.gc_monitor_wait_time ), config.getDuration( Configuration.gc_monitor_threshold ) );
+        monitorGc = new MeasureDoNothing( "GC-Monitor", logger, config.get( Configuration.gc_monitor_wait_time ), config.get( Configuration.gc_monitor_threshold ) );
         monitorGc.start();
     }
 

@@ -115,6 +115,7 @@ import org.neo4j.kernel.lifecycle.Lifecycle;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 import org.neo4j.kernel.lifecycle.LifecycleException;
 import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.Level;
 import org.neo4j.kernel.logging.LogbackService;
 import org.neo4j.kernel.logging.Loggers;
 import org.neo4j.kernel.logging.Logging;
@@ -138,9 +139,9 @@ public abstract class AbstractGraphDatabase
         public static final GraphDatabaseSetting.BooleanSetting load_kernel_extensions = GraphDatabaseSettings.load_kernel_extensions;
         public static final GraphDatabaseSetting.BooleanSetting ephemeral = new GraphDatabaseSetting.BooleanSetting("ephemeral");
 
-        public static final GraphDatabaseSetting.FileSetting store_dir = new GraphDatabaseSetting.FileSetting( "store_dir");
-        public static final GraphDatabaseSetting.StringSetting neo_store = new GraphDatabaseSetting.StringSetting( "neo_store",".*","TODO" );
-        public static final GraphDatabaseSetting.StringSetting logical_log = new GraphDatabaseSetting.StringSetting( "logical_log",".*","TODO" );
+        public static final GraphDatabaseSetting.DirectorySetting store_dir = GraphDatabaseSettings.store_dir;
+        public static final GraphDatabaseSetting.FileSetting neo_store = GraphDatabaseSettings.neo_store;
+        public static final GraphDatabaseSetting.FileSetting logical_log = GraphDatabaseSettings.logical_log;
     }
 
     private static final long MAX_NODE_ID = IdType.NODE.getMaxValue();
@@ -222,7 +223,7 @@ public abstract class AbstractGraphDatabase
         }
         catch( LifecycleException throwable )
         {
-            msgLog.logMessage( "Startup failed", throwable );
+            msgLog.logMessage(Level.ERROR, "Startup failed", throwable );
 
             shutdown();
 
@@ -232,14 +233,7 @@ public abstract class AbstractGraphDatabase
 
     private void create()
     {
-        // TODO THIS IS A SMELL - SHOULD BE AVAILABLE THROUGH OTHER MEANS!
-        String separator = System.getProperty( "file.separator" );
-        String store = this.storeDir + separator + NeoStore.DEFAULT_NAME;
         params.put( Configuration.store_dir.name(), this.storeDir );
-        params.put( Configuration.neo_store.name(), store );
-        String logicalLog = this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
-        params.put( Configuration.logical_log.name(), logicalLog );
-        // END SMELL
 
         fileSystem = life.add(createFileSystemAbstraction());
 
@@ -247,9 +241,9 @@ public abstract class AbstractGraphDatabase
         List<Class<?>> settingsClasses = new ArrayList<Class<?>>();
         settingsClasses.add( GraphDatabaseSettings.class );
         settingsClasses.add( ClassicLoggingService.Configuration.class );
-        for( KernelExtension kernelExtension : kernelExtensions )
+        for( KernelExtension<?> kernelExtension : kernelExtensions )
         {
-            Class settingsClass = kernelExtension.getSettingsClass();
+            Class<?> settingsClass = kernelExtension.getSettingsClass();
             if( settingsClass != null )
             {
                 settingsClasses.add( settingsClass );
@@ -272,8 +266,8 @@ public abstract class AbstractGraphDatabase
         // Apply autoconfiguration for memory settings
         AutoConfigurator autoConfigurator = new AutoConfigurator( fileSystem,
                                                                   config.get( NeoStoreXaDataSource.Configuration.store_dir ),
-                                                                  config.getBoolean( GraphDatabaseSettings.use_memory_mapped_buffers ),
-                                                                  config.getBoolean( GraphDatabaseSettings.dump_configuration ) );
+                                                                  config.get( GraphDatabaseSettings.use_memory_mapped_buffers ),
+                                                                  config.get( GraphDatabaseSettings.dump_configuration ) );
         Map<String,String> autoConfiguration = autoConfigurator.configure( );
         for( Map.Entry<String, String> autoConfig : autoConfiguration.entrySet() )
         {
@@ -289,7 +283,7 @@ public abstract class AbstractGraphDatabase
         this.msgLog = logging.getLogger( Loggers.NEO4J );
 
         // Instantiate all services - some are overridable by subclasses
-        boolean readOnly = config.getBoolean( Configuration.read_only );
+        boolean readOnly = config.get( Configuration.read_only );
 
         kernelEventHandlers = new KernelEventHandlers();
 
@@ -302,7 +296,7 @@ public abstract class AbstractGraphDatabase
 
         xaDataSourceManager = life.add( new XaDataSourceManager( logging.getLogger( Loggers.DATASOURCE )) );
 
-        guard = config.getBoolean( Configuration.execution_guard_enabled ) ? new Guard( msgLog ) : null;
+        guard = config.get( Configuration.execution_guard_enabled ) ? new Guard( msgLog ) : null;
 
         if (readOnly)
         {
@@ -417,7 +411,7 @@ public abstract class AbstractGraphDatabase
 
         extensions = life.add(createKernelData());
 
-        if ( config.getBoolean( Configuration.load_kernel_extensions ))
+        if ( config.get( Configuration.load_kernel_extensions ))
         {
             life.add(new DefaultKernelExtensionLoader( extensions ));
         }
@@ -579,7 +573,7 @@ public abstract class AbstractGraphDatabase
         }
         catch( LifecycleException throwable )
         {
-            msgLog.logMessage( "Shutdown failed", throwable );
+            msgLog.logMessage( Level.ERROR, "Shutdown failed", throwable );
         }
     }
 
@@ -1183,7 +1177,7 @@ public abstract class AbstractGraphDatabase
                 }
                 catch ( Throwable cause )
                 {
-                    msgLog.logMessage( "Failed to load index provider " + index.identifier(), cause );
+                    msgLog.logMessage( Level.ERROR, "Failed to load index provider " + index.identifier(), cause );
                     if( isAnUpgradeProblem( cause ) )
                     {
                         throw launderedException( cause );

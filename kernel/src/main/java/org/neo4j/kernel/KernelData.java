@@ -24,8 +24,10 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.logging.Level;
 import org.neo4j.kernel.logging.StringLogger;
 
 public abstract class KernelData
@@ -131,7 +133,7 @@ public abstract class KernelData
             }
             catch ( Throwable t )
             {
-                msgLog.logMessage( "Failed to init extension " + extension, t, true );
+                msgLog.logMessage( Level.WARN, "Failed to init extension " + extension, t );
             }
         }
         return loadedExtensions;

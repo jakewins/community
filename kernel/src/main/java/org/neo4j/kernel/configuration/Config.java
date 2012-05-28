@@ -20,21 +20,22 @@
 
 package org.neo4j.kernel.configuration;
 
+import static org.neo4j.helpers.Format.logLongMessage;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.TimeUtil;
 import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.kernel.impl.annotations.Documented;
-import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 import org.neo4j.kernel.info.DiagnosticsProvider;
-
-import static org.neo4j.helpers.Format.*;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * This class holds the overall configuration of a Neo4j database instance. Use the accessors
@@ -276,44 +277,50 @@ public class Config implements DiagnosticsProvider
         return this.params;
     }
     
-    public boolean isSet( GraphDatabaseSetting graphDatabaseSetting )
+    public boolean isSet( GraphDatabaseSetting<?> graphDatabaseSetting )
     {
         return params.containsKey( graphDatabaseSetting.name() ) && params.get( graphDatabaseSetting.name() ) != null;
     }
 
-    public String get(GraphDatabaseSetting setting)
+    public <T> T get(GraphDatabaseSetting<T> setting)
     {
         String string = params.get( setting.name() );
         if (string != null)
             string = string.trim();
-        return string;
+        return setting.valueOf(string, this);
     }
     
+    @Deprecated
     public boolean getBoolean(GraphDatabaseSetting.BooleanSetting setting)
     {
-        return Boolean.parseBoolean( get( setting ) );
+        return get( setting );
     }
     
+    @Deprecated
     public int getInteger(GraphDatabaseSetting.IntegerSetting setting)
     {
-        return Integer.parseInt( get( setting ) );
+        return get( setting );
     }
 
+    @Deprecated
     public long getLong(GraphDatabaseSetting.LongSetting setting)
     {
-        return Long.parseLong( get( setting ) );
+        return get( setting );
     }
 
+    @Deprecated
     public double getDouble(GraphDatabaseSetting.DoubleSetting setting)
     {
-        return Double.parseDouble( get( setting ) );
+        return get( setting );
     }
 
+    @Deprecated
     public float getFloat(GraphDatabaseSetting.FloatSetting setting)
     {
-        return Float.parseFloat( get( setting ));
+        return get( setting );
     }
 
+    @Deprecated
     public long getSize(GraphDatabaseSetting.StringSetting setting)
     {
         String mem = get( setting ).toLowerCase();
@@ -337,11 +344,13 @@ public class Config implements DiagnosticsProvider
         return Long.parseLong( mem ) * multiplier;
     }
 
+    @Deprecated
     public long getDuration(GraphDatabaseSetting.StringSetting setting)
     {
         return TimeUtil.parseTimeMillis( get( setting ) );
     }
 
+    @Deprecated
     public <T extends Enum<T>> T getEnum( Class<T> enumType,
                                           GraphDatabaseSetting.OptionsSetting graphDatabaseSetting)
     {
