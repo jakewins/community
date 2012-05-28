@@ -380,7 +380,8 @@ public abstract class AbstractGraphDatabase
         List<Pair<TransactionInterceptorProvider, Object>> providers = new ArrayList<Pair<TransactionInterceptorProvider, Object>>( 2 );
         for ( TransactionInterceptorProvider provider : Service.load( TransactionInterceptorProvider.class ) )
         {
-            Object prov = params.get( TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name() );
+            // TODO: Expand config to be capable of handling complex keys like this
+            Object prov = config.getParams().get( TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name() );
             if ( prov != null )
             {
                 providers.add( Pair.of( provider, prov ) );

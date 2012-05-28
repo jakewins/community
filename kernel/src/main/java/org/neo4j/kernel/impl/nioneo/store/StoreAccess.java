@@ -20,13 +20,11 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
-import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.DefaultFileSystemAbstraction;
 import org.neo4j.kernel.DefaultIdGeneratorFactory;
@@ -78,10 +76,12 @@ public class StoreAccess
 
     public StoreAccess( String path, Map<String, String> params )
     {
-        StringLogger logger = initLogger( path );
-        Config config = new Config( new ConfigurationDefaults( GraphDatabaseSettings.class )
+        Config config = new Config( new ConfigurationDefaults( GraphDatabaseSettings.class, ClassicLoggingService.class )
                                               .apply( requiredParams( params, path ) ) );
 
+
+        StringLogger logger = initLogger( path, config );
+        
         neoStore = new StoreFactory(config, 
                 new DefaultLastCommittedTxIdSetter(), 
                 new DefaultIdGeneratorFactory(), 
@@ -111,9 +111,9 @@ public class StoreAccess
         this.propKeyStore = wrapStore( propStore.getIndexStore().getNameStore() );
     }
 
-    private StringLogger initLogger( String path )
+    private StringLogger initLogger( String path, Config config )
     {
-        ClassicLoggingService loggingService = life.add( new ClassicLoggingService( new Config( MapUtil.stringMap(AbstractGraphDatabase.Configuration.store_dir.name(), path ) )));
+        ClassicLoggingService loggingService = life.add( new ClassicLoggingService( config ));
         StringLogger logger = loggingService.getLogger( Loggers.NEO4J+".storeaccess" );
         return logger;
     }
@@ -121,7 +121,7 @@ public class StoreAccess
     private static Map<String, String> requiredParams( Map<String, String> params, String path )
     {
         params = new HashMap<String, String>( params );
-        params.put( NeoStore.Configuration.neo_store.name(), new File( path, "neostore" ).getAbsolutePath() );
+        params.put( NeoStore.Configuration.store_dir.name(), path );
         params.put( GraphDatabaseSettings.allow_store_upgrade.name(), "false");
         return params;
     }

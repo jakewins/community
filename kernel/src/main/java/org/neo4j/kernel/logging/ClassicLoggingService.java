@@ -60,7 +60,7 @@ public class ClassicLoggingService
     public ClassicLoggingService(Config config)
     {
         stringLogger = new FileStringLogger( new File( config.get( Configuration.store_dir ), DEFAULT_NAME ).getAbsolutePath(),
-                                              config.getInteger( Configuration.threshold_for_logging_rotation ) );
+                                              config.get( Configuration.threshold_for_logging_rotation ) );
     }
 
     @Override

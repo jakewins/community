@@ -121,11 +121,14 @@ public class StoreVersionTest
         String storeFileName = new File( outputDir, NeoStore.DEFAULT_NAME ).getPath();
 
         Map<String,String> config = new HashMap<String, String>();
+        config.put( NeoStore.Configuration.store_dir.name(), outputDir.getAbsolutePath() );
         config.put( NeoStore.Configuration.neo_store.name(), storeFileName );
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
         
+        Config configuration = new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config ));
+        
         LifeSupport life = new LifeSupport();
-        StoreFactory sf = new StoreFactory(new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.SYSTEM, null, life);
+        StoreFactory sf = new StoreFactory(configuration, null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.SYSTEM, null, life);
         NeoStore neoStore = sf.createNeoStore();
         
         life.start();
@@ -134,7 +137,7 @@ public class StoreVersionTest
         assertEquals( CommonAbstractStore.ALL_STORES_VERSION,
                 NeoStore.versionLongToString( neoStore.getStoreVersion() ) );
         assertEquals( CommonAbstractStore.ALL_STORES_VERSION,
-                NeoStore.versionLongToString( NeoStore.getStoreVersion( fileSystem, storeFileName ) ) );
+                NeoStore.versionLongToString( NeoStore.getStoreVersion( fileSystem, configuration.get(NeoStore.Configuration.neo_store) ) ) );
     }
 
     @Test

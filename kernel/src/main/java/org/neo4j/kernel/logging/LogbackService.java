@@ -176,16 +176,16 @@ public class LogbackService
             switch (level)
             {
                 case DEBUG:
-                    logger.debug( msg );
+                    logger.debug( msg, throwable );
                     return;
                 case INFO:
-                    logger.info( msg );
+                    logger.info( msg, throwable );
                     return;
                 case WARN:
-                    logger.warn( msg );
+                    logger.warn( msg, throwable );
                     return;
                 case ERROR:
-                    logger.error( msg );
+                    logger.error( msg, throwable );
                     return;
             }
         }
