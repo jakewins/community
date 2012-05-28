@@ -22,9 +22,11 @@ package org.neo4j.graphdb.factory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.regex.Pattern;
@@ -51,21 +53,6 @@ public abstract class GraphDatabaseSetting<T>
     //
     // Implementations of GraphDatabaseSetting
     //
-    
-    public static class BooleanSetting
-        extends BaseOptionsSetting<Boolean>
-    {
-        public BooleanSetting( String name)
-        {
-            super( name, TRUE, FALSE );
-        }
-        
-        @Override
-        public Boolean valueOf(String rawValue, Config config) 
-        {
-            return Boolean.parseBoolean(rawValue);
-        }
-    }
     
     public static class StringSetting
         extends GraphDatabaseSetting<String>
@@ -404,6 +391,21 @@ public abstract class GraphDatabaseSetting<T>
         
     }
 
+    public static class BooleanSetting
+        extends BaseOptionsSetting<Boolean>
+    {
+        public BooleanSetting( String name)
+        {
+            super( name, TRUE, FALSE );
+        }
+        
+        @Override
+        public Boolean valueOf(String rawValue, Config config) 
+        {
+            return Boolean.parseBoolean(rawValue);
+        }
+    }
+
     public static class AbstractPathSetting
     extends StringSetting
     {
@@ -608,8 +610,48 @@ public abstract class GraphDatabaseSetting<T>
             return Long.parseLong( mem ) * multiplier;
         }
     }
-
     
+    public static class ListSetting<T>
+        extends GraphDatabaseSetting<List<T>>
+    {
+        private GraphDatabaseSetting<T> itemSetting;
+        private String separator;
+
+        public ListSetting( String name, GraphDatabaseSetting<T> itemSetting )
+        {
+            this(name, itemSetting, ",");
+        }
+        
+        public ListSetting( String name, GraphDatabaseSetting<T> itemSetting, String separator )
+        {
+            super( name, "%s is not a valid list, must be '"+separator+"' separated list of values.");
+            this.itemSetting = itemSetting;
+            this.separator = separator;
+        }
+    
+        @Override
+        public void validate( Locale locale, String value )
+        {
+            if (value == null)
+                throw illegalValue( locale, value );
+            
+            for(String item : value.split(separator) ) 
+            {
+                itemSetting.validate(item);
+            }
+        }
+        
+        @Override
+        public List<T> valueOf(String rawValue, Config config) 
+        {
+            List<T> list = new ArrayList<T>();
+            for(String item : rawValue.split(separator) ) 
+            {
+                list.add(itemSetting.valueOf(item, config));
+            }
+            return list;
+        }
+    }
 
     private String name;
     private String validationMessage;
