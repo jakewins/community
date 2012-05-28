@@ -33,6 +33,8 @@ import org.neo4j.graphdb.factory.GraphDatabaseSetting.OptionsSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.PortSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.StringSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.TimeSpanSetting;
+import org.neo4j.kernel.configuration.ConfigurationMigrator;
+import org.neo4j.kernel.configuration.GraphDatabaseConfigurationMigrator;
 
 /**
  * Settings for the Community edition of Neo4j. Use this with GraphDatabaseBuilder.
@@ -40,6 +42,9 @@ import org.neo4j.graphdb.factory.GraphDatabaseSetting.TimeSpanSetting;
 @Description( "Settings for the Community edition of Neo4j" )
 public abstract class GraphDatabaseSettings
 {
+    @Migrator
+    public static final ConfigurationMigrator migrator = new GraphDatabaseConfigurationMigrator();
+    
     @Title( "Read only database" )
     @Description("Only allow read operations from this Neo4j instance")
     @Default( FALSE)
@@ -185,7 +190,15 @@ public abstract class GraphDatabaseSettings
     @Description( "Mark this database as a backup slave" )
     @Default( FALSE )
     public static final BooleanSetting backup_slave = new BooleanSetting( "backup_slave" );
+    
+    // TODO: This should be in enterprise, but we currently have code depending on this in community
+    @Default( FALSE)
+    public static final GraphDatabaseSetting.BooleanSetting online_backup_enabled = new GraphDatabaseSetting.BooleanSetting( "online_backup_enabled" );
 
+    // TODO: This should be in enterprise, but we currently have code depending on this in community
+    @Default("6362")
+    public static final GraphDatabaseSetting.PortSetting online_backup_port = new GraphDatabaseSetting.PortSetting( "online_backup_port" );
+    
     // GCR settings
     @Description( "The amount of memory to use for the node cache (when using the 'gcr' cache)" )
     public static final NumberOfBytesSetting node_cache_size = new NumberOfBytesSetting( "node_cache_size");

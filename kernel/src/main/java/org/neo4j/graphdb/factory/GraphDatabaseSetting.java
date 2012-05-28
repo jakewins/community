@@ -59,6 +59,11 @@ public abstract class GraphDatabaseSetting<T>
     {
         private Pattern regex;
 
+        public StringSetting() 
+        {
+            this("", ANY, "Must be a non-empty string.");
+        }
+        
         public StringSetting( String name, String regex, String formatMessage )
         {
             super( name, formatMessage );

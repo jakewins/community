@@ -58,8 +58,6 @@ import org.neo4j.helpers.Service;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationChange;
 import org.neo4j.kernel.configuration.ConfigurationChangeListener;
-import org.neo4j.kernel.configuration.ConfigurationDefaults;
-import org.neo4j.kernel.configuration.ConfigurationMigrator;
 import org.neo4j.kernel.configuration.SystemPropertiesConfiguration;
 import org.neo4j.kernel.guard.Guard;
 import org.neo4j.kernel.impl.cache.CacheProvider;
@@ -108,7 +106,6 @@ import org.neo4j.kernel.impl.transaction.xaframework.RecoveryVerifier;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvider;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
-import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.lifecycle.Lifecycle;
@@ -149,7 +146,6 @@ public abstract class AbstractGraphDatabase
 
     protected DependencyResolver dependencyResolver= new CachedDependencyResolver(new DependencyResolverImpl());
 
-    protected String storeDir;
     protected Map<String, String> params;
     private Iterable<CacheProvider> cacheProviders;
     private Iterable<KernelExtension> kernelExtensions;
@@ -204,13 +200,17 @@ public abstract class AbstractGraphDatabase
                                     Iterable<IndexProvider> indexProviders, Iterable<KernelExtension> kernelExtensions,
                                     Iterable<CacheProvider> cacheProviders )
     {
+        // TODO: 'params' duplicates knowledge that should be in config.
+        // it is currently only used by Autoconfiguration to determine
+        // what properties are explicitly set.
         this.params = params;
-        this.storeDir = FileUtils.fixSeparatorsInPath( canonicalize( storeDir ));
 
         // SPI - provided services
         this.cacheProviders = cacheProviders;
         this.indexProviders = indexProviders;
         this.kernelExtensions = kernelExtensions;
+
+        createConfiguration(storeDir, params);
     }
 
     protected void run()
@@ -233,43 +233,26 @@ public abstract class AbstractGraphDatabase
 
     private void create()
     {
-        params.put( Configuration.store_dir.name(), this.storeDir );
-
+        
         fileSystem = life.add(createFileSystemAbstraction());
-
-        // Get the list of settings classes for extensions
-        List<Class<?>> settingsClasses = new ArrayList<Class<?>>();
-        settingsClasses.add( GraphDatabaseSettings.class );
-        settingsClasses.add( ClassicLoggingService.Configuration.class );
-        for( KernelExtension<?> kernelExtension : kernelExtensions )
-        {
-            Class<?> settingsClass = kernelExtension.getSettingsClass();
-            if( settingsClass != null )
-            {
-                settingsClasses.add( settingsClass );
-            }
-        }
-
-        // Apply defaults to configuration just for logging purposes
-        ConfigurationDefaults configurationDefaults = new ConfigurationDefaults( settingsClasses );
-
-        // Setup configuration
-        config = new Config( configurationDefaults.apply( new SystemPropertiesConfiguration(settingsClasses).apply( params ) ) );
 
         // Create logger
         this.logging = createLogging();
-
-        // Collect system properties, migrate settings and then apply defaults again
-        ConfigurationMigrator configurationMigrator = new ConfigurationMigrator( logging.getLogger( Loggers.CONFIG ) );
-        Map<String,String> configParams = configurationDefaults.apply(configurationMigrator.migrateConfiguration( new SystemPropertiesConfiguration(settingsClasses).apply( params )));
-
+        this.msgLog = logging.getLogger( Loggers.NEO4J );
+        
+        config.setLogger(msgLog);
+        
+        // Make a copy of the configuration (TODO: This smells)
+        Map<String, String> configParams = new HashMap<String, String>();
+        configParams.putAll(config.getParams());
+        
         // Apply autoconfiguration for memory settings
         AutoConfigurator autoConfigurator = new AutoConfigurator( fileSystem,
                                                                   config.get( NeoStoreXaDataSource.Configuration.store_dir ),
                                                                   config.get( GraphDatabaseSettings.use_memory_mapped_buffers ),
                                                                   config.get( GraphDatabaseSettings.dump_configuration ) );
-        Map<String,String> autoConfiguration = autoConfigurator.configure( );
-        for( Map.Entry<String, String> autoConfig : autoConfiguration.entrySet() )
+
+        for( Map.Entry<String, String> autoConfig : autoConfigurator.configure( ).entrySet() )
         {
             // Don't override explicit settings
             if( !params.containsKey( autoConfig.getKey() ) )
@@ -279,8 +262,6 @@ public abstract class AbstractGraphDatabase
         }
 
         config.applyChanges( configParams );
-
-        this.msgLog = logging.getLogger( Loggers.NEO4J );
 
         // Instantiate all services - some are overridable by subclasses
         boolean readOnly = config.get( Configuration.read_only );
@@ -307,7 +288,7 @@ public abstract class AbstractGraphDatabase
             String serviceName = config.get( GraphDatabaseSettings.tx_manager_impl );
             if ( serviceName == null )
             {
-                txManager = new TxManager( this.storeDir, xaDataSourceManager, kernelPanicEventGenerator, txHook, logging.getLogger( Loggers.TXMANAGER ), fileSystem);
+                txManager = new TxManager( config.get(Configuration.store_dir), xaDataSourceManager, kernelPanicEventGenerator, txHook, logging.getLogger( Loggers.TXMANAGER ), fileSystem);
             }
             else {
                 TransactionManagerProvider provider;
@@ -317,7 +298,7 @@ public abstract class AbstractGraphDatabase
                     throw new IllegalStateException( "Unknown transaction manager implementation: "
                             + serviceName );
                 }
-                txManager = provider.loadTransactionManager( this.storeDir, kernelPanicEventGenerator, txHook, logging.getLogger( Loggers.TXMANAGER ), fileSystem);
+                txManager = provider.loadTransactionManager( config.get(Configuration.store_dir), kernelPanicEventGenerator, txHook, logging.getLogger( Loggers.TXMANAGER ), fileSystem);
             }
         }
         life.add( txManager );
@@ -356,7 +337,7 @@ public abstract class AbstractGraphDatabase
                 createGuardedNodeManager( readOnly, caches ) :
                 createNodeManager( readOnly, caches );
 
-        indexStore = new IndexStore( this.storeDir, fileSystem);
+        indexStore = new IndexStore( config.get(Configuration.store_dir), fileSystem);
 
         diagnosticsManager.prependProvider( config );
 
@@ -387,7 +368,6 @@ public abstract class AbstractGraphDatabase
                 providers.add( Pair.of( provider, prov ) );
             }
         }
-        
         
         // Create the storage infrastructure
         
@@ -441,6 +421,35 @@ public abstract class AbstractGraphDatabase
 
         // TODO This is probably too coarse-grained and we should have some strategy per user of config instead
         life.add( new ConfigurationChangedRestarter() );
+    }
+
+    private void createConfiguration(String storeDir, Map<String, String> params)
+    {   
+        // Get the list of settings classes for extensions
+        List<Class<?>> settingsClasses = getSettingsClasses();
+
+        params.put( Configuration.store_dir.name(), storeDir );
+        
+        // Setup configuration
+        config = new Config( 
+                new SystemPropertiesConfiguration(settingsClasses).apply( params ), 
+                settingsClasses);
+    }
+
+    private List<Class<?>> getSettingsClasses()
+    {
+        List<Class<?>> settingsClasses = new ArrayList<Class<?>>();
+        settingsClasses.add( GraphDatabaseSettings.class );
+        settingsClasses.add( ClassicLoggingService.Configuration.class );
+        for( KernelExtension<?> kernelExtension : kernelExtensions )
+        {
+            Class<?> settingsClass = kernelExtension.getSettingsClass();
+            if( settingsClass != null )
+            {
+                settingsClasses.add( settingsClass );
+            }
+        }
+        return settingsClasses;
     }
 
     protected RelationshipTypeCreator createRelationshipTypeCreator()
@@ -726,7 +735,7 @@ public abstract class AbstractGraphDatabase
 
     public final String getStoreDir()
     {
-        return storeDir;
+        return config.get(Configuration.store_dir);
     }
 
     public StoreId getStoreId()
@@ -1054,7 +1063,7 @@ public abstract class AbstractGraphDatabase
         {
             return false;
         }
-        if( !storeDir.equals( that.storeDir ) )
+        if( !getStoreDir().equals( that.getStoreDir() ) )
         {
             return false;
         }
@@ -1065,7 +1074,7 @@ public abstract class AbstractGraphDatabase
     @Override
     public int hashCode()
     {
-        return storeDir.hashCode();
+        return getStoreDir().hashCode();
     }
 
 	protected class DefaultKernelData extends KernelData implements Lifecycle
