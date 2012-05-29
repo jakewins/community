@@ -26,14 +26,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
-import java.util.HashSet;
 import java.util.List;
 
 import org.junit.Test;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.configuration.PropertyFileConfigurator;
-import org.neo4j.server.configuration.ThirdPartyJaxRsPackage;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.web.WebServer;
 
 public class ThirdPartyJAXRSModuleTest
@@ -47,13 +45,10 @@ public class ThirdPartyJAXRSModuleTest
         when( neoServer.baseUri() ).thenReturn( new URI( "http://localhost:7575" ) );
         when( neoServer.getWebServer() ).thenReturn( webServer );
 
-        Configurator configurator = mock( PropertyFileConfigurator.class );
-        HashSet<ThirdPartyJaxRsPackage> jaxRsPackages = new HashSet<ThirdPartyJaxRsPackage>();
-        String path = "/third/party/package";
-        jaxRsPackages.add( new ThirdPartyJaxRsPackage( "org.example.neo4j", path ) );
-        when( configurator.getThirdpartyJaxRsClasses() ).thenReturn( jaxRsPackages );
-
-        when( neoServer.getConfigurator() ).thenReturn( configurator );
+        Config configurator = new Config();
+        configurator.set( ServerSettings.third_party_packages, "org.example.neo4j=/third/party/package");
+        
+        when( neoServer.getConfig() ).thenReturn( configurator );
 
         ThirdPartyJAXRSModule module = new ThirdPartyJAXRSModule();
         module.start( neoServer, null );

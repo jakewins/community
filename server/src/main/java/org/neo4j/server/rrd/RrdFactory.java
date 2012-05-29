@@ -25,7 +25,6 @@ import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.neo4j.server.configuration.Configurator.RRDB_LOCATION_PROPERTY_KEY;
 import static org.rrd4j.ConsolFun.AVERAGE;
 import static org.rrd4j.ConsolFun.MAX;
 import static org.rrd4j.ConsolFun.MIN;
@@ -36,8 +35,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.configuration.Configuration;
 import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.rrd.sampler.NodeIdsInUseSampleable;
@@ -54,10 +54,10 @@ public class RrdFactory
     public static final int STEP_SIZE = 1;
     private static final String RRD_THREAD_NAME = "Statistics Gatherer";
 
-    private final Configuration config;
+    private final Config config;
     private static final Logger LOG = Logger.getLogger( RrdFactory.class );
 
-    public RrdFactory( Configuration config )
+    public RrdFactory( Config config )
     {
 
         this.config = config;
@@ -81,8 +81,7 @@ public class RrdFactory
 //                new RequestCountSampleable( db )
         };
 
-        final String basePath = config.getString( RRDB_LOCATION_PROPERTY_KEY,
-                getDefaultDirectory( (GraphDatabaseAPI) db.graph ) );
+        final String basePath = config.get( ServerSettings.rrdb_location);
         final RrdDb rrdb = createRrdb( basePath, join( primitives, usage ) );
 
         scheduler.scheduleAtFixedRate(

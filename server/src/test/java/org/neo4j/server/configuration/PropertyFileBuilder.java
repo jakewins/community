@@ -70,7 +70,7 @@ public class PropertyFileBuilder
                 ServerSettings.rrdb_location.name(), rrdbDir,
                 ServerSettings.management_path.name(), webAdminUri,
                 ServerSettings.rest_api_path.name(), webAdminDataUri );
-        if ( portNo != null ) properties.put( ServerSettings.webserver_port.name(), portNo );
+        if ( portNo != null ) properties.put( ServerSettings.webserver_http_port.name(), portNo );
         if ( dbTuningPropertyFile != null ) properties.put( ServerSettings.db_tuning_property_file.name(), dbTuningPropertyFile );
         for ( Tuple t : nameValuePairs ) properties.put( t.name, t.value );
         ServerTestUtils.writePropertiesToFile( properties, temporaryConfigFile );

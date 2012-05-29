@@ -20,18 +20,19 @@
 package org.neo4j.server;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.configuration.Configuration;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.configuration.SystemPropertiesConfiguration;
 import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.configuration.ServerConfigurator;
-import org.neo4j.server.database.GraphDatabaseFactory;
-import org.neo4j.server.configuration.EmbeddedServerConfigurator;
+import org.neo4j.server.configuration.ConfiguratorWrappedConfig;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
@@ -72,7 +73,6 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
 public class WrappingNeoServerBootstrapper extends Bootstrapper
 {
     private final GraphDatabaseAPI db;
-    private final Configurator configurator;
     private static Logger log = Logger.getLogger( WrappingNeoServerBootstrapper.class );
 
     /**
@@ -82,7 +82,30 @@ public class WrappingNeoServerBootstrapper extends Bootstrapper
      */
     public WrappingNeoServerBootstrapper( GraphDatabaseAPI db )
     {
-        this( db, new ServerConfigurator( db ) );
+        this( db, new HashMap<String,String>());
+    }
+    
+    /**
+     * Create an instance with custom documentation.
+     * 
+     * @param db
+     * @param config
+     */
+    public WrappingNeoServerBootstrapper( GraphDatabaseAPI db, Map<String,String> config )
+    {
+        this( db, new Config(new SystemPropertiesConfiguration(ServerSettings.class).apply(config),ServerSettings.class));
+    }
+    
+    /**
+     * Create an instance with custom documentation.
+     * 
+     * @param db
+     * @param config
+     */
+    public WrappingNeoServerBootstrapper( GraphDatabaseAPI db, Config config )
+    {
+        super(config);
+        this.db = db;
     }
 
     /**
@@ -93,10 +116,11 @@ public class WrappingNeoServerBootstrapper extends Bootstrapper
      * @param db
      * @param configurator
      */
+    @Deprecated
     public WrappingNeoServerBootstrapper( GraphDatabaseAPI db, Configurator configurator )
     {
+        super(ConfiguratorWrappedConfig.configFromConfigurator(configurator, ServerSettings.class));
         this.db = db;
-        this.configurator = configurator;
     }
 
     @Override
@@ -142,7 +166,7 @@ public class WrappingNeoServerBootstrapper extends Bootstrapper
     }
 
     @Override
-    protected GraphDatabaseFactory getGraphDatabaseFactory( Configuration configuration )
+    protected GraphDatabaseFactory getGraphDatabaseFactory( Config configuration )
     {
         return new GraphDatabaseFactory()
         {
@@ -165,11 +189,5 @@ public class WrappingNeoServerBootstrapper extends Bootstrapper
                 } );
             }
         };
-    }
-
-    @Override
-    protected Configurator getConfigurator()
-    {
-        return configurator;
     }
 }

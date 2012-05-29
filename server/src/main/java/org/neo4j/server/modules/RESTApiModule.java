@@ -22,11 +22,10 @@ package org.neo4j.server.modules;
 import static org.neo4j.server.JAXRSHelper.listFrom;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 
 import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.plugins.PluginManager;
 
@@ -35,24 +34,18 @@ public class RESTApiModule implements ServerModule
     private static final Logger log = Logger.getLogger( RESTApiModule.class );
     private PluginManager plugins;
 
+    private static final String REST_API_PACKAGE = "org.neo4j.server.rest.web";
+
     public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
     {
-        try
-        {
-            URI restApiUri = restApiUri( neoServer );
+        URI restApiUri = restApiUri( neoServer );
 
-            neoServer.getWebServer()
-                    .addJAXRSPackages( listFrom( new String[] { Configurator.REST_API_PACKAGE } ),
-                            restApiUri.toString() );
-            loadPlugins( neoServer, logger );
+        neoServer.getWebServer()
+                .addJAXRSPackages( listFrom( new String[] { REST_API_PACKAGE } ),
+                        restApiUri.toString() );
+        loadPlugins( neoServer, logger );
 
-            log.info( "Mounted REST API at [%s]", restApiUri.toString() );
-            if ( logger != null ) logger.logMessage( "Mounted REST API at: " + restApiUri.toString() );
-        }
-        catch ( URISyntaxException e )
-        {
-            log.warn( e );
-        }
+        logger.info( "Mounted REST API at: " + restApiUri.toString() );
     }
 
     public void stop()
@@ -60,10 +53,9 @@ public class RESTApiModule implements ServerModule
         // Do nothing.
     }
 
-    private URI restApiUri( NeoServerWithEmbeddedWebServer neoServer ) throws URISyntaxException
+    private URI restApiUri( NeoServerWithEmbeddedWebServer neoServer )
     {
-        return new URI( neoServer.getConfiguration()
-                .getString( Configurator.REST_API_PATH_PROPERTY_KEY, Configurator.DEFAULT_DATA_API_PATH ) );
+        return neoServer.getConfig().get( ServerSettings.rest_api_path);
     }
 
     private void loadPlugins( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )

@@ -22,33 +22,20 @@ package org.neo4j.server.modules;
 import static org.neo4j.server.JAXRSHelper.listFrom;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 
 import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.logging.Logger;
+import org.neo4j.server.configuration.ServerSettings;
 
 public class ManagementApiModule implements ServerModule
 {
-    private final Logger log = Logger.getLogger( ManagementApiModule.class );
-
+    private final static String MANAGEMENT_API_PACKAGE = "org.neo4j.server.webadmin.rest";
     public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
     {
-        try
-        {
-            neoServer.getWebServer()
-                    .addJAXRSPackages( listFrom( new String[] { Configurator.MANAGEMENT_API_PACKAGE } ),
-                            managementApiUri( neoServer ).toString() );
-            log.info( "Mounted management API at [%s]", managementApiUri( neoServer ).toString() );
-            if ( logger != null )
-                logger.logMessage( "Mounted management API at: " + managementApiUri( neoServer ).toString() );
-        }
-        catch ( UnknownHostException e )
-        {
-            log.warn( e );
-        }
+        neoServer.getWebServer()
+                .addJAXRSPackages( listFrom( new String[] { MANAGEMENT_API_PACKAGE } ),
+                        managementApiUri( neoServer ).toString() );
+        logger.info( "Mounted management API at: " + managementApiUri( neoServer ).toString() );
     }
 
     public void stop()
@@ -56,16 +43,8 @@ public class ManagementApiModule implements ServerModule
         // Do nothing.
     }
 
-    private URI managementApiUri( NeoServerWithEmbeddedWebServer neoServer ) throws UnknownHostException
+    private URI managementApiUri( NeoServerWithEmbeddedWebServer neoServer )
     {
-        try
-        {
-            return new URI( neoServer.getConfiguration()
-                    .getString( Configurator.MANAGEMENT_PATH_PROPERTY_KEY, Configurator.DEFAULT_MANAGEMENT_API_PATH ) );
-        }
-        catch ( URISyntaxException e )
-        {
-            throw new RuntimeException( e );
-        }
+        return neoServer.getConfig().get(ServerSettings.management_path );
     }
 }

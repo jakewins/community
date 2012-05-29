@@ -25,9 +25,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Properties;
-
 import org.junit.Test;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.logging.InMemoryAppender;
 
 public class StartupHealthCheckTest
@@ -43,21 +42,21 @@ public class StartupHealthCheckTest
     @Test
     public void shouldRunAllHealthChecksToCompletionIfNonFail()
     {
-        StartupHealthCheck check = new StartupHealthCheck( getPassingRules() );
+        StartupHealthCheck check = new StartupHealthCheck( new Config(), getPassingRules() );
         assertTrue( check.run() );
     }
 
     @Test
     public void shouldFailIfOneOrMoreHealthChecksFail()
     {
-        StartupHealthCheck check = new StartupHealthCheck( getWithOneFailingRule() );
+        StartupHealthCheck check = new StartupHealthCheck( new Config(), getWithOneFailingRule() );
         assertFalse( check.run() );
     }
 
     @Test
     public void shouldLogFailedRule()
     {
-        StartupHealthCheck check = new StartupHealthCheck( getWithOneFailingRule() );
+        StartupHealthCheck check = new StartupHealthCheck( new Config(), getWithOneFailingRule() );
         InMemoryAppender appender = new InMemoryAppender( StartupHealthCheck.log );
         check.run();
 
@@ -70,7 +69,7 @@ public class StartupHealthCheckTest
     @Test
     public void shouldAdvertiseFailedRule()
     {
-        StartupHealthCheck check = new StartupHealthCheck( getWithOneFailingRule() );
+        StartupHealthCheck check = new StartupHealthCheck( new Config(), getWithOneFailingRule() );
         check.run();
         assertNotNull( check.failedRule() );
     }
@@ -84,7 +83,7 @@ public class StartupHealthCheckTest
             rules[i] = new StartupHealthCheckRule()
             {
                 @Override
-                public boolean execute( Properties properties )
+                public boolean execute( Config properties )
                 {
                     return true;
                 }
@@ -100,7 +99,7 @@ public class StartupHealthCheckTest
         rules[rules.length / 2] = new StartupHealthCheckRule()
         {
             @Override
-            public boolean execute( Properties properties )
+            public boolean execute( Config properties )
             {
                 return false;
             }
@@ -124,7 +123,7 @@ public class StartupHealthCheckTest
             rules[i] = new StartupHealthCheckRule()
             {
                 @Override
-                public boolean execute( Properties properties )
+                public boolean execute( Config properties )
                 {
                     return true;
                 }

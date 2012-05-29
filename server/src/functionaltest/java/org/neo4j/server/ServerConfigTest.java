@@ -31,7 +31,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.junit.After;
 import org.junit.Test;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.rest.JaxRsResponse;
 import org.neo4j.server.rest.RestRequest;
 import org.neo4j.test.server.ExclusiveServerTestBase;
@@ -85,7 +85,7 @@ public class ServerConfigTest extends ExclusiveServerTestBase
     @Test
     public void shouldGenerateWADLWhenExplicitlyEnabledInConfig() throws IOException
     {
-        server = server().withProperty( Configurator.WADL_ENABLED, "true").build();
+        server = server().withProperty( ServerSettings.wadl_enabled.name(), "true").build();
         server.start();
         JaxRsResponse response = new RestRequest().get("http://localhost:7474/application.wadl", MediaType.WILDCARD_TYPE);
 
@@ -107,7 +107,7 @@ public class ServerConfigTest extends ExclusiveServerTestBase
     @Test
     public void shouldNotGenerateWADLWhenExplicitlyDisabledInConfig() throws IOException
     {
-        server = server().withProperty( Configurator.WADL_ENABLED, "false").build();
+        server = server().withProperty( ServerSettings.wadl_enabled.name(), "false").build();
         server.start();
         JaxRsResponse response = new RestRequest().get("http://localhost:7474/application.wadl", MediaType.WILDCARD_TYPE);
 

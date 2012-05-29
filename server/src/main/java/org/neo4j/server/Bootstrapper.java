@@ -19,31 +19,22 @@
  */
 package org.neo4j.server;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Map;
-import org.apache.commons.configuration.Configuration;
+
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.helpers.Service;
 import org.neo4j.helpers.collection.IteratorUtil;
-import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.configuration.ConfigurationDefaults;
-import org.neo4j.kernel.configuration.SystemPropertiesConfiguration;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.lifecycle.Lifecycle;
 import org.neo4j.kernel.lifecycle.LifecycleException;
 import org.neo4j.kernel.logging.ClassicLoggingService;
 import org.neo4j.kernel.logging.LogbackService;
-import org.neo4j.kernel.logging.Loggers;
 import org.neo4j.kernel.logging.Logging;
-import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.configuration.PropertyFileConfigurator;
-import org.neo4j.server.configuration.ServerConfigurationMigrator;
+import org.neo4j.server.configuration.ConfiguratorWrappedConfig;
+import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
-import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
-import org.neo4j.server.configuration.validation.Validator;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.modules.ServerModule;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
@@ -62,12 +53,23 @@ public abstract class Bootstrapper
     LifeSupport life = new LifeSupport();
 
     protected NeoServerWithEmbeddedWebServer server;
+    protected final Config config;
+    
+    public Bootstrapper()
+    {
+        this.config = createConfig();
+    }
+    
+    public Bootstrapper(Config config)
+    {
+        this.config = config;
+    }
 
     public static void main( String[] args )
     {
         LifeSupport life = new LifeSupport();
 
-        Bootstrapper bootstrapper = life.add( loadMostDerivedBootstrapper() );
+        life.add( loadMostDerivedBootstrapper() );
 
         try
         {
@@ -99,15 +101,22 @@ public abstract class Bootstrapper
     {
         // Do nothing, required by the WrapperListener interface
     }
+    
+    @Override
+    public void init() throws Throwable
+    {
+        
+    }
 
-    public void start()
+    @Override
+    public void start() throws Throwable
     {
         try
         {
-            StartupHealthCheck startupHealthCheck = new StartupHealthCheck( rules() );
+            StartupHealthCheck startupHealthCheck = new StartupHealthCheck( config, rules() );
             Jetty6WebServer webServer = life.add( new Jetty6WebServer());
             server = life.add( new NeoServerWithEmbeddedWebServer( this, startupHealthCheck,
-                    getConfigurator(), webServer, getServerModules() ));
+                    config, webServer, getServerModules() ));
 
             life.start();
 
@@ -129,9 +138,11 @@ public abstract class Bootstrapper
         }
     }
 
+    @Override
     public void stop()
     {
-        stop( 0 );
+        //stop( 0 );
+        life.stop();
     }
 
     public int stop( int stopArg )
@@ -154,13 +165,19 @@ public abstract class Bootstrapper
             return 1;
         }
     }
+    
+    @Override
+    public void shutdown() throws Throwable
+    {
+        life.shutdown();
+    }
 
     public NeoServerWithEmbeddedWebServer getServer()
     {
         return server;
     }
-
-    protected abstract GraphDatabaseFactory getGraphDatabaseFactory( Configuration configuration );
+    
+    protected abstract GraphDatabaseFactory getGraphDatabaseFactory( Config configuration );
 
     protected abstract Iterable<StartupHealthCheckRule> getHealthCheckRules();
 
@@ -175,34 +192,25 @@ public abstract class Bootstrapper
                     public void run()
                     {
                         log.info( "Neo4j Server shutdown initiated by kill signal" );
-                        if ( server != null )
-                        {
-                            server.stop();
-                        }
+                        
                     }
                 } );
     }
 
-    protected Configurator getConfigurator()
+    @Deprecated
+    protected ConfiguratorWrappedConfig getConfigurator()
     {
-        File configFile = new File( System.getProperty( ServerSettings.neo_server_config_file.name()) );
-        return new PropertyFileConfigurator( new Validator( new DatabaseLocationMustBeSpecifiedRule() ), configFile );
+        return new ConfiguratorWrappedConfig(config);
     }
 
-    protected Config getConfig()
-        throws IOException
+    protected Config createConfig()
     {
-        File configFile = new File( System.getProperty( ServerSettings.neo_server_config_file.name()) );
-
-        Map<String,String> props = MapUtil.load( configFile );
-
-        ServerConfigurationMigrator configurationMigrator = new ServerConfigurationMigrator( logging.getLogger( Loggers.CONFIG ) );
-        ConfigurationDefaults configurationDefaults = new ConfigurationDefaults( ServerSettings.class );
-        Map<String,String> configParams = configurationDefaults.apply(configurationMigrator.migrateConfiguration( new SystemPropertiesConfiguration(ServerSettings.class).apply( props )));
-
-        props = new ConfigurationDefaults( ServerSettings.class ).apply( props );
-
-        return new Config( props );
+        try {
+            return ServerConfig.fromFile(System.getProperty( ServerSettings.neo_server_config_file.name()));
+        } catch(IOException e)
+        {
+            throw new RuntimeException("Unable to read server configuration, see nested exception.", e);
+        }
     }
 
     protected boolean isMoreDerivedThan( Bootstrapper other )

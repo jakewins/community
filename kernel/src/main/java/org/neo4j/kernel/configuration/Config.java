@@ -23,6 +23,7 @@ package org.neo4j.kernel.configuration;
 import static org.neo4j.helpers.Format.logLongMessage;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,6 +34,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.TimeUtil;
 import org.neo4j.helpers.collection.Iterables;
+import org.neo4j.kernel.configuration.ConfigModifier.Modifications;
 import org.neo4j.kernel.impl.annotations.Documented;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 import org.neo4j.kernel.info.DiagnosticsProvider;
@@ -51,6 +53,7 @@ import org.neo4j.kernel.logging.StringLogger;
  */
 public class Config implements DiagnosticsProvider
 {
+    
     private List<ConfigurationChangeListener> listeners = new ArrayList<ConfigurationChangeListener>(  );
     private Map<String, String> params = new HashMap<String, String>();
     private ConfigurationMigrator migrator;
@@ -59,9 +62,19 @@ public class Config implements DiagnosticsProvider
     // instantiated.
     private StringLogger log = new BufferingLogger();
     
+    public Config()
+    {
+        this(new HashMap<String,String>(), Collections.<Class<?>>emptyList());
+    }
+    
     public Config(Map<String, String> inputParams)
     {
         this(inputParams, Collections.<Class<?>>emptyList());
+    }
+    
+    public Config(Map<String, String> inputParams, Class<?> ... settingsClasses)
+    {
+        this(inputParams, Iterables.iterable(settingsClasses));
     }
     
     public Config(Map<String, String> inputParams, Iterable<Class<?>> settingsClasses)
@@ -70,9 +83,17 @@ public class Config implements DiagnosticsProvider
         this.applyChanges(new ConfigurationDefaults(settingsClasses).apply(inputParams));
     }
 
+    // TODO: Get rid of this, to allow us to have something more
+    // elaborate as internal storage (eg. something that can keep meta data with
+    // properties).
     public Map<String, String> getParams()
     {
         return this.params;
+    }
+
+    public Collection<String> getKeys() 
+    {
+        return params.keySet();
     }
     
     public boolean isSet( GraphDatabaseSetting<?> graphDatabaseSetting )
@@ -80,6 +101,12 @@ public class Config implements DiagnosticsProvider
         return params.containsKey( graphDatabaseSetting.name() ) && params.get( graphDatabaseSetting.name() ) != null;
     }
 
+    /**
+     * Retrieve a configuration property.
+     * 
+     * @param setting
+     * @return
+     */
     public <T> T get(GraphDatabaseSetting<T> setting)
     {
         String string = params.get( setting.name() );
@@ -87,31 +114,63 @@ public class Config implements DiagnosticsProvider
             string = string.trim();
         return setting.valueOf(string, this);
     }
-
-    public String getDiagnosticsIdentifier()
-    {
-        return getClass().getName();
-    }
-
-    public void acceptDiagnosticsVisitor( Object visitor )
-    {
-        // nothing visits configuration
-    }
-
-    public void dump( DiagnosticsPhase phase, StringLogger log )
-    {
-        if ( phase.isInitialization() || phase.isExplicitlyRequested() )
-        {
-            log.info( logLongMessage( "Neo4j Kernel properties:", Iterables.map( new Function<Map.Entry<String, String>, String>()
-            {
-                public String map( Map.Entry<String, String> stringStringEntry )
-                {
-                    return stringStringEntry.getKey()+"="+stringStringEntry.getValue();
-                }
-            }, params.entrySet() ) ));
-        }
-    }
     
+    /**
+     * Set a configuration value. 
+     * 
+     * Please note that each time
+     * you call this method, events will be fired that may cause
+     * the database to internally restart.
+     * 
+     * If you are going to be modifying multiple values, take
+     * a look {@link #modifyWith(ConfigModifier)}.
+     *  
+     * @param setting
+     * @param value
+     */
+    public <T> void set(GraphDatabaseSetting<T> setting, String value) 
+    {
+        modifyWith(new Modifications().set(setting, value));
+    }
+
+    /**
+     * Apply some set of modifications to this configuration instance,
+     * eventually triggering a configuration change event with a list 
+     * of the modifications made.
+     * 
+     * An easy way to use this is to use the {@link Modifications} helper
+     * class, like so:
+     * 
+     * <code>
+     * modifyWith(new Modifications()
+     *   .set(setting, value)
+     *   .delete(someOtherSetting)
+     *   .set(aThirdSetting, anotherValue));
+     * </code>
+     * @param modifier
+     */
+    public void modifyWith(ConfigModifier modifier)
+    {
+        ConfigModifier.Session session = new ConfigModifier.Session(this);
+        modifier.applyTo(session);
+        
+        // Modify a copy of the original param map
+        Map<String, String> newConfiguration = new HashMap<String,String>();
+        newConfiguration.putAll(params);
+        
+        for(ConfigModifier.Modification modification : session.getModifications())
+        {
+            if(modification.getValue() == null)
+            {
+                newConfiguration.remove(modification.getSetting().name());
+            } else {
+                newConfiguration.put(modification.getSetting().name(), modification.getValue());
+            }
+        }
+        
+        applyChanges(newConfiguration);
+    }
+
     /**
      * Replace the current set of configuration parameters with another one.
      * @param newConfiguration
@@ -157,6 +216,30 @@ public class Config implements DiagnosticsProvider
     public void removeConfigurationChangeListener(ConfigurationChangeListener listener)
     {
         listeners.remove( listener );
+    }
+    
+    public String getDiagnosticsIdentifier()
+    {
+        return getClass().getName();
+    }
+
+    public void acceptDiagnosticsVisitor( Object visitor )
+    {
+        // nothing visits configuration
+    }
+
+    public void dump( DiagnosticsPhase phase, StringLogger log )
+    {
+        if ( phase.isInitialization() || phase.isExplicitlyRequested() )
+        {
+            log.info( logLongMessage( "Neo4j Kernel properties:", Iterables.map( new Function<Map.Entry<String, String>, String>()
+            {
+                public String map( Map.Entry<String, String> stringStringEntry )
+                {
+                    return stringStringEntry.getKey()+"="+stringStringEntry.getValue();
+                }
+            }, params.entrySet() ) ));
+        }
     }
     
     public void setLogger(StringLogger log)

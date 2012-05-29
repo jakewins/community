@@ -28,11 +28,10 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.util.List;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.PropertiesConfiguration;
 import org.junit.Test;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.web.WebServer;
 
 public class RESTApiModuleTest
@@ -46,11 +45,10 @@ public class RESTApiModuleTest
         when( neoServer.baseUri() ).thenReturn( new URI( "http://localhost:7575" ) );
         when( neoServer.getWebServer() ).thenReturn( webServer );
 
-        Configuration config = new PropertiesConfiguration();
-        String path = "/db/data";
-        config.addProperty( Configurator.REST_API_PATH_PROPERTY_KEY, path );
+        Config config = new Config();
+        config.set( ServerSettings.rest_api_path, "/db/data" );
 
-        when( neoServer.getConfiguration() ).thenReturn( config );
+        when( neoServer.getConfig() ).thenReturn( config );
 
         RESTApiModule module = new RESTApiModule();
         module.start( neoServer, null );

@@ -22,6 +22,8 @@ package org.neo4j.graphdb.factory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -657,6 +659,69 @@ public abstract class GraphDatabaseSetting<T>
             return list;
         }
     }
+    
+
+
+    public static class URISetting extends GraphDatabaseSetting<URI>
+    {
+        private boolean normalize;
+    
+        public URISetting( String name )
+        {
+            this( name, false);
+        }
+        
+        public URISetting( String name, boolean normalize) {
+            super( name, "'%s' does not validate as a proper URI.");
+            this.normalize = normalize;
+        }
+    
+        @Override
+        public void validate( Locale locale, String value )
+        {
+            if(value == null)
+                illegalValue(locale,"");
+            
+            try
+            {
+                new URI( value ).normalize();
+            }
+            catch ( URISyntaxException e )
+            {
+                illegalValue(locale, value);
+            }
+        }
+        
+        @Override
+        public URI valueOf(String rawValue, Config config) 
+        {
+            URI uri = null;
+            try
+            {
+                uri = new URI( rawValue );
+
+                if(normalize)   
+                {
+                    String resultStr = uri.normalize().toString();
+                    if ( resultStr.endsWith( "/" ) )
+                    {
+                        uri = new URI( resultStr.substring(0, resultStr.length() - 1));
+                    }
+                }
+            }
+            catch ( URISyntaxException e )
+            {
+                throw new RuntimeException("Unable to get URI value from config, see nested exception", e);
+            }
+
+            return uri;
+        }
+    }
+    
+    //
+    // Actual class implementation
+    //
+    
 
     private String name;
     private String validationMessage;

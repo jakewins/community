@@ -19,24 +19,21 @@
  */
 package org.neo4j.server;
 
-import static org.neo4j.server.configuration.Configurator.WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.MapBackedDependencyResolver;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.configuration.ConfigurationDefaults;
-import org.neo4j.kernel.logging.ClassicLoggingService;
-import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.database.Database;
@@ -54,14 +51,10 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckFailedException;
 import org.neo4j.server.web.SimpleUriBuilder;
 import org.neo4j.server.web.WebServer;
 
-import static org.neo4j.server.configuration.Configurator.*;
-
 public class NeoServerWithEmbeddedWebServer implements NeoServer
 {
-    public static final Logger log = Logger.getLogger( NeoServerWithEmbeddedWebServer.class );
-
     private Database database;
-    private final Configurator configurator;
+    private final Config configurator;
     private final WebServer webServer;
     private final StartupHealthCheck startupHealthCheck;
 
@@ -71,9 +64,10 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
     private SimpleUriBuilder uriBuilder = new SimpleUriBuilder();
     protected StringLogger logger;
+    private MapBackedDependencyResolver dependencyResolver;
 
     public NeoServerWithEmbeddedWebServer( Bootstrapper bootstrapper,
-                                           StartupHealthCheck startupHealthCheck, Configurator configurator, WebServer webServer,
+                                           StartupHealthCheck startupHealthCheck, Config configurator, WebServer webServer,
                                            Iterable<Class<? extends ServerModule>> moduleClasses )
     {
 
@@ -81,6 +75,11 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         this.startupHealthCheck = startupHealthCheck;
         this.configurator = configurator;
         this.webServer = webServer;
+        
+        this.dependencyResolver = new MapBackedDependencyResolver();
+        dependencyResolver.register(configurator);
+        dependencyResolver.register(webServer);
+        dependencyResolver.register(this);
 
         webServer.setNeoServer( this );
         for ( Class<? extends ServerModule> moduleClass : moduleClasses )
@@ -100,10 +99,10 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         DiagnosticsManager diagnosticsManager = startDatabase();
 
-        logger = dm.getTargetLog();
+        logger = diagnosticsManager.getTargetLog();
         logger.info( "--- SERVER STARTUP START ---" );
 
-        diagnosticsManager.register( Configurator.DIAGNOSTICS, configurator );
+        diagnosticsManager.appendProvider( configurator );
 
         startExtensionInitialization();
 
@@ -136,11 +135,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         }
         catch ( Exception e )
         {
-<<<<<<< HEAD
-            log.warn( "Failed to instantiate server module [%s], reason: %s", clazz.getName(), e.getMessage() );
-=======
             logger.warn("Failed to instantiate server module [%s], reason: %s", clazz.getName(), e.getMessage());
->>>>>>> 757095e... Updated configuration and logging
         }
     }
 
@@ -163,11 +158,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
             }
             catch ( Exception e )
             {
-<<<<<<< HEAD
-                log.error( e );
-=======
                 logger.error("Could not stop modules", e);
->>>>>>> 757095e... Updated configuration and logging
             }
         }
     }
@@ -182,36 +173,18 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
     private DiagnosticsManager startDatabase()
     {
-<<<<<<< HEAD
-        String dbLocation = new File( configurator.configuration()
-            .getString(
-                Configurator.DATABASE_LOCATION_PROPERTY_KEY ) ).getAbsolutePath();
-        GraphDatabaseFactory dbFactory = bootstrapper.getGraphDatabaseFactory( configurator.configuration() );
-=======
-        String dbLocation = new File(configurator.configuration()
-                                                 .getString(
-                                                         ServerSettings.database_location.name())).getAbsolutePath();
-        GraphDatabaseFactory dbFactory = bootstrapper.getGraphDatabaseFactory(configurator.configuration());
+        String dbLocation = configurator.get(ServerSettings.database_location);
+        GraphDatabaseFactory dbFactory = bootstrapper.getGraphDatabaseFactory(configurator);
         GraphDatabaseBuilder dbBuilder = dbFactory.newEmbeddedDatabaseBuilder( dbLocation );
->>>>>>> 757095e... Updated configuration and logging
 
-        Map<String, String> databaseTuningProperties = configurator.getDatabaseTuningProperties();
-        if ( databaseTuningProperties != null )
-        {
-<<<<<<< HEAD
-            this.database = new Database( dbFactory, dbLocation, databaseTuningProperties );
-        }
-        else
-        {
-            this.database = new Database( dbFactory, dbLocation );
-=======
-            dbBuilder.setConfig( databaseTuningProperties );
-        } else
+        File neo4jProperties = new File(configurator.get(ServerSettings.db_tuning_property_file));
+        try {
+            dbBuilder.setConfig( MapUtil.load(neo4jProperties) );
+        } catch(IOException e)
         {
             logger.warn(
-                    "No database tuning properties set in the property file, using defaults. Please specify the performance properties file with org.neo4j.server.db.tuning.properties in the server properties file [%s].",
-                    System.getProperty( "org.neo4j.server.properties" ) );
->>>>>>> 757095e... Updated configuration and logging
+                    "No database tuning properties file set in the server property file, or unable to load specified file, using defaults. Please specify the performance properties file with org.neo4j.server.db.tuning.properties in the server properties file [%s].",
+                    configurator.get(ServerSettings.neo_server_config_file) );
         }
         this.database = new Database(dbBuilder);
         return database.graph.getDiagnosticsManager();
@@ -220,21 +193,24 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
     @Override
     public Configuration getConfiguration()
     {
-        return configurator.configuration();
+        return bootstrapper.getConfigurator();
+    }
+    
+
+    @Override
+    public Configurator getConfigurator() 
+    {
+        return bootstrapper.getConfigurator();
+    }
+    
+    @Override
+    public Config getConfig()
+    {
+        return configurator;
     }
 
     private void initWebServer()
     {
-        Map<String,String> props = new HashMap<String, String>(  );
-        Iterator keys = configurator.configuration().getKeys();
-        while( keys.hasNext() )
-        {
-            Object key =  keys.next();
-            props.put( key.toString(), configurator.configuration().getString( key.toString() ) );
-        }
-
-        Config config = new Config(new ConfigurationDefaults( ServerSettings.class, ClassicLoggingService.Configuration.class ).apply( props ));
-
         int webServerPort = getWebServerPort();
         String webServerAddr = getWebServerAddress();
 
@@ -247,79 +223,54 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         webServer.setPort( webServerPort );
         webServer.setAddress( webServerAddr );
         webServer.setMaxThreads( maxThreads );
-
-<<<<<<< HEAD
-        webServer.setEnableHttps( sslEnabled );
-        webServer.setHttpsPort( sslPort );
-        if ( sslEnabled )
-        {
-            log.info( "Enabling HTTPS on port [%s]", sslPort );
-            webServer.setHttpsCertificateInformation( initHttpsKeyStore() );
-=======
+        
         webServer.setEnableHttps(sslEnabled);
         webServer.setHttpsPort(sslPort);
         if(sslEnabled) {
             logger.info( "Enabling HTTPS on port [%s]", sslPort );
             webServer.setHttpsCertificateInformation(initHttpsKeyStore());
->>>>>>> 757095e... Updated configuration and logging
         }
 
         webServer.init();
     }
 
-    private SecurityRule[] createSecurityRulesFrom( Configuration configuration )
+    private SecurityRule[] createSecurityRulesFrom( Config config )
     {
         ArrayList<SecurityRule> rules = new ArrayList<SecurityRule>();
-
-<<<<<<< HEAD
-        for ( String classname : configuration.getStringArray( Configurator.SECURITY_RULES_KEY ) )
-=======
-        for (String classname : configuration.getStringArray( ServerSettings.rest_security_rules.name()))
->>>>>>> 757095e... Updated configuration and logging
+        
+        for (String classname : config.get( ServerSettings.rest_security_rules))
         {
             try
             {
-                rules.add( (SecurityRule) Class.forName( classname ).newInstance() );
+                SecurityRule rule = (SecurityRule) Class.forName( classname ).newInstance();
+                if(rule instanceof HasDependencies)
+                {
+                    ((HasDependencies)rule).resolveDependencies(dependencyResolver);
+                }
+                rules.add( rule );
             }
             catch ( Exception e )
             {
-<<<<<<< HEAD
-                log.error( "Could not load server security rule [%s], exception details: ", classname, e.getMessage() );
-                e.printStackTrace();
-            }
-        }
-
-        return rules.toArray( new SecurityRule[0] );
-=======
                 logger.error( "Could not load server security rule [%s], exception details: ", classname, e.getMessage() );
             }
         }
 
         return rules.toArray(new SecurityRule[rules.size()]);
->>>>>>> 757095e... Updated configuration and logging
     }
 
     private int getMaxThreads()
     {
-        return configurator.configuration()
-            .containsKey( Configurator.WEBSERVER_MAX_THREADS_PROPERTY_KEY ) ? configurator.configuration()
-            .getInt( Configurator.WEBSERVER_MAX_THREADS_PROPERTY_KEY ) : defaultMaxWebServerThreads();
-    }
-
-    private int defaultMaxWebServerThreads()
-    {
-        return 10 * Runtime.getRuntime()
-            .availableProcessors();
+        return configurator.get(ServerSettings.webserver_max_threads);
     }
 
     private void startWebServer( StringLogger logger )
     {
         try
         {
-            SecurityRule[] securityRules = createSecurityRulesFrom( configurator.configuration() );
+            SecurityRule[] securityRules = createSecurityRulesFrom( configurator );
             webServer.addSecurityRules( securityRules );
 
-            Integer limit = getConfiguration().getInteger( WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY, null );
+            Integer limit = configurator.get(ServerSettings.webserver_limit_execution_time);
             if ( limit != null )
             {
                 webServer.addExecutionLimitFilter( limit );
@@ -329,28 +280,14 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
             if ( httpLoggingProperlyConfigured() )
             {
                 webServer.enableHTTPLoggingForWebadmin(
-                    new File( getConfiguration().getProperty( Configurator.HTTP_LOG_CONFIG_LOCATION ).toString() ) );
+                    new File( configurator.get( ServerSettings.http_logging_configuration_location )) );
             }
 
             webServer.start();
-<<<<<<< HEAD
-
-            if ( logger != null )
-            {
-                logger.logMessage( "Server started on: " + baseUri() );
-            }
-            log.info( "Server started on [%s]", baseUri() );
-        }
-        catch ( Exception e )
-        {
-            e.printStackTrace();
-            log.error( "Failed to start Neo Server on port [%d], reason [%s]", getWebServerPort(), e.getMessage() );
-=======
             logger.info("Server started on: " + baseUri());
         } catch (Exception e)
         {
             logger.error("Failed to start Neo Server on port [%d], reason [%s]", getWebServerPort(), e.getMessage());
->>>>>>> 757095e... Updated configuration and logging
         }
     }
 
@@ -360,50 +297,42 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         return loggingEnabled() && configLocated();
     }
 
+    // TODO: The setting type verification method should do this check,
+    // expand FileSetting to optionally validate that the file exists.
     private boolean configLocated()
     {
-        final Object property = getConfiguration().getProperty( Configurator.HTTP_LOG_CONFIG_LOCATION );
+        final String property = configurator.get( ServerSettings.http_logging_configuration_location );
         if ( property == null )
         {
             return false;
         }
 
-        return new File( String.valueOf( property ) ).exists();
+        return new File( property ).exists();
     }
 
     private boolean loggingEnabled()
     {
-        return "true".equals( String.valueOf( getConfiguration().getProperty( Configurator.HTTP_LOGGING ) ) );
+        return configurator.get(ServerSettings.http_logging_enabled);
     }
 
     protected int getWebServerPort()
     {
-        return configurator.configuration()
-<<<<<<< HEAD
-            .getInt( Configurator.WEBSERVER_PORT_PROPERTY_KEY, Configurator.DEFAULT_WEBSERVER_PORT );
-=======
-                           .getInt(ServerSettings.webserver_port.name(), Configurator.DEFAULT_WEBSERVER_PORT);
->>>>>>> 757095e... Updated configuration and logging
+        return configurator.get(ServerSettings.webserver_http_port);
     }
 
     protected boolean getHttpsEnabled()
     {
-        return configurator.configuration()
-            .getBoolean( Configurator.WEBSERVER_HTTPS_ENABLED_PROPERTY_KEY,
-                Configurator.DEFAULT_WEBSERVER_HTTPS_ENABLED );
+        return configurator.get(ServerSettings.webserver_https_enabled);
     }
 
     protected int getHttpsPort()
     {
-        return configurator.configuration()
-            .getInt( Configurator.WEBSERVER_HTTPS_PORT_PROPERTY_KEY, Configurator.DEFAULT_WEBSERVER_HTTPS_PORT );
+        return configurator.get(ServerSettings.webserver_https_port);
     }
 
     protected String getWebServerAddress()
     {
-        return configurator.configuration()
-            .getString( Configurator.WEBSERVER_ADDRESS_PROPERTY_KEY,
-                Configurator.DEFAULT_WEBSERVER_ADDRESS );
+        return configurator.get(ServerSettings.webserver_address);
     }
 
     /**
@@ -415,26 +344,14 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
      */
     protected KeyStoreInformation initHttpsKeyStore()
     {
-        File keystorePath = new File( configurator.configuration().getString(
-            Configurator.WEBSERVER_KEYSTORE_PATH_PROPERTY_KEY,
-            Configurator.DEFAULT_WEBSERVER_KEYSTORE_PATH ) );
+        File keystorePath = new File( configurator.get( ServerSettings.webserver_https_keystore_path ));
 
-        File privateKeyPath = new File( configurator.configuration().getString(
-            Configurator.WEBSERVER_HTTPS_KEY_PATH_PROPERTY_KEY,
-            Configurator.DEFAULT_WEBSERVER_HTTPS_KEY_PATH ) );
+        File privateKeyPath = new File( configurator.get( ServerSettings.webserver_https_key_path ));
 
-        File certificatePath = new File( configurator.configuration().getString(
-            Configurator.WEBSERVER_HTTPS_CERT_PATH_PROPERTY_KEY,
-            Configurator.DEFAULT_WEBSERVER_HTTPS_CERT_PATH ) );
+        File certificatePath = new File( configurator.get( ServerSettings.webserver_https_certificate_path ));
 
-<<<<<<< HEAD
-        if ( !certificatePath.exists() )
-        {
-            log.info( "No SSL certificate found, generating a self-signed certificate.." );
-=======
         if(!certificatePath.exists()) {
             logger.info( "No SSL certificate found, generating a self-signed certificate.." );
->>>>>>> 757095e... Updated configuration and logging
             SslCertificateFactory certFactory = new SslCertificateFactory();
             certFactory.createSelfSignedCertificate( certificatePath, privateKeyPath, getWebServerAddress() );
         }
@@ -450,19 +367,11 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         {
             stopServerOnly();
             stopDatabase();
-<<<<<<< HEAD
-            log.info( "Successfully shutdown database." );
-        }
-        catch ( Exception e )
-        {
-            log.warn( "Failed to cleanly shutdown database." );
-=======
             logger.info("Successfully shutdown database [%s]", getDatabase().getLocation());
         } catch (Exception e)
         {
             logger.warn("Failed to cleanly shutdown database [%s]. Reason: %s", getDatabase().getLocation(),
                      e.getMessage());
->>>>>>> 757095e... Updated configuration and logging
         }
     }
 
@@ -476,19 +385,11 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
             stopWebServer();
             stopModules();
             stopExtensionInitializers();
-<<<<<<< HEAD
-            log.info( "Successfully shutdown Neo4j Server." );
-        }
-        catch ( Exception e )
-        {
-            log.warn( "Failed to cleanly shutdown Neo4j Server." );
-=======
             logger.info("Successfully shutdown Neo Server on port [%d]", getWebServerPort(), getDatabase().getLocation());
         } catch (Exception e)
         {
             logger.warn("Failed to cleanly shutdown Neo Server on port [%d], database [%s]. Reason: %s",
                      getWebServerPort(), getDatabase().getLocation(), e.getMessage());
->>>>>>> 757095e... Updated configuration and logging
         }
     }
 
@@ -536,12 +437,6 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
     public WebServer getWebServer()
     {
         return webServer;
-    }
-
-    @Override
-    public Configurator getConfigurator()
-    {
-        return configurator;
     }
 
     @Override

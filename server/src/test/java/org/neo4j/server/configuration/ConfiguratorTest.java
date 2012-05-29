@@ -32,7 +32,6 @@ import java.util.Set;
 import org.apache.commons.configuration.Configuration;
 import org.junit.Test;
 import org.neo4j.server.ServerTestUtils;
-import org.neo4j.server.configuration.validation.Validator;
 
 public class ConfiguratorTest
 {
@@ -42,7 +41,7 @@ public class ConfiguratorTest
     {
         File configFile = PropertyFileBuilder.builder()
                 .build();
-        Configuration config = new PropertyFileConfigurator( new Validator(), configFile ).configuration();
+        Configuration config = new PropertyFileConfigurator( null, configFile ).configuration();
         assertNotNull( config );
         configFile.delete();
     }
@@ -55,7 +54,7 @@ public class ConfiguratorTest
                 .withNameValue( "foo", "bar" )
                 .build();
 
-        Configuration testConf = new PropertyFileConfigurator( new Validator(), configFile ).configuration();
+        Configuration testConf = new PropertyFileConfigurator( null, configFile ).configuration();
 
         final String EXPECTED_VALUE = "bar";
         assertEquals( EXPECTED_VALUE, testConf.getString( "foo" ) );

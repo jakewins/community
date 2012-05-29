@@ -28,11 +28,10 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.util.List;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.PropertiesConfiguration;
 import org.junit.Test;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.web.WebServer;
 
 public class ManagementApiModuleTest
@@ -46,11 +45,10 @@ public class ManagementApiModuleTest
         when( neoServer.baseUri() ).thenReturn( new URI( "http://localhost:7575" ) );
         when( neoServer.getWebServer() ).thenReturn( webServer );
 
-        Configuration config = new PropertiesConfiguration();
-        String managementPath = "/db/manage";
-        config.addProperty( Configurator.MANAGEMENT_PATH_PROPERTY_KEY, managementPath );
+        Config config = new Config();
+        config.set( ServerSettings.management_path, "/db/manage" );
 
-        when( neoServer.getConfiguration() ).thenReturn( config );
+        when( neoServer.getConfig() ).thenReturn( config );
 
         ManagementApiModule module = new ManagementApiModule();
         module.start( neoServer, null );

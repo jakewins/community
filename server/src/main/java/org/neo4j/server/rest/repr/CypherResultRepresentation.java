@@ -89,7 +89,7 @@ public class CypherResultRepresentation extends ObjectRepresentation
 
         if(r instanceof Iterable)
         {
-            return handleIterable( (Iterable) r );
+            return handleIterable( (Iterable<?>) r );
         }
 
         if ( r instanceof Node)
@@ -106,7 +106,7 @@ public class CypherResultRepresentation extends ObjectRepresentation
         return representationDispatcher.dispatch( r, "" );
     }
 
-    Representation handleIterable( Iterable data ) {
+    Representation handleIterable( Iterable<?> data ) {
         final List<Representation> results = new ArrayList<Representation>();
         for ( final Object value : data )
         {

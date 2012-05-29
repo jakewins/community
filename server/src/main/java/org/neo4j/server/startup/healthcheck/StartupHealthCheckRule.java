@@ -19,11 +19,11 @@
  */
 package org.neo4j.server.startup.healthcheck;
 
-import java.util.Properties;
+import org.neo4j.kernel.configuration.Config;
 
 public interface StartupHealthCheckRule
 {
-    public boolean execute( Properties properties );
+    public boolean execute( Config config );
 
     public String getFailureMessage();
 }

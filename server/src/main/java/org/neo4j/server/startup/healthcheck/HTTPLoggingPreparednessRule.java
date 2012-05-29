@@ -21,13 +21,13 @@ package org.neo4j.server.startup.healthcheck;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.io.FileUtils;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.configuration.ServerSettings;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
@@ -36,19 +36,14 @@ public class HTTPLoggingPreparednessRule implements StartupHealthCheckRule
     private String failureMessage = "";
 
     @Override
-    public boolean execute( Properties properties )
+    public boolean execute( Config properties )
     {
-        boolean enabled = new Boolean( String.valueOf( properties.getProperty( Configurator.HTTP_LOGGING ) ) )
-            .booleanValue();
-
-        if ( !enabled )
+        if ( !properties.get( ServerSettings.http_logging_enabled ) )
         {
             return true;
         }
 
-        File logLocation = extractLogLocationFromConfig(
-            String.valueOf( properties.get( Configurator.HTTP_LOG_CONFIG_LOCATION ) ) );
-
+        File logLocation = extractLogLocationFromConfig( properties.get( ServerSettings.http_logging_configuration_location ) );
 
         if ( logLocation != null )
         {

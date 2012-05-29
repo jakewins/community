@@ -19,8 +19,7 @@
  */
 package org.neo4j.server.startup.healthcheck;
 
-import java.util.Properties;
-
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.logging.Logger;
 
 public class StartupHealthCheck
@@ -30,17 +29,17 @@ public class StartupHealthCheck
     private final StartupHealthCheckRule[] rules;
 
     private StartupHealthCheckRule failedRule = null;
-    private Properties properties;
-
-    public StartupHealthCheck( Properties properties , StartupHealthCheckRule... rules)
+    private Config config;
+    
+    public StartupHealthCheck()
     {
-        this.rules = rules;
-        this.properties = properties;
+        this(new Config());
     }
 
-    public StartupHealthCheck( StartupHealthCheckRule... rules )
+    public StartupHealthCheck( Config config , StartupHealthCheckRule... rules)
     {
-        this(System.getProperties(), rules);
+        this.rules = rules;
+        this.config = config;
     }
 
     public boolean run()
@@ -52,7 +51,7 @@ public class StartupHealthCheck
 
         for ( StartupHealthCheckRule r : rules )
         {
-            if ( !r.execute( properties ) )
+            if ( !r.execute( config ) )
             {
                 log.error( r.getFailureMessage() );
                 failedRule = r;

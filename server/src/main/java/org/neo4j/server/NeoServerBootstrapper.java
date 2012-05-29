@@ -20,9 +20,9 @@
 package org.neo4j.server;
 
 import java.util.Arrays;
-import java.util.Map;
-import org.apache.commons.configuration.Configuration;
+
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
 import org.neo4j.server.modules.RESTApiModule;
@@ -30,7 +30,6 @@ import org.neo4j.server.modules.ServerModule;
 import org.neo4j.server.modules.StatisticModule;
 import org.neo4j.server.modules.ThirdPartyJAXRSModule;
 import org.neo4j.server.modules.WebAdminModule;
-import org.neo4j.server.startup.healthcheck.ConfigFileMustBePresentRule;
 import org.neo4j.server.startup.healthcheck.HTTPLoggingPreparednessRule;
 import org.neo4j.server.startup.healthcheck.Neo4jPropertiesMustExistRule;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
@@ -40,8 +39,7 @@ public class NeoServerBootstrapper extends Bootstrapper
     @Override
     public Iterable<StartupHealthCheckRule> getHealthCheckRules()
     {
-        return Arrays.asList( new ConfigFileMustBePresentRule(), new Neo4jPropertiesMustExistRule(),
-            new HTTPLoggingPreparednessRule() );
+        return Arrays.asList( new Neo4jPropertiesMustExistRule(), new HTTPLoggingPreparednessRule() );
     }
 
     @Override
@@ -53,7 +51,7 @@ public class NeoServerBootstrapper extends Bootstrapper
     }
 
     @Override
-    protected GraphDatabaseFactory getGraphDatabaseFactory( Configuration configuration )
+    protected GraphDatabaseFactory getGraphDatabaseFactory( Config configuration )
     {
         return new org.neo4j.graphdb.factory.GraphDatabaseFactory();
     }

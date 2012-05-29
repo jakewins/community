@@ -35,20 +35,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.Bootstrapper;
 import org.neo4j.server.EphemeralNeoServerBootstrapper;
 import org.neo4j.server.NeoServerBootstrapper;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.ServerTestUtils;
-import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.configuration.PropertyFileConfigurator;
+import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
-import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
-import org.neo4j.server.configuration.validation.Validator;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
 import org.neo4j.server.modules.RESTApiModule;
@@ -71,7 +68,7 @@ public class ServerBuilder
     private String webAdminDataUri = "/db/data/";
     private StartupHealthCheck startupHealthCheck;
     private final HashMap<String, String> thirdPartyPackages = new HashMap<String, String>();
-    private Properties arbitraryProperties = new Properties();
+    private Map<String, String> arbitraryProperties = new HashMap<String, String>();
 
     private static enum WhatToDo
     {
@@ -127,7 +124,7 @@ public class ServerBuilder
         }
 
         return new NeoServerWithEmbeddedWebServer( createBootstrapper(), startupHealthCheck,
-            new PropertyFileConfigurator( new Validator( new DatabaseLocationMustBeSpecifiedRule() ), configFile ),
+            ServerConfig.fromFile(configFile),
             new Jetty6WebServer(), serverModules );
     }
 
@@ -154,7 +151,7 @@ public class ServerBuilder
                 ServerSettings.rest_api_path.name(), webAdminDataUri );
         if ( portNo != null )
         {
-            properties.put( ServerSettings.webserver_port.name(), portNo );
+            properties.put( ServerSettings.webserver_http_port.name(), portNo );
         }
         if ( host != null )
         {
@@ -339,7 +336,7 @@ public class ServerBuilder
                         return "mockFailure";
                     }
 
-                    public boolean execute( Properties properties )
+                    public boolean execute( Config properties )
                     {
                         return false;
                     }
@@ -423,7 +420,7 @@ public class ServerBuilder
 
     public ServerBuilder withStartupHealthCheckRules( StartupHealthCheckRule... rules )
     {
-        this.startupHealthCheck = new StartupHealthCheck( arbitraryProperties, rules );
+        this.startupHealthCheck = new StartupHealthCheck( ServerConfig.fromMap(arbitraryProperties), rules );
         return this;
     }
 }

@@ -47,7 +47,7 @@ public class StreamingJsonFormatPerformanceTest {
     private WrappingNeoServerBootstrapper server;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Throwable {
         gdb = new ImpermanentGraphDatabase();
         for (int i=0;i<10;i++) {
             createData();

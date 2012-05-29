@@ -21,10 +21,36 @@ package org.neo4j.server.rest.security;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.neo4j.graphdb.DependencyResolver;
+import org.neo4j.server.HasDependencies;
 import org.neo4j.server.configuration.Configurator;
 
 public interface SecurityRule
 {
+    /**
+     * This is deprecated, and will be removed in version 1.10
+     * 
+     * If you would like to replicate the functionality of this in a safe
+     * way, you can have your security rule implement the {@link HasDependencies}
+     * interface. Using that, the server will inject an {@link DependencyResolver},
+     * which you can use to access the server configuration, like so:
+     * 
+     * <code>
+     * import org.neo4j.kernel.configuration.Config;
+     * import org.neo4j.server.configuration.ServerSettings;
+     * 
+     * class MySecurityRule implements SecurityRule, HasDependencies
+     * {
+     *    [..]
+     *    public void resolveDependencies(DependencyResolver resolver)
+     *    {
+     *      Config config = resolver.resolveDependency(Config.class)
+     *      this.restAPIPath = config.get(ServerSettings.rest_api_path);
+     *    }
+     * }
+     * </code>
+     */
+    @Deprecated
     String DEFAULT_DATABASE_PATH = Configurator.DEFAULT_DATA_API_PATH;
 
     /**

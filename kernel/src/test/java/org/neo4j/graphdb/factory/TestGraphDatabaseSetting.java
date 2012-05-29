@@ -23,6 +23,7 @@ package org.neo4j.graphdb.factory;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 import java.util.HashMap;
 
@@ -138,9 +139,7 @@ public class TestGraphDatabaseSetting
             assertThat( e.getMessage(), equalTo( "Must be a valid file path." ) );
         }
     }
-    
 
-    
     @Test
     public void testRelativeFileSetting() 
     {
@@ -157,5 +156,19 @@ public class TestGraphDatabaseSetting
         
         // Path with incorrect directory separator
         assertThat(fileSetting.valueOf("\\baa\\boo", config), equalTo("/baa/boo"));
+    }
+
+    @Test
+    public void testURISetting() 
+    {
+        GraphDatabaseSetting.URISetting setting = new GraphDatabaseSetting.URISetting("myfile", true);
+        
+        Config config = mock(Config.class);
+        
+        assertThat(setting.valueOf("/baa/boo", config).toString(), equalTo("/baa/boo"));
+        
+        // Strip trailing slash
+        assertThat(setting.valueOf("/baa/", config).toString(), equalTo("/baa"));
+        
     }
 }

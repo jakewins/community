@@ -28,12 +28,12 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.HashMap;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.MapConfiguration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.configuration.ServerConfig;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.database.Database;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.rrd4j.ConsolFun;
@@ -43,13 +43,13 @@ import org.rrd4j.core.RrdDef;
 
 public class RrdFactoryTest
 {
-    private Configuration config;
+    private Config config;
     private Database db;
 
     @Before
     public void setUp() throws IOException
     {
-        config = new MapConfiguration( new HashMap<String, String>() );
+        config = ServerConfig.fromMap(new HashMap<String,String>());
         db = new Database( new ImpermanentGraphDatabase() );
     }
 
@@ -63,7 +63,7 @@ public class RrdFactoryTest
     public void shouldTakeDirectoryLocationFromConfig()
     {
         String expected = "target/rrd-test";
-        config.addProperty( Configurator.RRDB_LOCATION_PROPERTY_KEY, expected );
+        config.set( ServerSettings.rrdb_location, expected );
         TestableRrdFactory factory = createRrdFactory();
 
         factory.createRrdDbAndSampler( db, new NullJobScheduler() );
@@ -76,7 +76,7 @@ public class RrdFactoryTest
     {
         String expected = "target/rrd-test";
 
-        config.addProperty( Configurator.RRDB_LOCATION_PROPERTY_KEY, expected );
+        config.set( ServerSettings.rrdb_location, expected );
         TestableRrdFactory factory = createRrdFactory();
 
         factory.createRrdDbAndSampler( db, new NullJobScheduler() );
@@ -122,7 +122,7 @@ public class RrdFactoryTest
     {
         public String directoryUsed;
 
-        public TestableRrdFactory( Configuration config )
+        public TestableRrdFactory( Config config )
         {
             super( config );
         }

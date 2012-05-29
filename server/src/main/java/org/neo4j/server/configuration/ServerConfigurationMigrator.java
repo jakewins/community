@@ -20,25 +20,25 @@
 
 package org.neo4j.server.configuration;
 
-import java.util.Map;
-import org.neo4j.kernel.configuration.ConfigurationMigrator;
-import org.neo4j.kernel.logging.StringLogger;
+import org.neo4j.kernel.configuration.BaseConfigurationMigrator;
 
 /**
  * Migrates Neo4j Server configuration
  */
 public class ServerConfigurationMigrator
-    extends ConfigurationMigrator
+    extends BaseConfigurationMigrator
 {
-    public ServerConfigurationMigrator( StringLogger messageLog )
     {
-        super( messageLog );
-    }
-
-    @Override
-    public Map<String, String> migrateConfiguration( Map<String, String> inputParams )
-    {
-        // No rules for now
-        return inputParams;
+        // Example:
+//        add(new SpecificPropertyMigration() {
+//            
+//            @Override
+//            public void setValueWithOldSetting(String value,
+//                    Map<String, String> rawConfiguration)
+//            {
+//                // TODO Auto-generated method stub
+//                
+//            }
+//        });
     }
 }

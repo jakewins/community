@@ -28,12 +28,12 @@ import static org.neo4j.graphdb.factory.GraphDatabaseSetting.osIsWindows;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.test.TargetDirectory;
 
 public class HTTPLoggingPreparednessRuleTest
@@ -43,8 +43,8 @@ public class HTTPLoggingPreparednessRuleTest
     {
         // given
         HTTPLoggingPreparednessRule rule = new HTTPLoggingPreparednessRule();
-        final Properties properties = new Properties();
-        properties.put( Configurator.HTTP_LOGGING, "false" );
+        final Config properties = new Config();
+        properties.set( ServerSettings.http_logging_enabled, "false" );
 
         // when
         boolean result = rule.execute( properties );
@@ -59,7 +59,7 @@ public class HTTPLoggingPreparednessRuleTest
     {
         // given
         HTTPLoggingPreparednessRule rule = new HTTPLoggingPreparednessRule();
-        final Properties properties = new Properties();
+        final Config properties = new Config();
 
         // when
         boolean result = rule.execute( properties );
@@ -78,9 +78,9 @@ public class HTTPLoggingPreparednessRuleTest
 
 
         HTTPLoggingPreparednessRule rule = new HTTPLoggingPreparednessRule();
-        final Properties properties = new Properties();
-        properties.put( Configurator.HTTP_LOGGING, "true" );
-        properties.put( Configurator.HTTP_LOG_CONFIG_LOCATION,
+        final Config properties = new Config();
+        properties.set( ServerSettings.http_logging_enabled, "true" );
+        properties.set( ServerSettings.http_logging_configuration_location,
             createConfigFile( createLogbackConfigXml( logDir ), confDir ).getAbsolutePath() );
 
         // when
@@ -99,10 +99,10 @@ public class HTTPLoggingPreparednessRuleTest
 
 
         HTTPLoggingPreparednessRule rule = new HTTPLoggingPreparednessRule();
-        final Properties properties = new Properties();
-        properties.put( Configurator.HTTP_LOGGING, "true" );
+        final Config properties = new Config();
+        properties.set( ServerSettings.http_logging_enabled, "true" );
         final File unwritableDirectory = createUnwritableDirectory();
-        properties.put( Configurator.HTTP_LOG_CONFIG_LOCATION,
+        properties.set( ServerSettings.http_logging_configuration_location,
             createConfigFile( createLogbackConfigXml( unwritableDirectory ), confDir ).getAbsolutePath() );
 
         // when

@@ -23,10 +23,11 @@ package org.neo4j.server.storemigration;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.DefaultFileSystemAbstraction;
 import org.neo4j.kernel.DefaultIdGeneratorFactory;
 import org.neo4j.kernel.configuration.Config;
@@ -42,11 +43,8 @@ import org.neo4j.kernel.impl.storemigration.UpgradableDatabase;
 import org.neo4j.kernel.impl.storemigration.UpgradeNotAllowedByConfigurationException;
 import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.configuration.PropertyFileConfigurator;
+import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
-import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
-import org.neo4j.server.configuration.validation.Validator;
 import org.neo4j.server.logging.Logger;
 
 public class PreStartupStoreUpgrader
@@ -76,23 +74,20 @@ public class PreStartupStoreUpgrader
     {
         try
         {
-            Configurator configurator = getConfigurator();
-            HashMap<String, String> config = new HashMap<String, String>( configurator.getDatabaseTuningProperties() );
+            Config configurator = getConfigurator();
+            Map<String, String> dbParams = MapUtil.load(new File(configurator.get(ServerSettings.database_location)));
 
-            String dbLocation = new File( configurator.configuration()
-                    .getString( ServerSettings.database_location.name() ) ).getAbsolutePath();
+            String dbLocation = configurator.get( ServerSettings.database_location);
 
             if ( new CurrentDatabase().storeFilesAtCurrentVersion( new File( dbLocation ) ) )
             {
                 return 0;
             }
 
-            String separator = System.getProperty( "file.separator" );
-            String store = dbLocation + separator + NeoStore.DEFAULT_NAME;
-            config.put( "store_dir", dbLocation );
-            config.put( "neo_store", store );
+            dbParams.put( "store_dir", dbLocation );
+            Config conf = new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(dbParams) );
 
-            if ( !new UpgradableDatabase().storeFilesUpgradeable( new File( store ) ) )
+            if ( !new UpgradableDatabase().storeFilesUpgradeable(  new File( conf.get(NeoStore.Configuration.neo_store) ) ) )
             {
                 logger.info( "Store files missing, or not in suitable state for upgrade. " +
                         "Leaving this problem for main server process to resolve." );
@@ -100,14 +95,14 @@ public class PreStartupStoreUpgrader
             }
             
             FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-            Config conf = new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(config) );
-            StoreUpgrader storeUpgrader = new StoreUpgrader( conf, StringLogger.SYSTEM,new ConfigMapUpgradeConfiguration( conf ),
+            
+            StoreUpgrader storeUpgrader = new StoreUpgrader( conf, StringLogger.SYSTEM, new ConfigMapUpgradeConfiguration( conf ),
                     new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( StringLogger.SYSTEM, out ) ),
                     new DatabaseFiles(), new DefaultIdGeneratorFactory(), fileSystem );
 
             try
             {
-                storeUpgrader.attemptUpgrade( store );
+                storeUpgrader.attemptUpgrade( conf.get(NeoStore.Configuration.neo_store) );
             }
             catch ( UpgradeNotAllowedByConfigurationException e )
             {
@@ -129,10 +124,11 @@ public class PreStartupStoreUpgrader
         }
     }
 
-    protected Configurator getConfigurator()
+    protected Config getConfigurator() throws IOException
     {
         File configFile = new File( systemProperties.getProperty( ServerSettings.neo_server_config_file.name() ) );
-        return new PropertyFileConfigurator( new Validator( new DatabaseLocationMustBeSpecifiedRule() ), configFile );
+        
+        return ServerConfig.fromFile(configFile);
     }
 
 }

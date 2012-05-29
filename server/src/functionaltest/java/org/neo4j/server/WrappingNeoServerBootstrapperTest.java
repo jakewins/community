@@ -25,7 +25,8 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,8 +37,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.jmx.Primitives;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseAPI;
-import org.neo4j.server.configuration.Configurator;
-import org.neo4j.server.configuration.ServerConfigurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.helpers.FunctionalTestHelper;
 import org.neo4j.server.rest.JaxRsResponse;
 import org.neo4j.server.rest.RESTDocsGenerator;
@@ -75,7 +75,7 @@ public class WrappingNeoServerBootstrapperTest extends ExclusiveServerTestBase
     }
 
     @Test
-    public void usingWrappingNeoServerBootstrapper()
+    public void usingWrappingNeoServerBootstrapper() throws Throwable
     {
         // START SNIPPET: usingWrappingNeoServerBootstrapper
         AbstractGraphDatabase graphdb = getGraphDb();
@@ -89,20 +89,19 @@ public class WrappingNeoServerBootstrapperTest extends ExclusiveServerTestBase
     }
 
     @Test
-    public void shouldAllownModifyingProperties()
+    public void shouldAllownModifyingProperties() throws Throwable
     {
 
         // START SNIPPET: customConfiguredWrappingNeoServerBootstrapper
         // let the database accept remote neo4j-shell connections
         GraphDatabaseAPI graphdb = (GraphDatabaseAPI) new GraphDatabaseFactory().newEmbeddedDatabaseBuilder( "target/configDb" ).setConfig( ShellSettings.remote_shell_enabled, GraphDatabaseSetting.TRUE ).newGraphDatabase();
-        ServerConfigurator config;
-        config = new ServerConfigurator( graphdb );
+        
+        Map<String,String> config = new HashMap<String,String>();
+        
         // let the server endpoint be on a custom port
-        config.configuration().setProperty(
-                Configurator.WEBSERVER_PORT_PROPERTY_KEY, 7575 );
+        config.put(ServerSettings.webserver_http_port.name(), "7575" );
 
-        WrappingNeoServerBootstrapper srv;
-        srv = new WrappingNeoServerBootstrapper( graphdb, config );
+        WrappingNeoServerBootstrapper srv = new WrappingNeoServerBootstrapper( graphdb, config );
         srv.start();
         // END SNIPPET: customConfiguredWrappingNeoServerBootstrapper
 
@@ -116,7 +115,7 @@ public class WrappingNeoServerBootstrapperTest extends ExclusiveServerTestBase
     }
 
     @Test
-    public void shouldAllowShellConsoleWithoutCustomConfig()
+    public void shouldAllowShellConsoleWithoutCustomConfig() throws Throwable
     {
         WrappingNeoServerBootstrapper srv;
         srv = new WrappingNeoServerBootstrapper( getGraphDb() );
@@ -129,14 +128,13 @@ public class WrappingNeoServerBootstrapperTest extends ExclusiveServerTestBase
         srv.stop();
     }
     @Test
-    public void shouldAllowModifyingListenPorts() throws UnknownHostException
+    public void shouldAllowModifyingListenPorts() throws Throwable
     {
 
-        ServerConfigurator config = new ServerConfigurator(
-                myDb );
+        Map<String,String> config = new HashMap<String,String>();
+        
         String hostAddress = InetAddress.getLocalHost().getHostAddress();
-        config.configuration().setProperty(
-                Configurator.WEBSERVER_ADDRESS_PROPERTY_KEY, hostAddress );
+        config.put(ServerSettings.webserver_address.name(), hostAddress );
 
         WrappingNeoServerBootstrapper srv = new WrappingNeoServerBootstrapper(
                 myDb, config );
@@ -160,7 +158,7 @@ public class WrappingNeoServerBootstrapperTest extends ExclusiveServerTestBase
     }
 
     @Test
-    public void shouldResponseAndBeAbleToModifyDb()
+    public void shouldRespondAndBeAbleToModifyDb() throws Throwable
     {
         WrappingNeoServerBootstrapper srv = new WrappingNeoServerBootstrapper(
                 myDb );

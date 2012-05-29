@@ -23,14 +23,16 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.collection.Iterables;
-import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor;
 import org.neo4j.kernel.info.DiagnosticsPhase;
+import org.neo4j.kernel.logging.StringLogger;
 
+@Deprecated
 public interface Configurator
 {
     String SECURITY_RULES_KEY = "org.neo4j.server.rest.security_rules";

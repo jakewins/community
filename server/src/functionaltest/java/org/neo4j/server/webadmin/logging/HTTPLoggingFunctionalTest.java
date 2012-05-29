@@ -38,7 +38,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.server.NeoServer;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.helpers.FunctionalTestHelper;
 import org.neo4j.server.helpers.ServerBuilder;
 import org.neo4j.server.helpers.ServerHelper;
@@ -84,7 +84,7 @@ public class HTTPLoggingFunctionalTest extends ExclusiveServerTestBase
     {
         // given
         server = ServerBuilder.server().withDefaultDatabaseTuning()
-            .withProperty( Configurator.HTTP_LOGGING, "false" )
+            .withProperty( ServerSettings.http_logging_enabled.name(), "false" )
             .build();
         server.start();
         FunctionalTestHelper functionalTestHelper = new FunctionalTestHelper( server );
@@ -112,8 +112,8 @@ public class HTTPLoggingFunctionalTest extends ExclusiveServerTestBase
             HTTPLoggingPreparednessRuleTest.createLogbackConfigXml( logDirectory ), confDir );
 
         server = ServerBuilder.server().withDefaultDatabaseTuning()
-            .withProperty( Configurator.HTTP_LOGGING, "true" )
-            .withProperty( Configurator.HTTP_LOG_CONFIG_LOCATION, configFile.getPath() )
+                .withProperty( ServerSettings.http_logging_enabled.name(), "true" )
+                .withProperty( ServerSettings.http_logging_configuration_location.name(), configFile.getPath() )
             .build();
         server.start();
 
@@ -143,8 +143,8 @@ public class HTTPLoggingFunctionalTest extends ExclusiveServerTestBase
 
         server = ServerBuilder.server().withDefaultDatabaseTuning()
             .withStartupHealthCheckRules( new HTTPLoggingPreparednessRule() )
-            .withProperty( Configurator.HTTP_LOGGING, "true" )
-            .withProperty( Configurator.HTTP_LOG_CONFIG_LOCATION, configFile.getPath() )
+            .withProperty( ServerSettings.http_logging_enabled.name(), "true" )
+            .withProperty( ServerSettings.http_logging_configuration_location.name(), configFile.getPath() )
             .build();
 
         // when

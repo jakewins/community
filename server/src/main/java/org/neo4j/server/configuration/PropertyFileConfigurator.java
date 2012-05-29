@@ -36,9 +36,9 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.SystemConfiguration;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.server.configuration.validation.Validator;
 import org.neo4j.server.logging.Logger;
 
+@Deprecated
 public class PropertyFileConfigurator implements Configurator
 {
 
@@ -49,7 +49,6 @@ public class PropertyFileConfigurator implements Configurator
     private CompositeConfiguration serverConfiguration = new CompositeConfiguration();
     private File propertyFileDirectory;
 
-    private Validator validator = new Validator();
     private Map<String, String> databaseTuningProperties = null;
     private HashSet<ThirdPartyJaxRsPackage> thirdPartyPackages;
 
@@ -58,12 +57,12 @@ public class PropertyFileConfigurator implements Configurator
         this( null, propertiesFile );
     }
 
-    public PropertyFileConfigurator( Validator v )
+    public PropertyFileConfigurator( Object v )
     {
         this( v, null );
     }
 
-    public PropertyFileConfigurator( Validator v, File propertiesFile )
+    public PropertyFileConfigurator( Object v, File propertiesFile )
     {
         if ( propertiesFile == null )
         {
@@ -76,13 +75,7 @@ public class PropertyFileConfigurator implements Configurator
             loadPropertiesConfig( propertiesFile );
             loadDatabaseTuningProperties( propertiesFile );
             
-            normalizeUris();
             ensureRelativeUris();
-            
-            if ( v != null )
-            {
-                v.validate( this.configuration() );
-            }
         }
         catch ( ConfigurationException ce )
         {
@@ -140,39 +133,7 @@ public class PropertyFileConfigurator implements Configurator
     private void loadPropertiesConfig( File configFile ) throws ConfigurationException
     {
         PropertiesConfiguration propertiesConfig = new PropertiesConfiguration( configFile );
-        if ( validator.validate( propertiesConfig ) )
-        {
-            serverConfiguration.addConfiguration( propertiesConfig );
-        }
-        else
-        {
-            String failed = String.format( "Error processing [%s], configuration file has failed validation.",
-                    configFile.getAbsolutePath() );
-            log.fatal( failed );
-            throw new InvalidServerConfigurationException( failed );
-        }
-    }
-
-    private void normalizeUris()
-    {
-        try
-        {
-            for ( String key : new String[] { MANAGEMENT_PATH_PROPERTY_KEY, REST_API_PATH_PROPERTY_KEY } )
-            {
-                if ( configuration().containsKey( key ) )
-                {
-                    URI normalizedUri = new URI( (String) configuration().getProperty( key ) ).normalize();
-                    configuration().clearProperty( key );
-                    configuration().addProperty( key, normalizedUri.toString() );
-                }
-            }
-
-        }
-        catch ( URISyntaxException e )
-        {
-            throw new RuntimeException( e );
-        }
-
+        serverConfiguration.addConfiguration( propertiesConfig );
     }
 
     private void ensureRelativeUris()

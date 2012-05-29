@@ -25,17 +25,15 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.net.URI;
 
 import javax.ws.rs.core.Response;
 
-import org.apache.commons.configuration.Configuration;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.rest.repr.formats.JsonFormat;
 import org.neo4j.test.server.EntityOutputFormat;
 
@@ -44,14 +42,12 @@ public class DiscoveryServiceTest
     @Test
     public void shouldReturnValidJSONWithDataAndManagementUris() throws Exception
     {
-        Configuration mockConfig = mock( Configuration.class );
+        Config mockConfig = new Config();
         String managementUri = "/management";
-        when(
-                mockConfig.getString( Configurator.MANAGEMENT_PATH_PROPERTY_KEY,
-                        Configurator.DEFAULT_MANAGEMENT_API_PATH ) ).thenReturn( managementUri );
+        mockConfig.set( ServerSettings.management_path, managementUri );
+        
         String dataUri = "/data";
-        when( mockConfig.getString( Configurator.REST_API_PATH_PROPERTY_KEY, Configurator.DEFAULT_DATA_API_PATH ) ).thenReturn(
-                dataUri );
+        mockConfig.set( ServerSettings.rest_api_path, dataUri );
 
         String baseUri = "http://www.example.com";
         DiscoveryService ds = new DiscoveryService( mockConfig, new EntityOutputFormat( new JsonFormat(), new URI(
@@ -74,15 +70,13 @@ public class DiscoveryServiceTest
     @Test
     public void shouldReturnConfiguredUrlIfConfigIsAbsolute() throws Exception
     {
-        Configuration mockConfig = mock( Configuration.class );
+        Config mockConfig = new Config();
         String managementUri = "http://absolutedomain/management";
-        when(
-                mockConfig.getString( Configurator.MANAGEMENT_PATH_PROPERTY_KEY,
-                        Configurator.DEFAULT_MANAGEMENT_API_PATH ) ).thenReturn( managementUri );
+        mockConfig.set( ServerSettings.management_path, managementUri );
+        
         String dataUri = "http://absolutedomain/management";
-        when( mockConfig.getString( Configurator.REST_API_PATH_PROPERTY_KEY, Configurator.DEFAULT_DATA_API_PATH ) ).thenReturn(
-                dataUri );
-
+        mockConfig.set( ServerSettings.rest_api_path, dataUri );
+        
         String baseUri = "http://www.example.com";
         DiscoveryService ds = new DiscoveryService( mockConfig, new EntityOutputFormat( new JsonFormat(), new URI(
                 baseUri ), null ) );

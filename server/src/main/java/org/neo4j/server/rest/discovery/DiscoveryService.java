@@ -19,7 +19,6 @@
  */
 package org.neo4j.server.rest.discovery;
 
-import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.ws.rs.GET;
@@ -29,9 +28,8 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.apache.commons.configuration.Configuration;
-import org.mortbay.log.Log;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.rest.repr.DiscoveryRepresentation;
 import org.neo4j.server.rest.repr.OutputFormat;
 
@@ -43,10 +41,10 @@ import org.neo4j.server.rest.repr.OutputFormat;
 public class DiscoveryService
 {
 
-    private final Configuration configuration;
+    private final Config configuration;
     private final OutputFormat outputFormat;
 
-    public DiscoveryService( @Context Configuration configuration, @Context OutputFormat outputFormat )
+    public DiscoveryService( @Context Config configuration, @Context OutputFormat outputFormat )
     {
         this.configuration = configuration;
         this.outputFormat = outputFormat;
@@ -56,10 +54,8 @@ public class DiscoveryService
     @Produces( MediaType.APPLICATION_JSON )
     public Response getDiscoveryDocument() throws URISyntaxException
     {
-        String webAdminManagementUri = configuration.getString( Configurator.MANAGEMENT_PATH_PROPERTY_KEY,
-                Configurator.DEFAULT_MANAGEMENT_API_PATH );
-        String dataUri = configuration.getString( Configurator.REST_API_PATH_PROPERTY_KEY,
-                Configurator.DEFAULT_DATA_API_PATH );
+        String webAdminManagementUri = configuration.get( ServerSettings.management_path ).toString();
+        String dataUri = configuration.get( ServerSettings.rest_api_path ).toString();
 
         DiscoveryRepresentation dr = new DiscoveryRepresentation( webAdminManagementUri, dataUri );
         return outputFormat.ok( dr );
@@ -69,16 +65,7 @@ public class DiscoveryService
     @Produces( MediaType.WILDCARD )
     public Response redirectToWebadmin()
     {
-        try
-        {
-            return Response.seeOther( new URI( Configurator.DEFAULT_WEB_ADMIN_PATH ) )
-                    .build();
-        }
-        catch ( URISyntaxException e )
-        {
-            Log.warn( e.getMessage() );
-            return Response.serverError()
-                    .build();
-        }
+        return Response.seeOther( configuration.get(ServerSettings.webadmin_path) )
+                .build();
     }
 }

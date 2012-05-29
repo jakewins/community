@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.plugins.Injectable;
@@ -33,17 +34,29 @@ public interface NeoServer
 {
     void start();
 
-    Configuration getConfiguration();
-
     void stop();
 
     Database getDatabase();
-
-    Configurator getConfigurator();
+    
+    Config getConfig();
 
     PluginManager getExtensionManager();
 
     Collection<Injectable<?>> getInjectables( List<String> packageNames );
 
     URI baseUri();
+
+    /**
+     * Please use {@link #getConfig()} instead.
+     * This will be removed in version 1.10
+     */
+    @Deprecated
+    Configurator getConfigurator();
+    
+    /**
+     * Please use {@link #getConfig()} instead.
+     * This will be removed in version 1.10
+     */
+    @Deprecated
+    Configuration getConfiguration();
 }

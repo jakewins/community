@@ -23,7 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.configuration.ServerSettings;
 
 public class Neo4jPropertiesMustExistRule implements StartupHealthCheckRule
@@ -33,11 +33,11 @@ public class Neo4jPropertiesMustExistRule implements StartupHealthCheckRule
     private boolean ran = false;
     protected String failureMessage = EMPTY_STRING;
 
-    public boolean execute( Properties properties )
+    public boolean execute( Config properties )
     {
         ran = true;
 
-        String configFilename = properties.getProperty( ServerSettings.neo_server_config_file.name() );
+        String configFilename = properties.get( ServerSettings.neo_server_config_file );
 
         Properties configProperties = new Properties();
         FileInputStream inputStream = null;

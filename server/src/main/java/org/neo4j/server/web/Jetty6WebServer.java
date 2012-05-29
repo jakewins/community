@@ -37,9 +37,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import ch.qos.logback.access.jetty.RequestLogImpl;
-import com.sun.jersey.api.core.ResourceConfig;
-import com.sun.jersey.spi.container.servlet.ServletContainer;
 import org.mortbay.component.LifeCycle;
 import org.mortbay.jetty.Connector;
 import org.mortbay.jetty.Handler;
@@ -56,11 +53,10 @@ import org.mortbay.jetty.servlet.SessionHandler;
 import org.mortbay.jetty.webapp.WebAppContext;
 import org.mortbay.resource.Resource;
 import org.mortbay.thread.QueuedThreadPool;
+import org.neo4j.kernel.guard.Guard;
 import org.neo4j.kernel.lifecycle.Lifecycle;
 import org.neo4j.server.NeoServer;
-import org.neo4j.kernel.guard.Guard;
-import org.neo4j.server.NeoServer;
-import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.guard.GuardingRequestFilter;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.rest.security.SecurityFilter;
@@ -69,6 +65,8 @@ import org.neo4j.server.rest.security.UriPathWildcardMatcher;
 import org.neo4j.server.rest.web.AllowAjaxFilter;
 import org.neo4j.server.security.KeyStoreInformation;
 import org.neo4j.server.security.SslSocketConnectorFactory;
+
+import ch.qos.logback.access.jetty.RequestLogImpl;
 
 import com.sun.jersey.api.core.ResourceConfig;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
@@ -188,7 +186,7 @@ public class Jetty6WebServer implements WebServer, Lifecycle
 
         ServletContainer container = new NeoServletContainer( server, server.getInjectables( packageNames ) );
         ServletHolder servletHolder = new ServletHolder( container );
-        if ( !Boolean.valueOf( String.valueOf( server.getConfiguration().getProperty( Configurator.WADL_ENABLED ) ) ) )
+        if ( !server.getConfig().get( ServerSettings.wadl_enabled ) )
         {
             servletHolder.setInitParameter( ResourceConfig.FEATURE_DISABLE_WADL, String.valueOf( true ) );
         }
