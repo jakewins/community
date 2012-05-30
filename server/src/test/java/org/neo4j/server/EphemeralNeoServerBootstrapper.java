@@ -19,15 +19,16 @@
  */
 package org.neo4j.server;
 
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 public class EphemeralNeoServerBootstrapper extends NeoServerBootstrapper
 {
     @Override
-    protected GraphDatabaseFactory getGraphDatabaseFactory( Config configuration )
+    protected Database createDatabase()
     {
-        return new TestGraphDatabaseFactory();
+        return new WrappedDatabase((GraphDatabaseAPI) new TestGraphDatabaseFactory().newImpermanentDatabase());
     }
 }

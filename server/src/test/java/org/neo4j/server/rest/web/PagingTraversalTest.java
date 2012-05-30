@@ -40,8 +40,9 @@ import org.junit.Test;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.server.ServerTestUtils;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.rest.domain.GraphDbHelper;
 import org.neo4j.server.rest.domain.TraverserReturnType;
 import org.neo4j.server.rest.paging.FakeClock;
@@ -64,7 +65,7 @@ public class PagingTraversalTest
     @Before
     public void startDatabase() throws IOException
     {
-        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
+        database = new WrappedDatabase( (GraphDatabaseAPI) new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().newGraphDatabase());
         helper = new GraphDbHelper( database );
         output = new EntityOutputFormat( new JsonFormat(), URI.create( BASE_URI ), null );
         leaseManager = new LeaseManager( new FakeClock() );
@@ -74,7 +75,7 @@ public class PagingTraversalTest
     @After
     public void shutdownDatabase() throws IOException
     {
-        this.database.shutdown();
+        this.database.getGraph().shutdown();
     }
 
     @Test
@@ -231,7 +232,7 @@ public class PagingTraversalTest
 
     private long createListOfNodes( int numberOfNodes )
     {
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
             long zerothNode = helper.createNode( MapUtil.map( "name", String.valueOf( 0 ) ) );
@@ -239,8 +240,8 @@ public class PagingTraversalTest
             for ( int i = 1; i < numberOfNodes; i++ )
             {
                 long currentNodeId = helper.createNode( MapUtil.map( "name", String.valueOf( i ) ) );
-                database.graph.getNodeById( previousNodeId )
-                        .createRelationshipTo( database.graph.getNodeById( currentNodeId ),
+                database.getGraph().getNodeById( previousNodeId )
+                        .createRelationshipTo( database.getGraph().getNodeById( currentNodeId ),
                                 DynamicRelationshipType.withName( "PRECEDES" ) );
             }
 

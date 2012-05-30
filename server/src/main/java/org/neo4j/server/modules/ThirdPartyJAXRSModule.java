@@ -19,28 +19,34 @@
  */
 package org.neo4j.server.modules;
 
-import static org.neo4j.server.JAXRSHelper.listFrom;
+import java.util.Arrays;
 
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.configuration.ThirdPartyJaxRsPackage;
-import org.neo4j.server.logging.Logger;
+import org.neo4j.server.web.WebServer;
 
 public class ThirdPartyJAXRSModule implements ServerModule
 {
-    private final Logger log = Logger.getLogger( ThirdPartyJAXRSModule.class );
+    private WebServer webServer;
+    private StringLogger log;
+    private Config config;
 
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    public ThirdPartyJAXRSModule(Config config, StringLogger log, WebServer webServer)
     {
-        for ( ThirdPartyJaxRsPackage tpp : neoServer.getConfigurator()
-                .getThirdpartyJaxRsClasses() )
+        this.config = config;
+        this.log = log;
+        this.webServer = webServer;
+    }
+    
+    @Override
+    public void start( )
+    {
+        for ( ThirdPartyJaxRsPackage tpp : config.get(ServerSettings.third_party_packages) )
         {
-            neoServer.getWebServer()
-                    .addJAXRSPackages( listFrom( new String[] { tpp.getPackageName() } ), tpp.getMountPoint() );
+            webServer.addJAXRSPackages( Arrays.asList( new String[] { tpp.getPackageName() } ), tpp.getMountPoint() );
             log.info( "Mounted third-party JAX-RS package [%s] at [%s]", tpp.getPackageName(), tpp.getMountPoint() );
-            if ( logger != null )
-                logger.logMessage( String.format( "Mounted third-party JAX-RS package [%s] at [%s]",
-                        tpp.getPackageName(), tpp.getMountPoint() ) );
         }
     }
 

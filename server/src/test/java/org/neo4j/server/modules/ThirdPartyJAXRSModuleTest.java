@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.web.WebServer;
@@ -50,8 +51,8 @@ public class ThirdPartyJAXRSModuleTest
         
         when( neoServer.getConfig() ).thenReturn( configurator );
 
-        ThirdPartyJAXRSModule module = new ThirdPartyJAXRSModule();
-        module.start( neoServer, null );
+        ThirdPartyJAXRSModule module = new ThirdPartyJAXRSModule(configurator, StringLogger.DEV_NULL, webServer);
+        module.start();
 
         verify( webServer ).addJAXRSPackages( any( List.class ), anyString() );
     }

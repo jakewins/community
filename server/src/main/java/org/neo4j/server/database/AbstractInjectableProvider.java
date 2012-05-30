@@ -21,6 +21,7 @@ package org.neo4j.server.database;
 
 import javax.ws.rs.core.Context;
 
+import com.sun.jersey.api.core.HttpContext;
 import com.sun.jersey.core.spi.component.ComponentContext;
 import com.sun.jersey.core.spi.component.ComponentScope;
 import com.sun.jersey.server.impl.inject.AbstractHttpContextInjectable;
@@ -31,6 +32,19 @@ public abstract class AbstractInjectableProvider<E> extends AbstractHttpContextI
         InjectableProvider<Context, Class<E>>
 {
     private final Class<E> t;
+    
+    @SuppressWarnings("unchecked")
+    public static <T> AbstractInjectableProvider<T> create(final T t)
+    {
+        Class<T> clazz = (Class<T>) t.getClass();
+        return new AbstractInjectableProvider<T>(clazz){
+            @Override
+            public T getValue(HttpContext c)
+            {
+                return t;
+            }
+        };
+    }
 
     public AbstractInjectableProvider( Class<E> t )
     {

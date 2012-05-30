@@ -17,28 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server.rrd.sampler;
+package org.neo4j.server.logging;
 
-import org.neo4j.server.statistic.StatisticCollector;
-import org.rrd4j.DsType;
+public interface Loggers {
 
-public class RequestMedianTimeSampleable extends StatisticSampleableBase
-{
-
-    public RequestMedianTimeSampleable( StatisticCollector collector )
-    {
-        super( collector, DsType.ABSOLUTE );
-    }
-
-    @Override
-    public String getName()
-    {
-        return "request_median_time";
-    }
-
-    @Override
-    public double getValue()
-    {
-        return getCurrentSnapshot().getDuration().getMedian();
-    }
+    public static final String HEALTHCHECK = "neo4j.server.healthcheck";
+    public static final String WEBSERVER = "neo4j.server.webserver";
+    public static final String SERVER = "neo4j.server";
+    
 }

@@ -54,10 +54,11 @@ import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
-import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.DatabaseBlockedException;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.rest.domain.GraphDbHelper;
 import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
@@ -85,7 +86,7 @@ public class RestfulGraphDatabaseTest
     @BeforeClass
     public static void doBefore() throws IOException
     {
-        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
+        database = new WrappedDatabase( (GraphDatabaseAPI) new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().newGraphDatabase());
         helper = new GraphDbHelper( database );
         output = new EntityOutputFormat( new JsonFormat(), URI.create( BASE_URI ), null );
         leaseManager = new LeaseManager( new FakeClock() );
@@ -106,7 +107,7 @@ public class RestfulGraphDatabaseTest
     }
 
     @AfterClass
-    public static void shutdownDatabase() throws IOException
+    public static void shutdownDatabase() throws Throwable
     {
         database.shutdown();
     }
@@ -209,7 +210,7 @@ public class RestfulGraphDatabaseTest
     }
 
     @Test
-    public void shouldRespondWith400WhenNodeCreatedWithUnsupportedPropertyData() throws DatabaseBlockedException
+    public void shouldRespondWith400WhenNodeCreatedWithUnsupportedPropertyData()
     {
         Response response = service.createNode( FORCE, "{\"foo\" : {\"bar\" : \"baz\"}}" );
 
@@ -217,7 +218,7 @@ public class RestfulGraphDatabaseTest
     }
 
     @Test
-    public void shouldRespondWith400WhenNodeCreatedWithInvalidJSON() throws DatabaseBlockedException
+    public void shouldRespondWith400WhenNodeCreatedWithInvalidJSON()
     {
         Response response = service.createNode( FORCE, "this:::isNot::JSON}" );
 
@@ -1599,7 +1600,7 @@ public class RestfulGraphDatabaseTest
     }
 
     @Test
-    public void shouldBeAbleToDescribeTraverser() throws DatabaseBlockedException
+    public void shouldBeAbleToDescribeTraverser()
     {
         long startNode = helper.createNode( MapUtil.map( "name", "Mattias" ) );
         long node1 = helper.createNode( MapUtil.map( "name", "Emil" ) );
@@ -1623,7 +1624,7 @@ public class RestfulGraphDatabaseTest
     }
 
     @Test
-    public void shouldBeAbleToGetOtherResultTypesWhenTraversing() throws DatabaseBlockedException
+    public void shouldBeAbleToGetOtherResultTypesWhenTraversing()
     {
         long startNode = helper.createNode( MapUtil.map( "name", "Mattias" ) );
         long node1 = helper.createNode( MapUtil.map( "name", "Emil" ) );
@@ -1702,7 +1703,7 @@ public class RestfulGraphDatabaseTest
     }
 
     @Test
-    public void shouldBeAbleToParseJsonEvenWithUnicodeMarkerAtTheStart() throws DatabaseBlockedException,
+    public void shouldBeAbleToParseJsonEvenWithUnicodeMarkerAtTheStart() throws
             JsonParseException
     {
         Response response = service.createNode( FORCE, markWithUnicodeMarker( "{\"name\":\"Mattias\"}" ) );

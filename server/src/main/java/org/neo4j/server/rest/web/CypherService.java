@@ -47,7 +47,9 @@ public class CypherService {
 
     public CypherService(@Context Database database, @Context InputFormat input,
             @Context OutputFormat output) {
-        this.executionEngine = new ExecutionEngine(database.graph);
+        // TODO: This gets executed for each request, have executionEngine be injected instead
+        // so we can benefit from cached queries.
+        this.executionEngine = new ExecutionEngine(database.getGraph());
         this.input = input;
         this.output = output;
     }

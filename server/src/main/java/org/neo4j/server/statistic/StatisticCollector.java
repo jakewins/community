@@ -22,6 +22,8 @@ package org.neo4j.server.statistic;
 /**
  * statistics-collector will keep n-statistic records
  *
+ * TODO: Rename this to something more descriptive.
+ *
  * @author tbaum
  * @since 31.05.11 20:23
  */

@@ -27,7 +27,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.server.logging.InMemoryAppender;
+import org.neo4j.kernel.logging.BufferingLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class StartupHealthCheckTest
 {
@@ -42,34 +43,35 @@ public class StartupHealthCheckTest
     @Test
     public void shouldRunAllHealthChecksToCompletionIfNonFail()
     {
-        StartupHealthCheck check = new StartupHealthCheck( new Config(), getPassingRules() );
+        StartupHealthCheck check = new StartupHealthCheck( StringLogger.DEV_NULL, new Config(), getPassingRules() );
         assertTrue( check.run() );
     }
 
     @Test
     public void shouldFailIfOneOrMoreHealthChecksFail()
     {
-        StartupHealthCheck check = new StartupHealthCheck( new Config(), getWithOneFailingRule() );
+        StartupHealthCheck check = new StartupHealthCheck( StringLogger.DEV_NULL, new Config(), getWithOneFailingRule() );
         assertFalse( check.run() );
     }
 
     @Test
     public void shouldLogFailedRule()
     {
-        StartupHealthCheck check = new StartupHealthCheck( new Config(), getWithOneFailingRule() );
-        InMemoryAppender appender = new InMemoryAppender( StartupHealthCheck.log );
+        BufferingLogger log = new BufferingLogger();
+        StartupHealthCheck check = new StartupHealthCheck(log, new Config(), getWithOneFailingRule() );
+        
         check.run();
 
         // Previously we tested on "SEVERE: blah blah" but that's a string
         // depending
         // on the regional settings of the OS.
-        assertThat( appender.toString(), containsString( ": blah blah" ) );
+        assertThat( log.toString(), containsString( ": blah blah" ) );
     }
 
     @Test
     public void shouldAdvertiseFailedRule()
     {
-        StartupHealthCheck check = new StartupHealthCheck( new Config(), getWithOneFailingRule() );
+        StartupHealthCheck check = new StartupHealthCheck( StringLogger.DEV_NULL, new Config(), getWithOneFailingRule() );
         check.run();
         assertNotNull( check.failedRule() );
     }

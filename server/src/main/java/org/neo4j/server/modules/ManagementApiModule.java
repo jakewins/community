@@ -19,23 +19,34 @@
  */
 package org.neo4j.server.modules;
 
-import static org.neo4j.server.JAXRSHelper.listFrom;
-
 import java.net.URI;
+import java.util.Arrays;
 
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.configuration.ServerSettings;
+import org.neo4j.server.web.WebServer;
 
 public class ManagementApiModule implements ServerModule
 {
     private final static String MANAGEMENT_API_PACKAGE = "org.neo4j.server.webadmin.rest";
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    private WebServer webServer;
+    private StringLogger log;
+    private Config config;
+    
+    public ManagementApiModule(Config config, StringLogger log, WebServer server)
     {
-        neoServer.getWebServer()
-                .addJAXRSPackages( listFrom( new String[] { MANAGEMENT_API_PACKAGE } ),
-                        managementApiUri( neoServer ).toString() );
-        logger.info( "Mounted management API at: " + managementApiUri( neoServer ).toString() );
+        this.config = config;
+        this.log = log;
+        this.webServer = server;
+    }
+    
+    @Override
+    public void start( )
+    {
+        webServer.addJAXRSPackages( Arrays.asList(new String[] { MANAGEMENT_API_PACKAGE } ),
+                        managementApiUri( ).toString() );
+        log.info( "Mounted management API at: " + managementApiUri( ).toString() );
     }
 
     public void stop()
@@ -43,8 +54,8 @@ public class ManagementApiModule implements ServerModule
         // Do nothing.
     }
 
-    private URI managementApiUri( NeoServerWithEmbeddedWebServer neoServer )
+    private URI managementApiUri()
     {
-        return neoServer.getConfig().get(ServerSettings.management_path );
+        return config.get(ServerSettings.management_path );
     }
 }

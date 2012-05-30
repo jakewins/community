@@ -27,19 +27,21 @@ import java.io.IOException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.server.helpers.ServerHelper;
-import org.neo4j.server.logging.InMemoryAppender;
+import org.neo4j.server.helpers.ServerBuilder;
+import org.neo4j.server.logging.BufferingLogging;
 import org.neo4j.test.server.ExclusiveServerTestBase;
 
 public class NeoServerShutdownLoggingFunctionalTest extends ExclusiveServerTestBase
 {
     private NeoServer server;
+    private BufferingLogging logging;
 
     @Before
     public void setupServer() throws IOException
     {
-        server = ServerHelper.createPersistentServer();
-        ServerHelper.cleanTheDatabase( server );
+        logging = new BufferingLogging();
+        server = ServerBuilder.server().withLogging(logging).build();
+        server.start();
     }
 
     @After
@@ -54,8 +56,7 @@ public class NeoServerShutdownLoggingFunctionalTest extends ExclusiveServerTestB
     @Test
     public void shouldLogShutdown() throws Exception
     {
-        InMemoryAppender appender = new InMemoryAppender( NeoServerWithEmbeddedWebServer.log );
         server.stop();
-        assertThat( appender.toString(), containsString( "INFO: Successfully shutdown database." ) );
+        assertThat( logging.getLogger().toString(), containsString( "INFO: Successfully shutdown database." ) );
     }
 }

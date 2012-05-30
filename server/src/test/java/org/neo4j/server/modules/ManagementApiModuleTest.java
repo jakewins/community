@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.web.WebServer;
@@ -50,8 +51,8 @@ public class ManagementApiModuleTest
 
         when( neoServer.getConfig() ).thenReturn( config );
 
-        ManagementApiModule module = new ManagementApiModule();
-        module.start( neoServer, null );
+        ManagementApiModule module = new ManagementApiModule(config, StringLogger.DEV_NULL, webServer);
+        module.start();
 
         verify( webServer ).addJAXRSPackages( any( List.class ), anyString() );
     }

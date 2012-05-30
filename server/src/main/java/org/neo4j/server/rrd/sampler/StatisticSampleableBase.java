@@ -19,7 +19,6 @@
  */
 package org.neo4j.server.rrd.sampler;
 
-import org.neo4j.server.database.Database;
 import org.neo4j.server.rrd.Sampleable;
 import org.neo4j.server.statistic.StatisticCollector;
 import org.neo4j.server.statistic.StatisticRecord;
@@ -31,9 +30,9 @@ public abstract class StatisticSampleableBase implements Sampleable
     private final StatisticCollector collector;
     private final DsType dsType;
 
-    public StatisticSampleableBase( Database db, DsType dsType )
+    public StatisticSampleableBase( StatisticCollector collector, DsType dsType )
     {
-        collector = db.statisticCollector();
+        this.collector = collector;
         this.dsType = dsType;
     }
 

@@ -20,25 +20,32 @@
 package org.neo4j.server.modules;
 
 import org.mortbay.jetty.Server;
-import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.statistic.StatisticCollector;
 import org.neo4j.server.statistic.StatisticFilter;
 import org.neo4j.server.statistic.StatisticStartupListener;
+import org.neo4j.server.web.WebServer;
 
 public class StatisticModule implements ServerModule
 {
     private StatisticStartupListener listener;
+    private WebServer webServer;
+    private StatisticCollector collector;
 
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    public StatisticModule(StatisticCollector collector, WebServer webServer) 
     {
-        Server jetty = neoServer.getWebServer().getJetty();
-
-        StatisticCollector statisticCollector =
-                neoServer.getDatabase().statisticCollector();
+        this.webServer = webServer;
+        this.collector = collector;
+    }
+    
+    @Override
+    public void start( )
+    {
+        // TODO: Create our own filter abstraction, such that
+        // we don't have to depend on using jetty here
+        Server jetty = webServer.getJetty();
 
         listener = new StatisticStartupListener( jetty,
-                new StatisticFilter( statisticCollector ) );
+                new StatisticFilter( collector ) );
         jetty.addLifeCycleListener( listener );
     }
 

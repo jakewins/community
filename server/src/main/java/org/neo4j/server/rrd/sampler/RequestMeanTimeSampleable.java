@@ -19,15 +19,15 @@
  */
 package org.neo4j.server.rrd.sampler;
 
-import org.neo4j.server.database.Database;
+import org.neo4j.server.statistic.StatisticCollector;
 import org.rrd4j.DsType;
 
 public class RequestMeanTimeSampleable extends StatisticSampleableBase
 {
 
-    public RequestMeanTimeSampleable( Database db )
+    public RequestMeanTimeSampleable( StatisticCollector collector )
     {
-        super( db, DsType.ABSOLUTE );
+        super( collector, DsType.ABSOLUTE );
     }
 
     @Override

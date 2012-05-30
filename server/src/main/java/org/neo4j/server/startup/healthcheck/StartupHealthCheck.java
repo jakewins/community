@@ -20,26 +20,27 @@
 package org.neo4j.server.startup.healthcheck;
 
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.server.logging.Logger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class StartupHealthCheck
 {
-    public static final Logger log = Logger.getLogger( StartupHealthCheck.class );
-
     private final StartupHealthCheckRule[] rules;
 
     private StartupHealthCheckRule failedRule = null;
     private Config config;
+
+    private StringLogger log;
     
     public StartupHealthCheck()
     {
-        this(new Config());
+        this(StringLogger.SYSTEM, new Config());
     }
 
-    public StartupHealthCheck( Config config , StartupHealthCheckRule... rules)
+    public StartupHealthCheck( StringLogger log, Config config , StartupHealthCheckRule... rules)
     {
         this.rules = rules;
         this.config = config;
+        this.log = log;
     }
 
     public boolean run()

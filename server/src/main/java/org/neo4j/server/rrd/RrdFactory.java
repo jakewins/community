@@ -67,9 +67,9 @@ public class RrdFactory
     {
         Sampleable[] primitives = {
 //                new MemoryUsedSampleable(),
-                new NodeIdsInUseSampleable( (GraphDatabaseAPI) db.graph ),
-                new PropertyCountSampleable( (GraphDatabaseAPI) db.graph ),
-                new RelationshipCountSampleable( (GraphDatabaseAPI) db.graph )
+                new NodeIdsInUseSampleable( (GraphDatabaseAPI) db.getGraph() ),
+                new PropertyCountSampleable( (GraphDatabaseAPI) db.getGraph() ),
+                new RelationshipCountSampleable( (GraphDatabaseAPI) db.getGraph() )
         };
 
         Sampleable[] usage = {

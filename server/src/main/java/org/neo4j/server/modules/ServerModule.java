@@ -19,8 +19,6 @@
  */
 package org.neo4j.server.modules;
 
-import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 
 /**
  * An interface which the NeoServer uses to initialise server modules (e.g.
@@ -28,13 +26,8 @@ import org.neo4j.server.NeoServerWithEmbeddedWebServer;
  */
 public interface ServerModule
 {
-    /**
-     * Start a module within the server
-     *
-     * @param neoServer The NeoServer that owns the module
-     * @param logger logger for tracking the startup sequence
-     */
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger );
+
+    public void start();
 
     public void stop();
 }

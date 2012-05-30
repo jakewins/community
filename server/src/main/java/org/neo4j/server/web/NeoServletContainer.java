@@ -22,20 +22,20 @@ package org.neo4j.server.web;
 import java.util.Collection;
 import java.util.Set;
 
+import org.neo4j.graphdb.DependencyResolver;
+import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.NeoServer;
-import org.neo4j.server.NeoServerProvider;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.configuration.ConfigurationProvider;
 import org.neo4j.server.database.AbstractInjectableProvider;
-import org.neo4j.server.database.DatabaseProvider;
-import org.neo4j.server.database.GraphDatabaseServiceProvider;
+import org.neo4j.server.database.Database;
 import org.neo4j.server.plugins.Injectable;
 import org.neo4j.server.plugins.PluginInvocatorProvider;
 import org.neo4j.server.rest.paging.LeaseManagerProvider;
 import org.neo4j.server.rest.repr.InputFormatProvider;
 import org.neo4j.server.rest.repr.OutputFormatProvider;
 import org.neo4j.server.rest.repr.RepresentationFormatRepository;
-import org.neo4j.server.rrd.RrdDbProvider;
+import org.rrd4j.core.RrdDb;
 
 import com.sun.jersey.api.core.HttpContext;
 import com.sun.jersey.api.core.ResourceConfig;
@@ -48,11 +48,13 @@ public class NeoServletContainer extends ServletContainer
 {
     private final NeoServer server;
     private final Collection<Injectable<?>> injectables;
+    private DependencyResolver dependencyResolver;
 
-    public NeoServletContainer( NeoServer server, Collection<Injectable<?>> injectables )
+    public NeoServletContainer( DependencyResolver dependency, NeoServer server, Collection<Injectable<?>> injectables )
     {
         this.server = server;
         this.injectables = injectables;
+        this.dependencyResolver = dependency;
     }
 
     @Override
@@ -61,38 +63,50 @@ public class NeoServletContainer extends ServletContainer
         super.configure( wc, rc, wa );
 
         Set<Object> singletons = rc.getSingletons();
+        
+        // TODO: Add an iterator method to the dependency resolver,
+        // and then just make all available dependencies injectable.
+        addInjectableDependency(singletons, Database.class);
+        addInjectableDependency(singletons, GraphDatabaseAPI.class);
+        addInjectableDependency(singletons, NeoServer.class);
+        addInjectableDependency(singletons, Config.class);
+        addInjectableDependency(singletons, WebServer.class);
+        addInjectableDependency(singletons, RrdDb.class);
+        
         singletons.add( new LeaseManagerProvider() );
-        singletons.add( new DatabaseProvider( server.getDatabase() ) );
-        singletons.add( new GraphDatabaseServiceProvider( server.getDatabase().graph ) );
-        singletons.add( new NeoServerProvider( server ) );
         singletons.add( new ConfigurationProvider( server.getConfiguration() ) );
-
-        if ( server.getDatabase()
-                .rrdDb() != null )
-        {
-            singletons.add( new RrdDbProvider( server.getDatabase()
-                    .rrdDb() ) );
-        }
-
-        if ( server instanceof NeoServerWithEmbeddedWebServer )
-        {
-            singletons.add( new WebServerProvider( ( (NeoServerWithEmbeddedWebServer) server ).getWebServer() ) );
-        }
 
         RepresentationFormatRepository repository = new RepresentationFormatRepository( server.getExtensionManager() );
         singletons.add( new InputFormatProvider( repository ) );
         singletons.add( new OutputFormatProvider( repository ) );
+        
+        // TODO: Refactor ExtensionManager to be reuseable, then make
+        // it available as a general dependency, rather than via this getter
+        // on the server interface
         singletons.add( new PluginInvocatorProvider( server.getExtensionManager() ) );
+        
 
-        for ( final Injectable injectable : injectables )
+        for ( final Injectable<?> injectable : injectables )
         {
             singletons.add( new InjectableWrapper( injectable ) );
         }
     }
 
+    /**
+     * Make a class that is available via the dependency resolver also
+     * available through dependency injection in jersey.
+     * 
+     * @param singletons
+     * @param clazz
+     */
+    private void addInjectableDependency(Set<Object> singletons, Class<?> clazz)
+    {
+        singletons.add( AbstractInjectableProvider.create( dependencyResolver.resolveDependency(clazz)));
+    }
+
     private static class InjectableWrapper extends AbstractInjectableProvider<Object>
     {
-        private final Injectable injectable;
+        private final Injectable<?> injectable;
 
         public InjectableWrapper( Injectable injectable )
         {

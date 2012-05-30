@@ -20,11 +20,8 @@
 package org.neo4j.server.modules;
 
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
-import org.neo4j.server.RoundRobinJobScheduler;
 import org.neo4j.server.database.Database;
-import org.neo4j.server.rrd.RrdFactory;
-import org.rrd4j.core.RrdDb;
+import org.neo4j.server.web.WebServer;
 
 public class WebAdminModule implements ServerModule
 {
@@ -32,26 +29,24 @@ public class WebAdminModule implements ServerModule
     private static final String DEFAULT_WEB_ADMIN_PATH = "/webadmin";
     private static final String DEFAULT_WEB_ADMIN_STATIC_WEB_CONTENT_LOCATION = "webadmin-html";
 
-    private final RoundRobinJobScheduler jobScheduler = new RoundRobinJobScheduler();
-
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    private StringLogger log;
+    private WebServer webServer;
+    
+    public WebAdminModule(StringLogger log, Database db, WebServer server) 
     {
-        startRoundRobinDB( neoServer );
-        neoServer.getWebServer()
-                .addStaticContent( DEFAULT_WEB_ADMIN_STATIC_WEB_CONTENT_LOCATION, DEFAULT_WEB_ADMIN_PATH );
-        logger.info( "Mounted webadmin at: " + DEFAULT_WEB_ADMIN_PATH );
+        this.log = log;
+        this.webServer = server;
+    }
+
+    @Override
+    public void start( )
+    {
+        webServer.addStaticContent( DEFAULT_WEB_ADMIN_STATIC_WEB_CONTENT_LOCATION, DEFAULT_WEB_ADMIN_PATH );
+        log.info( "Mounted webadmin at: " + DEFAULT_WEB_ADMIN_PATH );
     }
 
     public void stop()
     {
-        jobScheduler.stopJobs();
-    }
-
-    private void startRoundRobinDB( NeoServerWithEmbeddedWebServer neoServer )
-    {
-        Database db = neoServer.getDatabase();
-        RrdFactory rrdFactory = new RrdFactory( neoServer.getConfig() );
-        RrdDb rrdDb = rrdFactory.createRrdDbAndSampler( db, jobScheduler );
-        db.setRrdDb( rrdDb );
+        
     }
 }

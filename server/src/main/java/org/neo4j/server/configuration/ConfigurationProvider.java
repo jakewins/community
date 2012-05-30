@@ -26,6 +26,7 @@ import org.neo4j.server.database.AbstractInjectableProvider;
 
 import com.sun.jersey.api.core.HttpContext;
 
+@Deprecated
 @Provider
 public class ConfigurationProvider extends AbstractInjectableProvider<Configuration>
 {

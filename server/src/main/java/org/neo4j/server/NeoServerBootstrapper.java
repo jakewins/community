@@ -20,9 +20,11 @@
 package org.neo4j.server;
 
 import java.util.Arrays;
+import java.util.List;
 
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.database.CommunityDatabase;
+import org.neo4j.server.database.Database;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
 import org.neo4j.server.modules.RESTApiModule;
@@ -36,23 +38,39 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
 
 public class NeoServerBootstrapper extends Bootstrapper
 {
-    @Override
-    public Iterable<StartupHealthCheckRule> getHealthCheckRules()
+    public NeoServerBootstrapper()
     {
-        return Arrays.asList( new Neo4jPropertiesMustExistRule(), new HTTPLoggingPreparednessRule() );
+        super();
+    }
+    
+    public NeoServerBootstrapper(Config config)
+    {
+        super(config);
     }
 
     @Override
-    @SuppressWarnings( "unchecked" )
-    public Iterable<Class<? extends ServerModule>> getServerModules()
+    public List<StartupHealthCheckRule> createHealthCheckRules()
     {
-        return Arrays.asList( DiscoveryModule.class, RESTApiModule.class, ManagementApiModule.class,
-                ThirdPartyJAXRSModule.class, WebAdminModule.class, StatisticModule.class );
+        return Arrays.asList( 
+                new Neo4jPropertiesMustExistRule(), 
+                new HTTPLoggingPreparednessRule() );
     }
 
     @Override
-    protected GraphDatabaseFactory getGraphDatabaseFactory( Config configuration )
+    public List<ServerModule> createServerModules()
     {
-        return new org.neo4j.graphdb.factory.GraphDatabaseFactory();
+        return Arrays.asList( 
+                new DiscoveryModule(log, webServer), 
+                new RESTApiModule(config, log, webServer), 
+                new ManagementApiModule(config, log, webServer),
+                new ThirdPartyJAXRSModule(config, log, webServer), 
+                new WebAdminModule(log, database, webServer), 
+                new StatisticModule(requestStatistics, webServer) );
+    }
+
+    @Override
+    protected Database createDatabase( )
+    {
+        return new CommunityDatabase(config, log, logging);
     }
 }

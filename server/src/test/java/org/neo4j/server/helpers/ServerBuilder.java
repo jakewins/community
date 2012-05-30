@@ -39,6 +39,9 @@ import java.util.Map;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.logging.DevNullLoggingService;
+import org.neo4j.kernel.logging.Logging;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.Bootstrapper;
 import org.neo4j.server.EphemeralNeoServerBootstrapper;
 import org.neo4j.server.NeoServerBootstrapper;
@@ -46,6 +49,7 @@ import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
+import org.neo4j.server.logging.BufferingLogging;
 import org.neo4j.server.modules.DiscoveryModule;
 import org.neo4j.server.modules.ManagementApiModule;
 import org.neo4j.server.modules.RESTApiModule;
@@ -57,7 +61,6 @@ import org.neo4j.server.rest.paging.FakeClock;
 import org.neo4j.server.rest.paging.LeaseManagerProvider;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
-import org.neo4j.server.web.Jetty6WebServer;
 
 public class ServerBuilder
 {
@@ -86,6 +89,9 @@ public class ServerBuilder
     private String[] securityRuleClassNames;
     private boolean persistent;
     private boolean httpsEnabled = false;
+    
+    // Per default we build servers that don't log any output.
+    private Logging logging = new DevNullLoggingService();
 
     public static ServerBuilder server()
     {
@@ -122,15 +128,27 @@ public class ServerBuilder
         {
             LeaseManagerProvider.setClock( clock );
         }
+        
+        Bootstrapper boot = createBootstrapper();
 
-        return new NeoServerWithEmbeddedWebServer( createBootstrapper(), startupHealthCheck,
-            ServerConfig.fromFile(configFile),
-            new Jetty6WebServer(), serverModules );
+        return boot.getDependencyResolver().resolveDependency(NeoServerWithEmbeddedWebServer.class);
     }
 
     protected Bootstrapper createBootstrapper()
     {
-        return persistent ? new NeoServerBootstrapper() : new EphemeralNeoServerBootstrapper();
+        return persistent ? new NeoServerBootstrapper() {
+            @Override
+            public Logging createLogging()
+            {
+                return logging;
+            }
+        }: new EphemeralNeoServerBootstrapper() {
+            @Override
+            public Logging createLogging()
+            {
+                return logging;
+            }
+        };
     }
 
     public File createPropertiesFiles() throws IOException
@@ -420,7 +438,13 @@ public class ServerBuilder
 
     public ServerBuilder withStartupHealthCheckRules( StartupHealthCheckRule... rules )
     {
-        this.startupHealthCheck = new StartupHealthCheck( ServerConfig.fromMap(arbitraryProperties), rules );
+        this.startupHealthCheck = new StartupHealthCheck( StringLogger.DEV_NULL, ServerConfig.fromMap(arbitraryProperties), rules );
+        return this;
+    }
+
+    public ServerBuilder withLogging(BufferingLogging logging)
+    {
+        this.logging = logging;
         return this;
     }
 }

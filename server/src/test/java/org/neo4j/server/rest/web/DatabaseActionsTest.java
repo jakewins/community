@@ -48,10 +48,11 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
-import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.DatabaseBlockedException;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.rest.domain.EndNodeNotFoundException;
 import org.neo4j.server.rest.domain.GraphDbHelper;
 import org.neo4j.server.rest.domain.StartNodeNotFoundException;
@@ -77,7 +78,7 @@ public class DatabaseActionsTest
     @BeforeClass
     public static void clearDb() throws IOException
     {
-        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
+        database = new WrappedDatabase( (GraphDatabaseAPI) new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().newGraphDatabase());
         graphdbHelper = new GraphDbHelper( database );
         leaseManager = new LeaseManager( new FakeClock() );
         actions = new DatabaseActions( database, leaseManager, ForceMode.forced );
@@ -86,17 +87,17 @@ public class DatabaseActionsTest
     @AfterClass
     public static void shutdownDatabase() throws IOException
     {
-        database.shutdown();
+        database.getGraph().shutdown();
     }
 
     private long createNode( Map<String, Object> properties ) throws DatabaseBlockedException
     {
 
         long nodeId;
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.createNode();
+            Node node = database.getGraph().createNode();
             for ( Map.Entry<String, Object> entry : properties.entrySet() )
             {
                 node.setProperty( entry.getKey(), entry.getValue() );
@@ -116,10 +117,10 @@ public class DatabaseActionsTest
     {
         NodeRepresentation noderep = actions.createNode( Collections.<String, Object>emptyMap() );
 
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            assertNotNull( database.graph.getNodeById( noderep.getId() ) );
+            assertNotNull( database.getGraph().getNodeById( noderep.getId() ) );
         }
         finally
         {
@@ -144,10 +145,10 @@ public class DatabaseActionsTest
         properties.put( "baz", 17 );
         actions.setAllNodeProperties( nodeId, properties );
 
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.getNodeById( nodeId );
+            Node node = database.getGraph().getNodeById( nodeId );
             assertHasProperties( node, properties );
         }
         finally
@@ -176,10 +177,10 @@ public class DatabaseActionsTest
     {
 
         long nodeId;
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.createNode();
+            Node node = database.getGraph().createNode();
             node.setProperty( "remove me", "trash" );
             nodeId = node.getId();
             tx.success();
@@ -192,10 +193,10 @@ public class DatabaseActionsTest
         properties.put( "foo", "bar" );
         properties.put( "baz", 17 );
         actions.setAllNodeProperties( nodeId, properties );
-        tx = database.graph.beginTx();
+        tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.getNodeById( nodeId );
+            Node node = database.getGraph().getNodeById( nodeId );
             assertHasProperties( node, properties );
             assertNull( node.getProperty( "remove me", null ) );
         }
@@ -214,10 +215,10 @@ public class DatabaseActionsTest
         properties.put( "foo", "bar" );
         properties.put( "neo", "Thomas A. Anderson" );
         properties.put( "number", 15L );
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.createNode();
+            Node node = database.getGraph().createNode();
             for ( Map.Entry<String, Object> entry : properties.entrySet() )
             {
                 node.setProperty( entry.getKey(), entry.getValue() );
@@ -239,10 +240,10 @@ public class DatabaseActionsTest
             OperationFailureException
     {
         long nodeId;
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.createNode();
+            Node node = database.getGraph().createNode();
             nodeId = node.getId();
             tx.success();
         }
@@ -286,10 +287,10 @@ public class DatabaseActionsTest
         long nodeId = createNode( properties );
         actions.removeAllNodeProperties( nodeId );
 
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.getNodeById( nodeId );
+            Node node = database.getGraph().getNodeById( nodeId );
             assertEquals( false, node.getPropertyKeys()
                     .iterator()
                     .hasNext() );
@@ -320,10 +321,10 @@ public class DatabaseActionsTest
                 properties )
                 .getId();
 
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Relationship rel = database.graph.getRelationshipById( relId );
+            Relationship rel = database.getGraph().getRelationshipById( relId );
             for ( String key : rel.getPropertyKeys() )
             {
                 assertTrue( "extra property stored", properties.containsKey( key ) );
@@ -384,10 +385,10 @@ public class DatabaseActionsTest
         long nodeId = createNode( properties );
         actions.removeNodeProperty( nodeId, "foo" );
 
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node node = database.graph.getNodeById( nodeId );
+            Node node = database.getGraph().getNodeById( nodeId );
             assertEquals( 15, node.getProperty( "number" ) );
             assertEquals( false, node.hasProperty( "foo" ) );
             tx.success();
@@ -437,11 +438,11 @@ public class DatabaseActionsTest
         properties.put( "foo", "bar" );
         properties.put( "neo", "Thomas A. Anderson" );
         properties.put( "number", 15L );
-        Transaction tx = database.graph.beginTx();
+        Transaction tx = database.getGraph().beginTx();
         try
         {
-            Node startNode = database.graph.createNode();
-            Node endNode = database.graph.createNode();
+            Node startNode = database.getGraph().createNode();
+            Node endNode = database.getGraph().createNode();
             Relationship relationship = startNode.createRelationshipTo( endNode,
                     DynamicRelationshipType.withName( "knows" ) );
             for ( Map.Entry<String, Object> entry : properties.entrySet() )

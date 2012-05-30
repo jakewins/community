@@ -19,14 +19,14 @@
  */
 package org.neo4j.server.rrd.sampler;
 
-import org.neo4j.server.database.Database;
+import org.neo4j.server.statistic.StatisticCollector;
 import org.rrd4j.DsType;
 
 public class RequestMinTimeSampleable extends StatisticSampleableBase
 {
-    public RequestMinTimeSampleable( Database db )
+    public RequestMinTimeSampleable( StatisticCollector collector )
     {
-        super( db, DsType.GAUGE );
+        super(collector, DsType.GAUGE );
     }
 
     @Override

@@ -35,6 +35,7 @@ import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.rrd4j.ConsolFun;
 import org.rrd4j.DsType;
@@ -50,13 +51,13 @@ public class RrdFactoryTest
     public void setUp() throws IOException
     {
         config = ServerConfig.fromMap(new HashMap<String,String>());
-        db = new Database( new ImpermanentGraphDatabase() );
+        db = new WrappedDatabase( new ImpermanentGraphDatabase() );
     }
 
     @After
     public void tearDown()
     {
-        db.shutdown();
+        db.getGraph().shutdown();
     }
 
     @Test
@@ -90,7 +91,7 @@ public class RrdFactoryTest
         TestableRrdFactory factory = createRrdFactory();
 
         // create invalid rrd
-        File rrd = new File( db.graph.getStoreDir(), "rrd" );
+        File rrd = new File( db.getGraph().getStoreDir(), "rrd" );
         RrdDef rrdDef = new RrdDef( rrd.getAbsolutePath(), 3000 );
         rrdDef.addDatasource( "test", DsType.GAUGE, 1, NaN, NaN );
         rrdDef.addArchive( ConsolFun.AVERAGE, 0.2, 1, 1600 );

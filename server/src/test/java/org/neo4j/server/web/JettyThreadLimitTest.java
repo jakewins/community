@@ -27,6 +27,7 @@ import java.util.concurrent.CyclicBarrier;
 
 import org.junit.Test;
 import org.mortbay.thread.QueuedThreadPool;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class JettyThreadLimitTest
 {
@@ -34,31 +35,37 @@ public class JettyThreadLimitTest
     @Test
     public void shouldHaveSensibleDefaultJettyThreadPoolSize() throws Exception
     {
-        WebServer server = new Jetty6WebServer();
-        server.init();
-        QueuedThreadPool threadPool = (QueuedThreadPool) server.getJetty()
-                .getThreadPool();
-        threadPool.start();
-        loadThreadPool( threadPool );
-        assertEquals( 10 * Runtime.getRuntime()
-                .availableProcessors(), threadPool.getThreads() );
-        threadPool.stop();
+        WebServer server = new Jetty6WebServer(null, StringLogger.DEV_NULL);
+        server.setPort(7474);
+        try {
+            server.start();
+            QueuedThreadPool threadPool = (QueuedThreadPool) server.getJetty()
+                    .getThreadPool();
+            loadThreadPool( threadPool );
+            assertEquals( 10 * Runtime.getRuntime()
+                    .availableProcessors(), threadPool.getThreads() );
+        } finally {
+            server.stop();
+        }
     }
 
     @Test
     public void shouldHaveConfigurableJettyThreadPoolSize() throws Exception
     {
-        WebServer server = new Jetty6WebServer();
-        final int maxThreads = 7;
-        server.setMaxThreads( maxThreads );
-        server.init();
-        QueuedThreadPool threadPool = (QueuedThreadPool) server.getJetty()
-                .getThreadPool();
-        threadPool.start();
-        loadThreadPool( threadPool );
-        int threads = threadPool.getThreads();
-        assertTrue( threads <= maxThreads );
-        threadPool.stop();
+        WebServer server = new Jetty6WebServer(null, StringLogger.DEV_NULL);
+        server.setPort(7474);
+        try {
+            final int maxThreads = 7;
+            server.setMaxThreads( maxThreads );
+            server.start();
+            QueuedThreadPool threadPool = (QueuedThreadPool) server.getJetty()
+                    .getThreadPool();
+            loadThreadPool( threadPool );
+            int threads = threadPool.getThreads();
+            assertTrue( threads <= maxThreads );
+        } finally {
+            server.stop();
+        }
     }
 
     private void loadThreadPool( QueuedThreadPool threadPool )

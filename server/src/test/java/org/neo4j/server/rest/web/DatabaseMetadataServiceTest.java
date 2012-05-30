@@ -32,6 +32,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
 import org.neo4j.test.ImpermanentGraphDatabase;
@@ -50,7 +51,7 @@ public class DatabaseMetadataServiceTest
         tx.success();
         tx.finish();
         
-        Database database = new Database( db );
+        Database database = new WrappedDatabase( db );
         DatabaseMetadataService service = new DatabaseMetadataService( database );
 
         Response response = service.getRelationshipTypes();
@@ -59,6 +60,6 @@ public class DatabaseMetadataServiceTest
         List<Map<String, Object>> jsonList = JsonHelper.jsonToList( response.getEntity()
                 .toString() );
         assertEquals( 3, jsonList.size() );
-        database.shutdown();
+        database.getGraph().shutdown();
     }
 }

@@ -29,6 +29,7 @@ import java.net.URI;
 import java.util.List;
 
 import org.junit.Test;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.web.WebServer;
 
@@ -44,9 +45,9 @@ public class DiscoveryModuleTest
         when( neoServer.baseUri() ).thenReturn( new URI( "http://localhost:7575" ) );
         when( neoServer.getWebServer() ).thenReturn( webServer );
 
-        DiscoveryModule module = new DiscoveryModule();
+        DiscoveryModule module = new DiscoveryModule(StringLogger.DEV_NULL, webServer);
 
-        module.start( neoServer, null );
+        module.start();
 
         verify( webServer ).addJAXRSPackages( any( List.class ), anyString() );
     }

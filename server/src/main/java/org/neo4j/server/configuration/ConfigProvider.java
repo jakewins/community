@@ -17,28 +17,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server.rrd.sampler;
+package org.neo4j.server.configuration;
 
-import org.neo4j.server.statistic.StatisticCollector;
-import org.rrd4j.DsType;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.server.database.AbstractInjectableProvider;
 
-public class RequestMedianTimeSampleable extends StatisticSampleableBase
+import com.sun.jersey.api.core.HttpContext;
+
+public class ConfigProvider extends AbstractInjectableProvider<Config>
 {
+    private Config config;
 
-    public RequestMedianTimeSampleable( StatisticCollector collector )
+    public ConfigProvider( Config config )
     {
-        super( collector, DsType.ABSOLUTE );
+        super( Config.class );
+        this.config = config;
     }
 
     @Override
-    public String getName()
+    public Config getValue( HttpContext httpContext )
     {
-        return "request_median_time";
-    }
-
-    @Override
-    public double getValue()
-    {
-        return getCurrentSnapshot().getDuration().getMedian();
+        return config;
     }
 }

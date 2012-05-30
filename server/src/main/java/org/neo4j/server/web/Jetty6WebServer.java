@@ -53,12 +53,12 @@ import org.mortbay.jetty.servlet.SessionHandler;
 import org.mortbay.jetty.webapp.WebAppContext;
 import org.mortbay.resource.Resource;
 import org.mortbay.thread.QueuedThreadPool;
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.kernel.guard.Guard;
-import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.NeoServer;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.guard.GuardingRequestFilter;
-import org.neo4j.server.logging.Logger;
 import org.neo4j.server.rest.security.SecurityFilter;
 import org.neo4j.server.rest.security.SecurityRule;
 import org.neo4j.server.rest.security.UriPathWildcardMatcher;
@@ -71,10 +71,9 @@ import ch.qos.logback.access.jetty.RequestLogImpl;
 import com.sun.jersey.api.core.ResourceConfig;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
-public class Jetty6WebServer implements WebServer, Lifecycle
+public class Jetty6WebServer implements WebServer
 {
     private static final int DEFAULT_HTTPS_PORT = 7473;
-    public static final Logger log = Logger.getLogger( Jetty6WebServer.class );
     public static final int DEFAULT_PORT = 80;
     public static final String DEFAULT_ADDRESS = "0.0.0.0";
 
@@ -91,9 +90,23 @@ public class Jetty6WebServer implements WebServer, Lifecycle
     private boolean httpsEnabled = false;
     private KeyStoreInformation httpsCertificateInformation = null;
     private SslSocketConnectorFactory sslSocketFactory = new SslSocketConnectorFactory();
+    private StringLogger log;
+    private DependencyResolver dependencyResolver;
+
+    public Jetty6WebServer(DependencyResolver dependencyResolver, StringLogger log)
+    {
+        this.log = log;
+        this.dependencyResolver = dependencyResolver;
+    }
 
     @Override
     public void init()
+    {
+        
+    }
+
+    @Override
+    public void start()
     {
         if ( jetty == null )
         {
@@ -120,15 +133,7 @@ public class Jetty6WebServer implements WebServer, Lifecycle
 
             jetty.setThreadPool( new QueuedThreadPool( jettyMaxThreads ) );
         }
-    }
-
-    @Override
-    public void start()
-    {
-        if ( jetty == null )
-        {
-            throw new IllegalStateException( "Jetty not initialized." );
-        }
+        
         MovedContextHandler redirector = new MovedContextHandler();
 
         jetty.addHandler( redirector );
@@ -145,17 +150,12 @@ public class Jetty6WebServer implements WebServer, Lifecycle
         {
             jetty.stop();
             jetty.join();
+            jetty = null;
         }
         catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
-    }
-
-    @Override
-    public void shutdown()
-        throws Throwable
-    {
     }
 
     @Override
@@ -184,7 +184,7 @@ public class Jetty6WebServer implements WebServer, Lifecycle
 
         mountPoint = trimTrailingSlashToKeepJettyHappy( mountPoint );
 
-        ServletContainer container = new NeoServletContainer( server, server.getInjectables( packageNames ) );
+        ServletContainer container = new NeoServletContainer( dependencyResolver, server, server.getInjectables( packageNames ) );
         ServletHolder servletHolder = new ServletHolder( container );
         if ( !server.getConfig().get( ServerSettings.wadl_enabled ) )
         {
@@ -381,7 +381,7 @@ public class Jetty6WebServer implements WebServer, Lifecycle
         }
         catch ( Exception e )
         {
-            log.error( e );
+            log.error("", e );
             e.printStackTrace();
             throw new RuntimeException( e );
         }
@@ -445,7 +445,7 @@ public class Jetty6WebServer implements WebServer, Lifecycle
     @Override
     public void addExecutionLimitFilter( final int timeout )
     {
-        final Guard guard = server.getDatabase().graph.getGuard();
+        final Guard guard = server.getDatabase().getGraph().getGuard();
         if ( guard == null )
         {
             //TODO enable guard and restart EmbeddedGraphdb

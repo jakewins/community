@@ -17,28 +17,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server.rrd.sampler;
+package org.neo4j.server.rrd;
 
-import org.neo4j.server.statistic.StatisticCollector;
-import org.rrd4j.DsType;
+import java.util.LinkedList;
+import java.util.List;
 
-public class RequestMedianTimeSampleable extends StatisticSampleableBase
+
+public class RoundRobinJobScheduler implements JobScheduler
 {
 
-    public RequestMedianTimeSampleable( StatisticCollector collector )
+    private List<ScheduledJob> scheduledJobs = new LinkedList<ScheduledJob>();
+
+    public void scheduleAtFixedRate( Runnable job, String jobName, long delay, long period )
     {
-        super( collector, DsType.ABSOLUTE );
+        ScheduledJob scheduledJob = new ScheduledJob( job, jobName, delay, period );
+        scheduledJobs.add( scheduledJob );
     }
 
-    @Override
-    public String getName()
+    public void stopJobs()
     {
-        return "request_median_time";
-    }
-
-    @Override
-    public double getValue()
-    {
-        return getCurrentSnapshot().getDuration().getMedian();
+        for ( ScheduledJob job : scheduledJobs )
+        {
+            job.cancel();
+        }
     }
 }

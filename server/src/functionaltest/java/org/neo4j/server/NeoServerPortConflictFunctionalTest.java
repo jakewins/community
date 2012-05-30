@@ -28,7 +28,7 @@ import java.net.ServerSocket;
 
 import org.junit.Test;
 import org.neo4j.server.helpers.ServerBuilder;
-import org.neo4j.server.logging.InMemoryAppender;
+import org.neo4j.server.logging.BufferingLogging;
 import org.neo4j.server.web.Jetty6WebServer;
 import org.neo4j.test.server.ExclusiveServerTestBase;
 
@@ -40,17 +40,19 @@ public class NeoServerPortConflictFunctionalTest extends ExclusiveServerTestBase
     {
         int contestedPort = 9999;
         ServerSocket socket = new ServerSocket( contestedPort, 0, InetAddress.getByName(Jetty6WebServer.DEFAULT_ADDRESS) );
-        InMemoryAppender appender = new InMemoryAppender( NeoServerWithEmbeddedWebServer.log );
+        
+        BufferingLogging logging = new BufferingLogging();
         NeoServerWithEmbeddedWebServer server = ServerBuilder.server()
                 .onPort( contestedPort )
                 .onHost( Jetty6WebServer.DEFAULT_ADDRESS )
+                .withLogging(logging)
                 .build();
         server.start();
 
         // Don't include the SEVERE string since it's
         // OS-regional-settings-specific
         assertThat(
-                appender.toString(),
+                logging.getLogger().toString(),
                 containsString( String.format( ": Failed to start Neo Server" ) ) );
         socket.close();
         server.stop();

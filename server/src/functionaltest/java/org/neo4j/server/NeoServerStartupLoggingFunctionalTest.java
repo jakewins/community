@@ -29,25 +29,26 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.neo4j.server.helpers.ServerBuilder;
 import org.neo4j.server.helpers.ServerHelper;
-import org.neo4j.server.logging.InMemoryAppender;
+import org.neo4j.server.logging.BufferingLogging;
 import org.neo4j.server.rest.JaxRsResponse;
 import org.neo4j.server.rest.RestRequest;
-import org.neo4j.server.web.Jetty6WebServer;
 import org.neo4j.test.server.ExclusiveServerTestBase;
 
 import com.sun.jersey.api.client.Client;
 
 public class NeoServerStartupLoggingFunctionalTest extends ExclusiveServerTestBase
 {
-    private static InMemoryAppender appender = new InMemoryAppender( Jetty6WebServer.log );
-
     private static NeoServer server;
+    private static BufferingLogging logging;
 
     @BeforeClass
     public static void setupServer() throws IOException
     {
-        server = ServerHelper.createNonPersistentServer();
+        logging = new BufferingLogging();
+        server = ServerBuilder.server().withLogging(logging).build();
+        server.start();
     }
 
     @Before
@@ -66,7 +67,7 @@ public class NeoServerStartupLoggingFunctionalTest extends ExclusiveServerTestBa
     public void shouldLogStartup() throws Exception
     {
         // Check the logs
-        assertThat( appender.toString()
+        assertThat( logging.getLogger().toString()
                 .length(), is( greaterThan( 0 ) ) );
 
         // Check the server is alive

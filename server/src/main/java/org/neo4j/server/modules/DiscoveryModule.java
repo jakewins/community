@@ -19,22 +19,31 @@
  */
 package org.neo4j.server.modules;
 
-import static org.neo4j.server.JAXRSHelper.listFrom;
+import java.util.Arrays;
 
 import org.neo4j.kernel.logging.Level;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.web.WebServer;
 
 public class DiscoveryModule implements ServerModule
 {
     private static final String ROOT_PATH = "/";
     private static final String DISCOVERY_API_PACKAGE = "org.neo4j.server.rest.discovery";
+    
+    private StringLogger log;
+    private WebServer webServer;
 
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    public DiscoveryModule(StringLogger log, WebServer server)
     {
-        neoServer.getWebServer()
-                .addJAXRSPackages( listFrom( new String[] { DISCOVERY_API_PACKAGE } ), ROOT_PATH );
-        logger.logMessage( Level.INFO, "Mounted discovery module (" + DISCOVERY_API_PACKAGE + ") at: " + ROOT_PATH );
+        this.log = log;
+        this.webServer = server;
+    }
+    
+    @Override
+    public void start( )
+    {
+        webServer.addJAXRSPackages( Arrays.asList(new String[] { DISCOVERY_API_PACKAGE } ), ROOT_PATH );
+        log.logMessage( Level.INFO, "Mounted discovery module (" + DISCOVERY_API_PACKAGE + ") at: " + ROOT_PATH );
     }
 
     public void stop()

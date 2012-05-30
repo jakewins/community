@@ -21,11 +21,9 @@ package org.neo4j.server;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.configuration.Config;
@@ -33,13 +31,8 @@ import org.neo4j.kernel.configuration.SystemPropertiesConfiguration;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.ConfiguratorWrappedConfig;
 import org.neo4j.server.configuration.ServerSettings;
-import org.neo4j.server.logging.Logger;
-import org.neo4j.server.modules.DiscoveryModule;
-import org.neo4j.server.modules.ManagementApiModule;
-import org.neo4j.server.modules.RESTApiModule;
-import org.neo4j.server.modules.ServerModule;
-import org.neo4j.server.modules.ThirdPartyJAXRSModule;
-import org.neo4j.server.modules.WebAdminModule;
+import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
 
 /**
@@ -70,10 +63,9 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
  * the constructor. You can write your own implementation or use
  * {@link org.neo4j.server.configuration.ServerConfigurator}.
  */
-public class WrappingNeoServerBootstrapper extends Bootstrapper
+public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
 {
     private final GraphDatabaseAPI db;
-    private static Logger log = Logger.getLogger( WrappingNeoServerBootstrapper.class );
 
     /**
      * Create an instance with default settings.
@@ -124,70 +116,14 @@ public class WrappingNeoServerBootstrapper extends Bootstrapper
     }
 
     @Override
-    public Iterable<StartupHealthCheckRule> getHealthCheckRules()
+    public List<StartupHealthCheckRule> createHealthCheckRules()
     {
         return Arrays.asList();
     }
 
     @Override
-    @SuppressWarnings( "unchecked" )
-    public Iterable<Class<? extends ServerModule>> getServerModules()
+    protected Database createDatabase(  )
     {
-        return Arrays.asList( DiscoveryModule.class, RESTApiModule.class, ManagementApiModule.class,
-                ThirdPartyJAXRSModule.class, WebAdminModule.class );
-    }
-
-    @Override
-    public int stop( int stopArg )
-    {
-        try
-        {
-            if ( server != null )
-            {
-                server.stopServerOnly();
-                server.getDatabase()
-                        .rrdDb()
-                        .close();
-            }
-            return 0;
-        }
-        catch ( Exception e )
-        {
-            log.error( "Failed to cleanly shutdown Neo Server on port [%d]. Reason [%s] ", server.getWebServerPort(),
-                    e.getMessage() );
-            return 1;
-        }
-    }
-
-    @Override
-    protected void addShutdownHook()
-    {
-        // No-op
-    }
-
-    @Override
-    protected GraphDatabaseFactory getGraphDatabaseFactory( Config configuration )
-    {
-        return new GraphDatabaseFactory()
-        {
-            @Override
-            public GraphDatabaseService newEmbeddedDatabase( String path )
-            {
-                return super.newEmbeddedDatabase( path );
-            }
-
-            @Override
-            public GraphDatabaseBuilder newEmbeddedDatabaseBuilder( String path )
-            {
-                return new GraphDatabaseBuilder( new GraphDatabaseBuilder.DatabaseCreator()
-                {
-                    @Override
-                    public GraphDatabaseService newDatabase( Map<String, String> config )
-                    {
-                        return db;
-                    }
-                } );
-            }
-        };
+        return new WrappedDatabase(db);
     }
 }

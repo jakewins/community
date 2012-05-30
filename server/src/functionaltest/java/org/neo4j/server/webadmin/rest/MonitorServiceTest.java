@@ -29,16 +29,18 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import org.apache.commons.configuration.SystemConfiguration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.rest.repr.formats.JsonFormat;
 import org.neo4j.server.rrd.JobScheduler;
 import org.neo4j.server.rrd.RrdFactory;
@@ -87,9 +89,9 @@ public class MonitorServiceTest implements JobScheduler
     @Before
     public void setUp() throws Exception
     {
-        database = new Database( new ImpermanentGraphDatabase() );
+        database = new WrappedDatabase( new ImpermanentGraphDatabase() );
 
-        rrdDb = new RrdFactory( new SystemConfiguration() ).createRrdDbAndSampler( database, this );
+        rrdDb = new RrdFactory( ServerConfig.fromMap(new HashMap<String,String>()) ).createRrdDbAndSampler( database, this );
 
         output = new EntityOutputFormat( new JsonFormat(), URI.create( "http://peteriscool.com:6666/" ), null );
         monitorService = new MonitorService( rrdDb, output );
@@ -106,7 +108,7 @@ public class MonitorServiceTest implements JobScheduler
         {
             throw new RuntimeException( e );
         }
-        this.database.shutdown();
+        this.database.getGraph().shutdown();
     }
 
     public void scheduleAtFixedRate( Runnable job, String jobName, long delay, long period )

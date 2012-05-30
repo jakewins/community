@@ -34,10 +34,11 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.Traversal;
 import org.neo4j.kernel.Uniqueness;
-import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 public class PagedTraverserTest
@@ -49,19 +50,19 @@ public class PagedTraverserTest
     @Before
     public void clearDb() throws IOException
     {
-        database = new Database( new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder());
+        database = new WrappedDatabase( (GraphDatabaseAPI) new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().newGraphDatabase());
         createLinkedList( LIST_LENGTH, database );
     }
 
     private void createLinkedList( int listLength, Database db )
     {
-        Transaction tx = db.graph.beginTx();
+        Transaction tx = db.getGraph().beginTx();
         try
         {
             Node previous = null;
             for ( int i = 0; i < listLength; i++ )
             {
-                Node current = db.graph.createNode();
+                Node current = db.getGraph().createNode();
 
                 if ( previous != null )
                 {
@@ -85,7 +86,7 @@ public class PagedTraverserTest
     @After
     public void shutdownDatabase() throws IOException
     {
-        database.shutdown();
+        database.getGraph().shutdown();
     }
 
     @Test

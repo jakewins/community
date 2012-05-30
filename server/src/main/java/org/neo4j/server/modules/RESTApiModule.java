@@ -19,48 +19,56 @@
  */
 package org.neo4j.server.modules;
 
-import static org.neo4j.server.JAXRSHelper.listFrom;
-
 import java.net.URI;
+import java.util.Arrays;
 
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.configuration.ServerSettings;
-import org.neo4j.server.logging.Logger;
 import org.neo4j.server.plugins.PluginManager;
+import org.neo4j.server.web.WebServer;
 
 public class RESTApiModule implements ServerModule
 {
-    private static final Logger log = Logger.getLogger( RESTApiModule.class );
+    
     private PluginManager plugins;
+
+    private WebServer webServer;
+
+    private StringLogger log;
+
+    private Config config;
 
     private static final String REST_API_PACKAGE = "org.neo4j.server.rest.web";
 
-    public void start( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
+    public RESTApiModule(Config config, StringLogger log, WebServer server)
     {
-        URI restApiUri = restApiUri( neoServer );
+        this.config = config;
+        this.log = log;
+        this.webServer = server;
+    }
+    
+    @Override
+    public void start( )
+    {
+        URI restApiUri = config.get( ServerSettings.rest_api_path);
 
-        neoServer.getWebServer()
-                .addJAXRSPackages( listFrom( new String[] { REST_API_PACKAGE } ),
+        webServer.addJAXRSPackages( Arrays.asList( new String[] { REST_API_PACKAGE } ),
                         restApiUri.toString() );
-        loadPlugins( neoServer, logger );
+        
+        // TODO: Transition this from loading plugins at construction time to
+        // implementing lifecycle.
+        // TODO: What is the difference between this manager and PluginInitializer?
+        // And who is actually responsible for managing plugins, this module or the
+        // NeoServer?
+        plugins = new PluginManager( config, log );
 
-        logger.info( "Mounted REST API at: " + restApiUri.toString() );
+        log.info( "Mounted REST API at: " + restApiUri.toString() );
     }
 
     public void stop()
     {
         // Do nothing.
-    }
-
-    private URI restApiUri( NeoServerWithEmbeddedWebServer neoServer )
-    {
-        return neoServer.getConfig().get( ServerSettings.rest_api_path);
-    }
-
-    private void loadPlugins( NeoServerWithEmbeddedWebServer neoServer, StringLogger logger )
-    {
-        plugins = new PluginManager( neoServer.getConfiguration(), logger );
     }
 
     public PluginManager getPlugins()

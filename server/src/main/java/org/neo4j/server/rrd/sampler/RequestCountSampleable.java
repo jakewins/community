@@ -19,15 +19,15 @@
  */
 package org.neo4j.server.rrd.sampler;
 
-import org.neo4j.server.database.Database;
+import org.neo4j.server.statistic.StatisticCollector;
 import org.rrd4j.DsType;
 
 public class RequestCountSampleable extends StatisticSampleableBase
 {
 
-    public RequestCountSampleable( Database db )
+    public RequestCountSampleable( StatisticCollector collector )
     {
-        super( db, DsType.ABSOLUTE );
+        super( collector, DsType.ABSOLUTE );
     }
 
     @Override

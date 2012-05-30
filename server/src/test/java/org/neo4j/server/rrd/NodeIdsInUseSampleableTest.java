@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.server.rrd.sampler.NodeIdsInUseSampleable;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
@@ -49,7 +50,7 @@ public class NodeIdsInUseSampleableTest
     {
         double oldValue = sampleable.getValue();
 
-        createNode( db.graph );
+        createNode( db.getGraph() );
 
         assertThat( sampleable.getValue(), greaterThan( oldValue ) );
     }
@@ -65,13 +66,13 @@ public class NodeIdsInUseSampleableTest
     @Before
     public void setUp() throws Exception
     {
-        db = new Database( new ImpermanentGraphDatabase() );
-        sampleable = new NodeIdsInUseSampleable( db.graph );
+        db = new WrappedDatabase( new ImpermanentGraphDatabase() );
+        sampleable = new NodeIdsInUseSampleable( db.getGraph() );
     }
 
     @After
-    public void shutdown()
+    public void shutdown() throws Throwable
     {
-        db.shutdown();
+        db.getGraph().shutdown();
     }
 }
