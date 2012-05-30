@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.server.WrappingNeoServerBootstrapper;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
@@ -46,14 +47,16 @@ public class StreamingJsonFormatPerformanceTest {
     private ImpermanentGraphDatabase gdb;
     private WrappingNeoServerBootstrapper server;
 
+    private LifeSupport life = new LifeSupport();
+
     @Before
     public void setUp() throws Throwable {
         gdb = new ImpermanentGraphDatabase();
         for (int i=0;i<10;i++) {
             createData();
         }
-        server = new WrappingNeoServerBootstrapper(gdb);
-        server.start();
+        server = life.add(new WrappingNeoServerBootstrapper(gdb));
+        life.start();
     }
 
     @After

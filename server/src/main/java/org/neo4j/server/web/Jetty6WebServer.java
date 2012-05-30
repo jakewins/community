@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +74,28 @@ import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 public class Jetty6WebServer implements WebServer
 {
+    private static class FilterDefinition 
+    {
+
+        public FilterDefinition(Filter filter, String pathSpec)
+        {
+            // TODO Auto-generated constructor stub
+        }
+
+        public String getPath()
+        {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        public Class getFilter()
+        {
+            // TODO Auto-generated method stub
+            return null;
+        }
+        
+    }
+    
     private static final int DEFAULT_HTTPS_PORT = 7473;
     public static final int DEFAULT_PORT = 80;
     public static final String DEFAULT_ADDRESS = "0.0.0.0";
@@ -92,6 +115,7 @@ public class Jetty6WebServer implements WebServer
     private SslSocketConnectorFactory sslSocketFactory = new SslSocketConnectorFactory();
     private StringLogger log;
     private DependencyResolver dependencyResolver;
+    private List<FilterDefinition> filters = new ArrayList<FilterDefinition>();
 
     public Jetty6WebServer(DependencyResolver dependencyResolver, StringLogger log)
     {
@@ -256,6 +280,12 @@ public class Jetty6WebServer implements WebServer
     }
 
 
+    @Override 
+    public void addFilter(Filter filter, String pathSpec)
+    {
+        this.filters.add(new FilterDefinition(filter, pathSpec));
+    }
+    
     protected void startJetty()
     {
         try
@@ -362,6 +392,7 @@ public class Jetty6WebServer implements WebServer
             staticContext.setContextPath( mountPoint );
             URL resourceLoc = getClass().getClassLoader()
                 .getResource( contentLocation );
+            addFiltersTo(staticContext);
             if ( resourceLoc != null )
             {
                 log.debug( "Found [%s]", resourceLoc );
@@ -395,6 +426,15 @@ public class Jetty6WebServer implements WebServer
         SessionHandler sh = new SessionHandler( sm );
         jerseyContext.addServlet( servletHolder, "/*" );
         jerseyContext.setSessionHandler( sh );
+        addFiltersTo(jerseyContext);
+    }
+
+    private void addFiltersTo(Context context)
+    {
+        for(FilterDefinition filterDef : filters)
+        {
+            context.addFilter(new FilterHolder(filterDef.getFilter()), filterDef.getPath(), Handler.ALL);
+        }
     }
 
     private String toCommaSeparatedList( List<String> packageNames )
@@ -411,6 +451,8 @@ public class Jetty6WebServer implements WebServer
         return result.substring( 0, result.length() - 2 );
     }
 
+    // TODO: Combine this with the #addFilter() method, such
+    // that security rules are to this class just another filter.
     @Override
     public void addSecurityRules( final SecurityRule... rules )
     {

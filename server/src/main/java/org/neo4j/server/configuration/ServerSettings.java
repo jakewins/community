@@ -195,6 +195,9 @@ public abstract class ServerSettings
         public ThirdPartyJaxRsPackage valueOf(String rawValue, Config config)
         {
             String[] parts = rawValue.split("=");
+            if(parts.length != 2) {
+                throw new IllegalArgumentException("'" + rawValue + "' is not a valid unmanaged extension configuration.");
+            }
             return new ThirdPartyJaxRsPackage(parts[0], parts[1]);
         }
         

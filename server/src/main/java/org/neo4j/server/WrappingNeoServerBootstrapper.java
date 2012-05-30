@@ -66,6 +66,7 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
 public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
 {
     private final GraphDatabaseAPI db;
+    private boolean initialized = false;
 
     /**
      * Create an instance with default settings.
@@ -125,5 +126,31 @@ public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
     protected Database createDatabase(  )
     {
         return new WrappedDatabase(db);
+    }
+    
+    @Override
+    public void init() 
+    {
+        try
+        {
+            super.init();
+        } catch (Throwable e)
+        {
+            throw new RuntimeException(e);
+        }
+        this.initialized  = true;
+    }
+    
+    @Override
+    public void start() 
+    {
+        if(!initialized) init();
+        try
+        {
+            super.start();
+        } catch (Throwable e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 }

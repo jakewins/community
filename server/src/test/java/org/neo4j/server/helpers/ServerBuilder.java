@@ -45,7 +45,6 @@ import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.Bootstrapper;
 import org.neo4j.server.EphemeralNeoServerBootstrapper;
 import org.neo4j.server.NeoServerBootstrapper;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
@@ -99,7 +98,7 @@ public class ServerBuilder
     }
 
     @SuppressWarnings("unchecked")
-    public NeoServerWithEmbeddedWebServer build() throws IOException
+    public Bootstrapper build() throws IOException
     {
         if ( dbDir == null )
         {
@@ -129,24 +128,67 @@ public class ServerBuilder
             LeaseManagerProvider.setClock( clock );
         }
         
-        Bootstrapper boot = createBootstrapper();
+        Bootstrapper boot = createBootstrapper(configFile);
+        try
+        {
+            boot.init();
+        } catch (Throwable e)
+        {
+            throw new RuntimeException(e);
+        }
 
-        return boot.getDependencyResolver().resolveDependency(NeoServerWithEmbeddedWebServer.class);
+        return boot;
     }
 
-    protected Bootstrapper createBootstrapper()
+    protected Bootstrapper createBootstrapper(final File configFile)
     {
         return persistent ? new NeoServerBootstrapper() {
             @Override
-            public Logging createLogging()
+            public Config createConfig() 
             {
-                return logging;
+                try
+                {
+                    return ServerConfig.fromFile(configFile);
+                } catch (IOException e)
+                {
+                    return ServerConfig.fromMap(new HashMap<String,String>());
+                }
             }
-        }: new EphemeralNeoServerBootstrapper() {
+            
+            @Override
+            protected StartupHealthCheck createStartupHealthCheck() 
+            {
+                return ServerBuilder.this.startupHealthCheck;
+            }
+            
             @Override
             public Logging createLogging()
             {
-                return logging;
+                return ServerBuilder.this.logging;
+            }
+        }: new EphemeralNeoServerBootstrapper() {
+            @Override
+            public Config createConfig() 
+            {
+                try
+                {
+                    return ServerConfig.fromFile(configFile);
+                } catch (IOException e)
+                {
+                    return ServerConfig.fromMap(new HashMap<String,String>());
+                }
+            }
+            
+            @Override
+            protected StartupHealthCheck createStartupHealthCheck() 
+            {
+                return ServerBuilder.this.startupHealthCheck;
+            }
+            
+            @Override
+            public Logging createLogging()
+            {
+                return ServerBuilder.this.logging;
             }
         };
     }

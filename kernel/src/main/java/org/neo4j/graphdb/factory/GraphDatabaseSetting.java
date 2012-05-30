@@ -642,6 +642,9 @@ public abstract class GraphDatabaseSetting<T>
             if (value == null)
                 throw illegalValue( locale, value );
             
+            if( value.length() == 0)
+                return;
+            
             for(String item : value.split(separator) ) 
             {
                 itemSetting.validate(item);
@@ -652,9 +655,12 @@ public abstract class GraphDatabaseSetting<T>
         public List<T> valueOf(String rawValue, Config config) 
         {
             List<T> list = new ArrayList<T>();
-            for(String item : rawValue.split(separator) ) 
+            if(rawValue.length() > 0)
             {
-                list.add(itemSetting.valueOf(item, config));
+                for(String item : rawValue.split(separator) ) 
+                {
+                    list.add(itemSetting.valueOf(item, config));
+                }
             }
             return list;
         }

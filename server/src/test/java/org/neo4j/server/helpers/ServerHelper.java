@@ -27,6 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.IndexManager;
+import org.neo4j.server.Bootstrapper;
 import org.neo4j.server.NeoServer;
 import org.neo4j.tooling.GlobalGraphOperations;
 
@@ -146,9 +147,15 @@ public class ServerHelper
         ServerBuilder builder = ServerBuilder.server();
         configureHostname( builder );
         if ( persistent ) builder = builder.persistent();
-        NeoServer server = builder.build();
-        server.start();
-        return server;
+        Bootstrapper boot = builder.build();
+        try
+        {
+            boot.start();
+        } catch (Throwable e)
+        {
+            throw new RuntimeException(e);
+        }
+        return boot.getServer();
     }
 
     private static void configureHostname( ServerBuilder builder )

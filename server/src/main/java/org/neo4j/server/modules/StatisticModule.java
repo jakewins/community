@@ -19,15 +19,12 @@
  */
 package org.neo4j.server.modules;
 
-import org.mortbay.jetty.Server;
 import org.neo4j.server.statistic.StatisticCollector;
 import org.neo4j.server.statistic.StatisticFilter;
-import org.neo4j.server.statistic.StatisticStartupListener;
 import org.neo4j.server.web.WebServer;
 
 public class StatisticModule implements ServerModule
 {
-    private StatisticStartupListener listener;
     private WebServer webServer;
     private StatisticCollector collector;
 
@@ -40,17 +37,10 @@ public class StatisticModule implements ServerModule
     @Override
     public void start( )
     {
-        // TODO: Create our own filter abstraction, such that
-        // we don't have to depend on using jetty here
-        Server jetty = webServer.getJetty();
-
-        listener = new StatisticStartupListener( jetty,
-                new StatisticFilter( collector ) );
-        jetty.addLifeCycleListener( listener );
+        webServer.addFilter(new StatisticFilter( collector ), "/*" );
     }
 
     public void stop()
     {
-        listener.stop();
     }
 }

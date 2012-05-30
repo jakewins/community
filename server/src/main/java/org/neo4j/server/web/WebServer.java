@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import javax.servlet.Filter;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -69,4 +70,6 @@ public interface WebServer
 
     @Deprecated
     Server getJetty();
+
+    void addFilter(Filter filter, String path);
 }
