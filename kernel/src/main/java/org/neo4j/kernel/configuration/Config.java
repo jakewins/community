@@ -118,12 +118,12 @@ public class Config implements DiagnosticsProvider
     /**
      * Set a configuration value. 
      * 
-     * Please note that each time
-     * you call this method, events will be fired that may cause
-     * the database to internally restart.
+     * Please note that each time you call this method, events will be 
+     * fired that may cause the database to internally restart.
      * 
      * If you are going to be modifying multiple values, take
-     * a look {@link #modifyWith(ConfigModifier)}.
+     * a look {@link #modifyWith(ConfigModifier)}, that way you will
+     * only trigger one restart, rather than one per property changed.
      *  
      * @param setting
      * @param value

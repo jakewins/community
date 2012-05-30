@@ -19,6 +19,8 @@
  */
 package org.neo4j.kernel.logging;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -78,6 +80,17 @@ public class BufferingLogger extends StringLogger {
         {
             other.logMessage(message.level, message.message, message.throwable);
         }
+    }
+    
+    public String toString() 
+    {
+        PrintWriter sb = new PrintWriter(new StringWriter());
+        for(LogMessage message : buffer) 
+        {
+            sb.println(message.level.name() + ": " + message.message);
+            message.throwable.printStackTrace(sb);
+        }
+        return sb.toString();
     }
 
     @Override
