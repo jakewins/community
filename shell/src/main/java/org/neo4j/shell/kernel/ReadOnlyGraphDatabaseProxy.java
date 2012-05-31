@@ -33,6 +33,7 @@ import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Lock;
@@ -70,8 +71,8 @@ import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
 import org.neo4j.kernel.impl.traversal.OldTraverserWrapper;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, GraphDatabaseAPI, IndexManager
 {
@@ -957,5 +958,11 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, GraphDa
     public Guard getGuard()
     {
         return actual.getGuard();
+    }
+
+    @Override
+    public DependencyResolver getDependencyResolver()
+    {
+        return actual.getDependencyResolver();
     }
 }

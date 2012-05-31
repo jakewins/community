@@ -1264,6 +1264,10 @@ public abstract class AbstractGraphDatabase
             {
                 return (T) msgLog;
             }
+            else if( Logging.class.isAssignableFrom( type ) )
+            {
+                return (T) logging;
+            }
             else if( IndexStore.class.isAssignableFrom( type ) )
             {
                 return (T) indexStore;
