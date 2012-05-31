@@ -61,7 +61,7 @@ public class Main
 
     public static Bootstrapper loadMostDerivedBootstrapper()
     {
-        Bootstrapper winner = new NeoServerBootstrapper();
+        Bootstrapper winner = new CommunityBootstrapper();
         for ( Bootstrapper candidate : Service.load( Bootstrapper.class ) )
         {
             if ( candidate.isMoreDerivedThan( winner ) ) winner = candidate;

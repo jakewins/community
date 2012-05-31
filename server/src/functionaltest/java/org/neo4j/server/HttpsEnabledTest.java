@@ -41,7 +41,7 @@ import com.sun.jersey.api.client.ClientResponse;
 
 public class HttpsEnabledTest extends ExclusiveServerTestBase {
 
-    private NeoServerWithEmbeddedWebServer server;
+    private AbstractNeoServer server;
 
     @After
     public void stopTheServer()

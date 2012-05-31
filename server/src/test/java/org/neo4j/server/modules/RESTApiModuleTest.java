@@ -31,7 +31,7 @@ import java.util.List;
 import org.junit.Test;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.AbstractNeoServer;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.web.WebServer;
 
@@ -42,7 +42,7 @@ public class RESTApiModuleTest
     {
         WebServer webServer = mock( WebServer.class );
 
-        NeoServerWithEmbeddedWebServer neoServer = mock( NeoServerWithEmbeddedWebServer.class );
+        AbstractNeoServer neoServer = mock( AbstractNeoServer.class );
         when( neoServer.baseUri() ).thenReturn( new URI( "http://localhost:7575" ) );
         when( neoServer.getWebServer() ).thenReturn( webServer );
 

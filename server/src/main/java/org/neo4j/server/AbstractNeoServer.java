@@ -27,82 +27,194 @@ import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.graphdb.DependencyResolver;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.LogbackService;
+import org.neo4j.kernel.logging.Logging;
 import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.server.configuration.Configurator;
+import org.neo4j.server.configuration.ConfiguratorWrappedConfig;
 import org.neo4j.server.configuration.ServerSettings;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.logging.Loggers;
 import org.neo4j.server.modules.PluginInitializer;
 import org.neo4j.server.modules.RESTApiModule;
 import org.neo4j.server.modules.ServerModule;
 import org.neo4j.server.plugins.Injectable;
 import org.neo4j.server.plugins.PluginManager;
 import org.neo4j.server.rest.security.SecurityRule;
+import org.neo4j.server.rrd.StatisticsStore;
 import org.neo4j.server.security.KeyStoreFactory;
 import org.neo4j.server.security.KeyStoreInformation;
 import org.neo4j.server.security.SslCertificateFactory;
+import org.neo4j.server.startup.healthcheck.HTTPLoggingPreparednessRule;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckFailedException;
+import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
+import org.neo4j.server.statistic.StatisticCollector;
+import org.neo4j.server.web.Jetty6WebServer;
 import org.neo4j.server.web.SimpleUriBuilder;
 import org.neo4j.server.web.WebServer;
+import org.rrd4j.core.RrdDb;
 
-public class NeoServerWithEmbeddedWebServer implements NeoServer
+public abstract class AbstractNeoServer implements NeoServer
 {
-    private Database database;
-    private final Config configurator;
-    private final WebServer webServer;
-    private final StartupHealthCheck startupHealthCheck;
 
-    private final List<ServerModule> serverModules;
-    private PluginInitializer pluginInitializer;
-    private final Bootstrapper bootstrapper;
-
-    private SimpleUriBuilder uriBuilder = new SimpleUriBuilder();
-    private StringLogger log;
-    private DependencyResolver dependencyResolver;
-
-    public NeoServerWithEmbeddedWebServer( Bootstrapper bootstrapper, Database database, DependencyResolver dependencyResolver,
-                                           StringLogger log, StartupHealthCheck startupHealthCheck, Config configurator, WebServer webServer,
-                                           List<ServerModule> modules )
+    
+    private class ServerDependencyResolver implements DependencyResolver 
     {
 
-        this.bootstrapper = bootstrapper;
-        this.startupHealthCheck = startupHealthCheck;
-        this.configurator = configurator;
-        this.webServer = webServer;
-        this.log = log;
-        this.dependencyResolver = dependencyResolver;
-        this.database = database;
-        this.serverModules = modules;
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T resolveDependency(Class<T> type)
+        {
+            if(type.isAssignableFrom(Config.class))
+            {
+                return (T)configurator;
+            } else if(type.isAssignableFrom(Logging.class))
+            {
+                return (T)logging;
+            } else if(type.isAssignableFrom(Database.class))
+            {
+                return (T)database;
+            } else if(type.isAssignableFrom(GraphDatabaseService.class))
+            {
+                return (T)database.getGraph();
+            } else if(type.isAssignableFrom(StatisticCollector.class))
+            {
+                return (T)requestStatistics;
+            } else if(type.isAssignableFrom(StatisticsStore.class))
+            {
+                return (T)statisticsStore;
+            } else if(type.isAssignableFrom(RrdDb.class))
+            {
+                return (T)statisticsStore.getRrdDb();
+            } else if(type.isAssignableFrom(WebServer.class))
+            {
+                return (T)webServer;
+            } else if(type.isAssignableFrom(AbstractNeoServer.class))
+            {
+                return (T)this;
+            }
+            throw new IllegalArgumentException("Unable to satisfy dependency for '" + type.getCanonicalName() + "', no such component registered.");
+        }
+    }
+    
+    protected Database database;
+    protected Config configurator;
+    protected WebServer webServer;
+    protected StatisticCollector requestStatistics;
+    protected StatisticsStore statisticsStore;
+    protected Logging logging;
+    protected StringLogger log;
+    protected DependencyResolver dependencyResolver = new ServerDependencyResolver();
 
+    private SimpleUriBuilder uriBuilder = new SimpleUriBuilder();
+    private LifeSupport life = new LifeSupport();
+    private boolean initialized = false;
+    private StartupHealthCheck startupHealthCheck;
+
+    private List<ServerModule> serverModules;
+    private PluginInitializer pluginInitializer;
+
+    public AbstractNeoServer( Config configurator)
+    {
+        this.configurator = configurator;
+    }
+    
+    public void init() throws Throwable
+    {
+        this.logging = life.add(createLogging());
+        
+        this.log = logging.getLogger(Loggers.SERVER);
+        
+        this.requestStatistics = new StatisticCollector();
+        
+        this.database = life.add(createDatabase());
+        
+        this.statisticsStore = life.add(new StatisticsStore(database, configurator));
+        
+        this.webServer = new Jetty6WebServer(dependencyResolver, logging.getLogger(Loggers.WEBSERVER));
+
+        this.pluginInitializer = new PluginInitializer( this );
+        
         // TODO: Figure out why this cyclic dependency is necessary
         webServer.setNeoServer( this );
+        
+        this.startupHealthCheck = createStartupHealthCheck();
+        
+        serverModules = createServerModules();
     }
 
     @Override
     public void start()
     {
-        startupHealthCheck();
+        try
+        {
 
-        initWebServer();
+            if(!initialized )
+                init();
 
-        startExtensionInitialization();
+            log.info( "--- SERVER STARTUP START ---" );
+            
+            startupHealthCheck();
 
-        startModules( log );
+            initWebServer();
+            
+            life.start();
 
-        startWebServer( log );
+            startModules( );
+
+            startWebServer();
+            
+            log.info( "--- SERVER STARTUP END ---" );
+        }
+        catch ( TransactionFailureException tfe )
+        {
+            log.error( "", tfe);
+            log.error( String.format( "Failed to start Neo Server on port [%d], because ", getWebServerPort() )
+                       + tfe + ". Another process may be using database location " + getDatabase()
+                               .getLocation() );
+            throw tfe;
+        }
+        catch ( Throwable e )
+        {
+            log.error( "", e);
+            log.error( "Failed to start Neo Server on port [%s]", getWebServerPort() );
+            throw new RuntimeException(e);
+        }
     }
 
-    /**
-     * Initializes individual plugins using the mechanism provided via {@link PluginInitializer} and the java service
-     * locator
-     */
-    protected void startExtensionInitialization()
+
+
+    @Override
+    public void stop()
     {
-        pluginInitializer = new PluginInitializer( this );
-    }
+        
+        log.info( "Neo4j Server stop initiated" );
+        try {
 
-    private void startModules( StringLogger logger )
+            webServer.stop();
+            
+            stopModules();
+            
+            pluginInitializer.stop();
+            
+            life.stop();
+            
+            log.info( "Successfully stopped Neo Server on port [%d], database [%s]", getWebServerPort(),
+                    configurator.get(ServerSettings.database_location) );
+        } catch(Throwable e) {
+            log.error( "Failed to cleanly stop Neo Server on port [%d], database [%s]. Reason [%s] ",
+                    getWebServerPort(), configurator.get(ServerSettings.database_location), e.getMessage() );
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void startModules( )
     {
         for ( ServerModule module : serverModules )
         {
@@ -137,14 +249,14 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
     @Override
     public Configuration getConfiguration()
     {
-        return bootstrapper.getConfigurator();
+        return new ConfiguratorWrappedConfig(getConfig());
     }
     
 
     @Override
     public Configurator getConfigurator() 
     {
-        return bootstrapper.getConfigurator();
+        return new ConfiguratorWrappedConfig(getConfig());
     }
     
     @Override
@@ -207,32 +319,26 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         return configurator.get(ServerSettings.webserver_max_threads);
     }
 
-    private void startWebServer( StringLogger logger )
+    private void startWebServer(  )
     {
-        try
+        SecurityRule[] securityRules = createSecurityRulesFrom( configurator );
+        webServer.addSecurityRules( securityRules );
+
+        Integer limit = configurator.get(ServerSettings.webserver_limit_execution_time);
+        if ( limit != null )
         {
-            SecurityRule[] securityRules = createSecurityRulesFrom( configurator );
-            webServer.addSecurityRules( securityRules );
-
-            Integer limit = configurator.get(ServerSettings.webserver_limit_execution_time);
-            if ( limit != null )
-            {
-                webServer.addExecutionLimitFilter( limit );
-            }
-
-
-            if ( httpLoggingProperlyConfigured() )
-            {
-                webServer.enableHTTPLoggingForWebadmin(
-                    new File( configurator.get( ServerSettings.http_logging_configuration_location )) );
-            }
-
-            webServer.start();
-            logger.info("Server started on: " + baseUri());
-        } catch (Exception e)
-        {
-            logger.error("Failed to start Neo Server on port [%d], reason [%s]", getWebServerPort(), e.getMessage());
+            webServer.addExecutionLimitFilter( limit );
         }
+
+
+        if ( httpLoggingProperlyConfigured() )
+        {
+            webServer.enableHTTPLoggingForWebadmin(
+                new File( configurator.get( ServerSettings.http_logging_configuration_location )) );
+        }
+
+        webServer.start();
+        log.info("Server started on: " + baseUri());
     }
 
 
@@ -305,22 +411,6 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
     }
 
     @Override
-    public void stop()
-    {
-        webServer.stop();
-        stopModules();
-        stopExtensionInitializers();
-    }
-
-    /**
-     * shuts down initializers of individual plugins
-     */
-    private void stopExtensionInitializers()
-    {
-        pluginInitializer.stop();
-    }
-
-    @Override
     public Database getDatabase()
     {
         return database;
@@ -385,5 +475,32 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         }
 
         return null;
+    }
+    
+    protected Logging createLogging()
+    {
+        try
+        {
+            getClass().getClassLoader().loadClass("ch.qos.logback.classic.LoggerContext");
+            return new LogbackService( configurator );
+        }
+        catch( ClassNotFoundException e )
+        {
+            return new ClassicLoggingService(configurator);
+        }
+    }
+    
+    protected abstract Database createDatabase( );
+
+    protected abstract List<ServerModule> createServerModules();
+
+    protected StartupHealthCheck createStartupHealthCheck()
+    {
+        return new StartupHealthCheck( logging.getLogger(Loggers.HEALTHCHECK), configurator, createHealthCheckRules() );
+    }
+    
+    protected StartupHealthCheckRule[] createHealthCheckRules()
+    {
+        return new StartupHealthCheckRule[]{ new HTTPLoggingPreparednessRule()};
     }
 }

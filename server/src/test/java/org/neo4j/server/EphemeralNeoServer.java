@@ -20,12 +20,18 @@
 package org.neo4j.server;
 
 import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.WrappedDatabase;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-public class EphemeralNeoServerBootstrapper extends NeoServerBootstrapper
+public class EphemeralNeoServer extends CommunityNeoServer
 {
+    public EphemeralNeoServer(Config configurator)
+    {
+        super(configurator);
+    }
+
     @Override
     protected Database createDatabase()
     {

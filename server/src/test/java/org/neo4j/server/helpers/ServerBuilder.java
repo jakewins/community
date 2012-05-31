@@ -42,9 +42,9 @@ import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.logging.DevNullLoggingService;
 import org.neo4j.kernel.logging.Logging;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.Bootstrapper;
-import org.neo4j.server.EphemeralNeoServerBootstrapper;
-import org.neo4j.server.NeoServerBootstrapper;
+import org.neo4j.server.AbstractNeoServer;
+import org.neo4j.server.CommunityNeoServer;
+import org.neo4j.server.EphemeralNeoServer;
 import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
@@ -98,7 +98,7 @@ public class ServerBuilder
     }
 
     @SuppressWarnings("unchecked")
-    public Bootstrapper build() throws IOException
+    public AbstractNeoServer build() throws IOException
     {
         if ( dbDir == null )
         {
@@ -128,33 +128,25 @@ public class ServerBuilder
             LeaseManagerProvider.setClock( clock );
         }
         
-        Bootstrapper boot = createBootstrapper(configFile);
+        
+        Config config;
         try
         {
-            boot.init();
-        } catch (Throwable e)
+            config = ServerConfig.fromFile(configFile);
+        } catch (IOException e)
         {
-            throw new RuntimeException(e);
+            config = ServerConfig.fromMap(new HashMap<String,String>());
         }
+        
+        AbstractNeoServer boot = createBootstrapper(config);
 
         return boot;
     }
 
-    protected Bootstrapper createBootstrapper(final File configFile)
+    protected AbstractNeoServer createBootstrapper(final Config config)
     {
-        return persistent ? new NeoServerBootstrapper() {
-            @Override
-            public Config createConfig() 
-            {
-                try
-                {
-                    return ServerConfig.fromFile(configFile);
-                } catch (IOException e)
-                {
-                    return ServerConfig.fromMap(new HashMap<String,String>());
-                }
-            }
-            
+        return persistent ? new CommunityNeoServer(config) {
+
             @Override
             protected StartupHealthCheck createStartupHealthCheck() 
             {
@@ -166,19 +158,8 @@ public class ServerBuilder
             {
                 return ServerBuilder.this.logging;
             }
-        }: new EphemeralNeoServerBootstrapper() {
-            @Override
-            public Config createConfig() 
-            {
-                try
-                {
-                    return ServerConfig.fromFile(configFile);
-                } catch (IOException e)
-                {
-                    return ServerConfig.fromMap(new HashMap<String,String>());
-                }
-            }
-            
+        }: new EphemeralNeoServer(config) 
+        {
             @Override
             protected StartupHealthCheck createStartupHealthCheck() 
             {

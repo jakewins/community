@@ -172,8 +172,11 @@ public class Jetty6WebServer implements WebServer
     {
         try
         {
-            jetty.stop();
-            jetty.join();
+            if(jetty != null) 
+            {
+                jetty.stop();
+                jetty.join();
+            }
             jetty = null;
         }
         catch ( Exception e )

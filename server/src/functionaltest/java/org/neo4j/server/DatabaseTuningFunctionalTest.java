@@ -39,7 +39,7 @@ public class DatabaseTuningFunctionalTest extends ExclusiveServerTestBase
     @Test
     public void shouldLoadAKnownGoodPropertyFile() throws IOException
     {
-        NeoServerWithEmbeddedWebServer server = ServerBuilder.server()
+        AbstractNeoServer server = ServerBuilder.server()
                 .withDefaultDatabaseTuning()
                 .build();
         server.start();

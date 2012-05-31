@@ -19,26 +19,23 @@
  */
 package org.neo4j.server;
 
-import javax.ws.rs.ext.Provider;
+import org.neo4j.kernel.configuration.Config;
 
-import org.neo4j.server.database.AbstractInjectableProvider;
-
-import com.sun.jersey.api.core.HttpContext;
-
-@Provider
-public class NeoServerProvider extends AbstractInjectableProvider<NeoServer>
+public class CommunityBootstrapper extends Bootstrapper
 {
-    public NeoServer neoServer;
-
-    public NeoServerProvider( NeoServer db )
+    public CommunityBootstrapper()
     {
-        super( NeoServer.class );
-        this.neoServer = db;
+        super();
+    }
+    
+    public CommunityBootstrapper(Config config)
+    {
+        super(config);
     }
 
     @Override
-    public NeoServer getValue( HttpContext httpContext )
+    protected AbstractNeoServer createNeoServer()
     {
-        return neoServer;
+        return new CommunityNeoServer(config);
     }
 }

@@ -39,7 +39,7 @@ import org.neo4j.jmx.JmxUtils;
 import org.neo4j.jmx.Kernel;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.logging.StringLogger;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.AbstractNeoServer;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.web.WebServer;
 
@@ -50,7 +50,7 @@ public class WebAdminModuleTest
     {
         WebServer webServer = mock( WebServer.class );
 
-        NeoServerWithEmbeddedWebServer neoServer = mock( NeoServerWithEmbeddedWebServer.class );
+        AbstractNeoServer neoServer = mock( AbstractNeoServer.class );
         when( neoServer.baseUri() ).thenReturn( new URI( "http://localhost:7575" ) );
         when( neoServer.getWebServer() ).thenReturn( webServer );
 

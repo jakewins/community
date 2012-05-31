@@ -42,7 +42,7 @@ public class NeoServerPortConflictFunctionalTest extends ExclusiveServerTestBase
         ServerSocket socket = new ServerSocket( contestedPort, 0, InetAddress.getByName(Jetty6WebServer.DEFAULT_ADDRESS) );
         
         BufferingLogging logging = new BufferingLogging();
-        NeoServerWithEmbeddedWebServer server = ServerBuilder.server()
+        AbstractNeoServer server = ServerBuilder.server()
                 .onPort( contestedPort )
                 .onHost( Jetty6WebServer.DEFAULT_ADDRESS )
                 .withLogging(logging)

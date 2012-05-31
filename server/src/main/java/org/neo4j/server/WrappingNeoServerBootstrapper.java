@@ -19,21 +19,16 @@
  */
 package org.neo4j.server;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.configuration.SystemPropertiesConfiguration;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.ConfiguratorWrappedConfig;
+import org.neo4j.server.configuration.ServerConfig;
 import org.neo4j.server.configuration.ServerSettings;
-import org.neo4j.server.database.Database;
-import org.neo4j.server.database.WrappedDatabase;
-import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
 
 /**
  * A bootstrapper for the Neo4j Server that takes an already instantiated
@@ -63,7 +58,8 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheckRule;
  * the constructor. You can write your own implementation or use
  * {@link org.neo4j.server.configuration.ServerConfigurator}.
  */
-public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
+// TODO: To be replaced by WrappingNeoServer directly instead
+public class WrappingNeoServerBootstrapper extends Bootstrapper
 {
     private final GraphDatabaseAPI db;
     private boolean initialized = false;
@@ -86,7 +82,7 @@ public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
      */
     public WrappingNeoServerBootstrapper( GraphDatabaseAPI db, Map<String,String> config )
     {
-        this( db, new Config(new SystemPropertiesConfiguration(ServerSettings.class).apply(config),ServerSettings.class));
+        this( db, ServerConfig.fromMap(config));
     }
     
     /**
@@ -115,18 +111,6 @@ public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
         super(ConfiguratorWrappedConfig.configFromConfigurator(configurator, ServerSettings.class));
         this.db = db;
     }
-
-    @Override
-    public List<StartupHealthCheckRule> createHealthCheckRules()
-    {
-        return Arrays.asList();
-    }
-
-    @Override
-    protected Database createDatabase(  )
-    {
-        return new WrappedDatabase(db);
-    }
     
     @Override
     public void init() 
@@ -152,5 +136,11 @@ public class WrappingNeoServerBootstrapper extends NeoServerBootstrapper
         {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    protected AbstractNeoServer createNeoServer()
+    {
+        return new WrappingNeoServer(db, config);
     }
 }
