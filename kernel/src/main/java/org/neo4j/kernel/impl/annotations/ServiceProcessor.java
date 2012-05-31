@@ -22,7 +22,6 @@ package org.neo4j.kernel.impl.annotations;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;

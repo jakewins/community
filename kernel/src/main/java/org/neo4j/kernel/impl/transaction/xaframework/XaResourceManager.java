@@ -31,16 +31,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
-
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
-
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.transaction.xaframework.LogEntry.Start;
 import org.neo4j.kernel.impl.util.ArrayMap;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 // make package access?
 public class XaResourceManager
@@ -606,7 +603,7 @@ public class XaResourceManager
 
     synchronized void checkXids() throws IOException
     {
-        msgLog.logMessage( "XaResourceManager[" + name + "] sorting " +
+        msgLog.info( "XaResourceManager[" + name + "] sorting " +
                 xidMap.size() + " xids" );
         Iterator<Xid> keyIterator = xidMap.keySet().iterator();
         LinkedList<Xid> xids = new LinkedList<Xid>();
@@ -638,7 +635,6 @@ public class XaResourceManager
             }
         } );
         txOrderMap.clear(); // = null;
-        Logger logger = Logger.getLogger( tf.getClass().getName() );
         while ( !xids.isEmpty() )
         {
             Xid xid = xids.removeFirst();
@@ -650,7 +646,7 @@ public class XaResourceManager
             {
                 if ( txStatus.commitStarted() )
                 {
-                    logger.fine( "Marking 1PC [" + name + "] tx "
+                    msgLog.debug( "Marking 1PC [" + name + "] tx "
                         + identifier + " as done" );
                     log.doneInternal( identifier );
                     xidMap.remove( xid );
@@ -658,16 +654,16 @@ public class XaResourceManager
                 }
                 else if ( !txStatus.prepared() )
                 {
-                    logger.fine( "Rolling back non prepared tx [" + name + "]"
-                        + "txIdent[" + identifier + "]" );
+                    msgLog.debug( "Rolling back non prepared tx [" + name + "]"
+                                  + "txIdent[" + identifier + "]" );
                     log.doneInternal( xaTransaction.getIdentifier() );
                     xidMap.remove( xid );
                     recoveredTxCount--;
                 }
                 else
                 {
-                    logger.fine( "2PC tx [" + name + "] " + txStatus +
-                        " txIdent[" + identifier + "]" );
+                    msgLog.debug( "2PC tx [" + name + "] " + txStatus +
+                                  " txIdent[" + identifier + "]" );
                 }
             }
         }
@@ -678,7 +674,7 @@ public class XaResourceManager
     {
         if ( log.scanIsComplete() && recoveredTxCount == 0 )
         {
-            msgLog.logMessage( "XaResourceManager[" + name + "] checkRecoveryComplete " + xidMap.size() + " xids" );
+            msgLog.info( "XaResourceManager[" + name + "] checkRecoveryComplete " + xidMap.size() + " xids" );
             // log.makeNewLog();
             tf.recoveryComplete();
             try
@@ -708,7 +704,7 @@ public class XaResourceManager
                 // TODO Why only printStackTrace?
                 e.printStackTrace();
             }
-            msgLog.logMessage( "XaResourceManager[" + name + "] recovery completed." );
+            msgLog.info( "XaResourceManager[" + name + "] recovery completed." );
         }
     }
 

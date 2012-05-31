@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.cache.Cache;
 import org.neo4j.kernel.impl.cache.CacheProvider;
 
@@ -32,11 +31,11 @@ import org.neo4j.kernel.impl.cache.CacheProvider;
  */
 public interface Caches
 {
-    void configure( CacheProvider cacheProvider, Config config );
+    CacheProvider getCurrentCacheProvider();
+
+    Iterable<Cache<?>> caches();
 
     Cache<NodeImpl> node();
     
     Cache<RelationshipImpl> relationship();
-    
-    void invalidate();
 }

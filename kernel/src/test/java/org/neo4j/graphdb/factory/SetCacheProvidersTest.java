@@ -22,6 +22,7 @@ package org.neo4j.graphdb.factory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 
@@ -41,10 +42,11 @@ public class SetCacheProvidersTest
         try
         {
             gdbf.newEmbeddedDatabase( "target/db" );
+            fail("Should not have been able to create database.");
         }
         catch ( IllegalArgumentException iae )
         {
-            assertTrue( iae.getMessage().contains( "No cache type" ) );
+            assertTrue( iae.getMessage().contains( "No cache providers specified" ) );
         }
     }
 
@@ -57,6 +59,6 @@ public class SetCacheProvidersTest
         gdbf.setCacheProviders( cacheList );
         EmbeddedGraphDatabase db = (EmbeddedGraphDatabase) gdbf.newEmbeddedDatabase( "target/db" );
         assertEquals( SoftCacheProvider.NAME,
-                db.getNodeManager().getCacheType().getName() );
+                db.getNodeManager().getCaches().getCurrentCacheProvider().getName() );
     }
 }

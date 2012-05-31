@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.nioneo.xa;
 
 import java.util.List;
-
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.transaction.LockManager;
@@ -33,7 +32,7 @@ public class InterceptingWriteTransaction extends WriteTransaction
 
     InterceptingWriteTransaction( int identifier, XaLogicalLog log,
             NeoStore neoStore, LockReleaser lockReleaser,
-            LockManager lockManager, TransactionInterceptor interceptor )
+            LockManager lockManager,TransactionInterceptor interceptor )
     {
         super( identifier, log, neoStore, lockReleaser,
                 lockManager );

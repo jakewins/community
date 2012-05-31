@@ -22,10 +22,11 @@ package org.neo4j.kernel.impl.nioneo.store;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Implementation of the relationship type store. Uses a dynamic store to store
@@ -42,10 +43,10 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
     public static final String TYPE_DESCRIPTOR = "RelationshipTypeStore";
     private static final int RECORD_SIZE = 1/*inUse*/ + 4/*nameId*/;
 
-    public RelationshipTypeStore(String fileName, Config config, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
+    public RelationshipTypeStore(Config config, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
                                  DynamicStringStore nameStore)
     {
-        super(fileName, config, IdType.RELATIONSHIP_TYPE, idGeneratorFactory, fileSystemAbstraction, stringLogger, nameStore);
+        super(config, IdType.RELATIONSHIP_TYPE, idGeneratorFactory, fileSystemAbstraction, stringLogger, nameStore);
     }
 
     @Override
@@ -77,7 +78,7 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
     @Override
     protected void rebuildIdGenerator()
     {
-        logger.fine( "Rebuilding id generator for[" + getStorageFileName()
+        logger.debug( "Rebuilding id generator for[" + getStorageFileName()
             + "] ..." );
         closeIdGenerator();
         if ( fileSystemAbstraction.fileExists( getStorageFileName() + ".id" ) )
@@ -125,7 +126,7 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
                 "Unable to rebuild id generator " + getStorageFileName(), e );
         }
         setHighId( highId );
-        logger.fine( "[" + getStorageFileName() + "] high id=" + getHighId() );
+        logger.debug( "[" + getStorageFileName() + "] high id=" + getHighId() );
         closeIdGenerator();
         openIdGenerator( false );
     }

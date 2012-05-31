@@ -19,9 +19,6 @@
  */
 package org.neo4j.kernel.impl.util;
 
-import static java.lang.Thread.currentThread;
-import static java.lang.Thread.getAllStackTraces;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -31,6 +28,8 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.lang.Thread.*;
 
 public class DebugUtil
 {

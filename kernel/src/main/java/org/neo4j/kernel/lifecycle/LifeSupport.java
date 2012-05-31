@@ -22,8 +22,10 @@ package org.neo4j.kernel.lifecycle;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.neo4j.helpers.collection.Visitor;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.helpers.Format;
+import org.neo4j.helpers.Function;
+import org.neo4j.helpers.collection.Iterables;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Support class for handling collections of Lifecycle instances. Manages the transitions from one state to another.
@@ -42,6 +44,9 @@ public class LifeSupport
 
     public <T> T add(T instance)
     {
+        if (instance == null)
+            throw new NullPointerException( "Lifecycle instance may not be null" );
+
         if (instance instanceof Lifecycle)
             instances.add( new LifecycleInstance((Lifecycle) instance) );
         return instance;
@@ -105,7 +110,8 @@ public class LifeSupport
      * If it was previously not initialized, it will be initialized first.
      *
      * If any instance fails to start, the already started instances will be stopped, so
-     * that the overall status is STOPPED.
+     * that the overall status is STOPPED, unless the starting state was NONE, in which case
+     * it is instead SHUTDOWN.
      *
      * @throws LifecycleException
      */
@@ -113,7 +119,12 @@ public class LifeSupport
     public synchronized void start()
         throws LifecycleException
     {
-        init();
+        boolean shutdownOnException = false;
+        if (status == LifecycleStatus.NONE)
+        {
+            init();
+            shutdownOnException = true;
+        }
         
         if (status == LifecycleStatus.STOPPED)
         {
@@ -129,7 +140,10 @@ public class LifeSupport
                     status = changedStatus( this, status, LifecycleStatus.STARTED);
                     try
                     {
-                        stop();
+                        if (shutdownOnException)
+                            shutdown();
+                        else
+                            stop();
                     }
                     catch( LifecycleException e1 )
                     {
@@ -314,20 +328,15 @@ public class LifeSupport
     
     public synchronized void dump(StringLogger logger)
     {
-        logger.logLongMessage( "Lifecycle status:"+status.name(), new Visitor<StringLogger.LineLogger>()
+        String msg = Format.logLongMessage( "Lifecycle status:" + status.name(), Iterables.map( new Function<LifecycleInstance, String>()
         {
             @Override
-            public boolean visit( StringLogger.LineLogger element )
+            public String map( LifecycleInstance lifecycleInstance )
             {
-                for( LifecycleInstance instance : instances )
-                {
-                    element.logLine( instance.toString() );
-                }
-                
-                return true;
+                return lifecycleInstance.toString();
             }
-        }, true
-        );
+        }, instances ) );
+        logger.debug( msg );
     }
 
     private LifecycleException causedBy( LifecycleException exception, LifecycleException chainedLifecycleException )

@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
-
 import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.impl.nioneo.store.Buffer;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
@@ -33,6 +32,7 @@ import org.neo4j.kernel.impl.nioneo.store.OperationType;
 import org.neo4j.kernel.impl.nioneo.store.PersistenceWindow;
 import org.neo4j.kernel.impl.nioneo.store.PersistenceWindowPool;
 import org.neo4j.kernel.impl.nioneo.store.Record;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class LegacyDynamicStoreReader
 {
@@ -46,7 +46,7 @@ public class LegacyDynamicStoreReader
     protected static final int BLOCK_HEADER_SIZE = 1 + 4 + 4 + 4;
     private final FileChannel fileChannel;
 
-    public LegacyDynamicStoreReader( String fileName, String fromVersionArray ) throws IOException
+    public LegacyDynamicStoreReader( StringLogger logger, String fileName, String fromVersionArray ) throws IOException
     {
         fileChannel = new RandomAccessFile( fileName, "r" ).getChannel();
         long fileSize = fileChannel.size();
@@ -61,7 +61,7 @@ public class LegacyDynamicStoreReader
         buffer.flip();
         blockSize = buffer.getInt();
 
-        windowPool = new PersistenceWindowPool( fileName,
+        windowPool = new PersistenceWindowPool( logger, fileName,
                 blockSize, fileChannel, 0,
                 true, true );
     }

@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 
 public enum BufferNumberPutter

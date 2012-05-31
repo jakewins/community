@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.index;
 
 import javax.transaction.TransactionManager;
-
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 

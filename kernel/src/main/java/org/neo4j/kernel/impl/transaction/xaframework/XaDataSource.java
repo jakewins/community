@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.StringTokenizer;
-
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.ClosableIterable;
 

@@ -19,11 +19,10 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import static org.neo4j.kernel.impl.cache.SizeOfs.withObjectOverhead;
-
 import java.util.Arrays;
-
 import org.neo4j.kernel.impl.cache.SizeOfs;
+
+import static org.neo4j.kernel.impl.cache.SizeOfs.*;
 
 public class PropertyDatas
 {

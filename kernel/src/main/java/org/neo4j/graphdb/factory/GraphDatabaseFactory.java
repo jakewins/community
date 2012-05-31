@@ -31,6 +31,7 @@ import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.EmbeddedReadOnlyGraphDatabase;
 import org.neo4j.kernel.KernelExtension;
 import org.neo4j.kernel.impl.cache.CacheProvider;
+import org.neo4j.kernel.logging.Logging;
 
 import static org.neo4j.graphdb.factory.GraphDatabaseSetting.BooleanSetting.*;
 import static org.neo4j.graphdb.factory.GraphDatabaseSettings.*;
@@ -106,6 +107,7 @@ public class GraphDatabaseFactory
             kernelExtensions.add( newKernelExtension );
         }
     }
+
     public void setCacheProviders(Iterable<CacheProvider> newCacheProviders)
     {
         cacheProviders.clear();
@@ -113,5 +115,11 @@ public class GraphDatabaseFactory
         {
             cacheProviders.add( newCacheProvider );
         }
+
+    }
+
+    public void setLogging(Logging logging)
+    {
+
     }
 }

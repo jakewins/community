@@ -20,8 +20,6 @@
 
 package org.neo4j.kernel.logging;
 
-import org.neo4j.kernel.impl.util.StringLogger;
-
 /**
  * Logging service that is used for creating loggers with specific names.
  */

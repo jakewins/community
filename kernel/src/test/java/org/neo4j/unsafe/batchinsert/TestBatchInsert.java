@@ -46,7 +46,8 @@ import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class TestBatchInsert
 {
@@ -644,7 +645,7 @@ public class TestBatchInsert
         BatchInserter inserter = newBatchInserter();
         String storeDir = inserter.getStoreDir();
         inserter.shutdown();
-        assertTrue( new File( storeDir, StringLogger.DEFAULT_NAME ).delete() );
+        assertTrue( new File( storeDir, ClassicLoggingService.DEFAULT_NAME ).delete() );
     }
 
     @Test

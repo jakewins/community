@@ -19,7 +19,7 @@
  */
 package org.neo4j.kernel.info;
 
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * An object that can extract diagnostics information from a source of a

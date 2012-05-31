@@ -20,6 +20,9 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -30,10 +33,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -63,17 +66,15 @@ import org.neo4j.kernel.impl.transaction.xaframework.RecoveryVerifier;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvider;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
-import org.neo4j.kernel.impl.util.StringLogger;
-
-import static org.junit.Assert.*;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 
 @AbstractNeo4jTestCase.RequiresPersistentGraphDatabase
 public class TestXa extends AbstractNeo4jTestCase
 {
+    private LifeSupport life = new LifeSupport();
     private NeoStoreXaDataSource ds;
     private NeoStoreXaConnection xaCon;
-    private Logger log;
-    private Level level;
     private Map<String, PropertyIndex> propertyIndexes;
 
     private static class MyPropertyIndex extends org.neo4j.kernel.impl.core.PropertyIndex
@@ -114,21 +115,18 @@ public class TestXa extends AbstractNeo4jTestCase
     @Before
     public void setUpNeoStore() throws Exception
     {
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog/"
-                + "nioneo_logical.log" );
-        level = log.getLevel();
-        log.setLevel( Level.OFF );
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource" );
-        log.setLevel( Level.OFF );
         deleteFileOrDirectory( new File( path() ) );
         propertyIndexes = new HashMap<String, PropertyIndex>();
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( Collections.<String,String>emptyMap() )), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null);
-        sf.createNeoStore(file( "neo" )).close();
-
+        LifeSupport life = new LifeSupport();
+        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( new HashMap<String,String>(){{
+            put("neo_store", file( "neo" ));
+        }} )), null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.DEV_NULL, null, life);
+        sf.createNeoStore();
+        life.start();
+        life.stop();
+        
         lockManager = getEmbeddedGraphDb().getLockManager();
         lockReleaser = getEmbeddedGraphDb().getLockReleaser();
         ds = newNeoStore();
@@ -138,15 +136,7 @@ public class TestXa extends AbstractNeo4jTestCase
     @After
     public void tearDownNeoStore()
     {
-        ds.close();
-        log.setLevel( level );
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog/"
-                + "nioneo_logical.log" );
-        log.setLevel( level );
-        log = Logger
-            .getLogger( "org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource" );
-        log.setLevel( level );
+        life.shutdown();
         File file = new File( file( "neo" ) );
         if ( file.exists() )
         {
@@ -402,7 +392,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaRes.commit( xid, true );
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         ds = newNeoStore();
@@ -421,14 +411,20 @@ public class TestXa extends AbstractNeo4jTestCase
             AbstractGraphDatabase.Configuration.neo_store.name(), file( "neo" ),
             AbstractGraphDatabase.Configuration.logical_log.name(), file( "nioneo_logical.log"))));
 
-        StoreFactory sf = new StoreFactory(config, new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null);
-
+        life = new LifeSupport();
+        StoreFactory sf = new StoreFactory(config, null, new DefaultIdGeneratorFactory(), fileSystem, StringLogger.DEV_NULL, null, life);
+        
+        
         PlaceboTm txManager = new PlaceboTm();
         LogBufferFactory logBufferFactory = new DefaultLogBufferFactory();
-        return new NeoStoreXaDataSource( config, sf, fileSystem, lockManager, lockReleaser, StringLogger.DEV_NULL,
+        NeoStoreXaDataSource ds = new NeoStoreXaDataSource( config, sf.createNeoStore(), lockManager, lockReleaser, StringLogger.DEV_NULL,
                 new XaFactory(config, TxIdGenerator.DEFAULT, txManager,
                         logBufferFactory, fileSystem, StringLogger.DEV_NULL, RecoveryVerifier.ALWAYS_VALID),
         Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(), null);
+        
+        life.add( ds );
+        life.start();
+        return ds;
     }
 
     @Test
@@ -458,7 +454,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         ds = newNeoStore();
@@ -491,7 +487,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
 
@@ -516,7 +512,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         ds = newNeoStore();
@@ -551,7 +547,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
 
@@ -571,7 +567,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
 
@@ -590,7 +586,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaRes.end( xid, XAResource.TMSUCCESS );
         xaRes.prepare( xid );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
     }
@@ -615,7 +611,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
 
@@ -634,7 +630,7 @@ public class TestXa extends AbstractNeo4jTestCase
         ds.rotateLogicalLog();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
 
@@ -677,7 +673,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaRes.end( xid, XAResource.TMSUCCESS );
         xaCon.clearAllTransactions();
         copyLogicalLog( path() );
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         ds = newNeoStore();
@@ -699,7 +695,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaCon.clearAllTransactions();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         truncateLogicalLog( 94 );
@@ -723,7 +719,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaCon.clearAllTransactions();
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         truncateLogicalLog( 94 );
@@ -750,7 +746,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaRes.prepare( xid );
         copyLogicalLog( path() );
         xaCon.clearAllTransactions();
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         truncateLogicalLog( 243 );
@@ -777,7 +773,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaRes.prepare( xid );
         xaRes.commit( xid, false );
         copyLogicalLog( path() );
-        ds.close();
+        life.shutdown();
         deleteLogicalLogIfExist();
         renameCopiedLogicalLog( path() );
         truncateLogicalLog( 264 );

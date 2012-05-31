@@ -19,6 +19,10 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -28,17 +32,13 @@ import org.junit.Test;
 import org.neo4j.test.TargetDirectory;
 import org.neo4j.test.TargetDirectory.TestDirectory;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 public class TestStoreAccess
 {
     public @Rule
     TestDirectory testdir = TargetDirectory.testDirForTest( getClass() );
 
     @Test
-    public void openingThroughStoreAccessShouldNotTriggerRecovery() throws Exception
+    public void openingThroughStoreAccessShouldNotTriggerRecovery() throws Throwable
     {
         ProduceUncleanStore.atPath( testdir.directory() );
         assertTrue( "Store should be unclean", isUnclean( testdir.directory() ) );

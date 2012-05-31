@@ -19,18 +19,17 @@
  */
 package org.neo4j.kernel.impl.index;
 
-import static org.neo4j.kernel.impl.nioneo.store.NeoStore.versionLongToString;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Random;
-
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.NotCurrentStoreVersionException;
 import org.neo4j.kernel.impl.storemigration.UpgradeNotAllowedByConfigurationException;
+
+import static org.neo4j.kernel.impl.nioneo.store.NeoStore.*;
 
 public class IndexProviderStore
 {

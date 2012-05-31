@@ -20,21 +20,22 @@
 
 package org.neo4j.kernel.logging;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.core.joran.spi.JoranException;
 import java.io.File;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
-import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.RestartOnChange;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.StaticLoggerBinder;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
+import ch.qos.logback.core.status.Status;
 
 /**
  * Logging service that uses Logback as backend.
@@ -73,12 +74,14 @@ public class LogbackService
             public void start()
                 throws Throwable
             {
+                loggerContext.getStatusManager().clear();
+
                 JoranConfigurator configurator = new JoranConfigurator();
                 configurator.setContext( loggerContext );
                 loggerContext.putProperty( "neo_store", storeDir );
-                loggerContext.putProperty( "remote_logging_enabled", config.get( GraphDatabaseSettings.remote_logging_enabled ) );
+                loggerContext.putProperty( "remote_logging_enabled", config.get( GraphDatabaseSettings.remote_logging_enabled ).toString() );
                 loggerContext.putProperty( "remote_logging_host", config.get( GraphDatabaseSettings.remote_logging_host ) );
-                loggerContext.putProperty( "remote_logging_port", config.get( GraphDatabaseSettings.remote_logging_port ) );
+                loggerContext.putProperty( "remote_logging_port", config.get( GraphDatabaseSettings.remote_logging_port ).toString() );
                 try
                 {
                     configurator.doConfigure( getClass().getResource( "/neo4j-logback.xml" ) );
@@ -86,6 +89,12 @@ public class LogbackService
                 catch( JoranException e )
                 {
                     throw new IllegalStateException("Failed to configure logging", e );
+                }
+
+                for( Status status : loggerContext.getStatusManager().getCopyOfStatusList() )
+                {
+                    if (status.getLevel() > Status.INFO)
+                        System.out.println( status );
                 }
             }
 
@@ -127,26 +136,6 @@ public class LogbackService
         }
 
         @Override
-        protected void logLine( String line )
-        {
-            logger.info( line );
-        }
-
-        @Override
-        public void logLongMessage( final String msg, Visitor<LineLogger> source, final boolean flush )
-        {
-            logMessage( msg, flush );
-            source.visit( new LineLogger()
-            {
-                @Override
-                public void logLine( String line )
-                {
-                    logMessage( line, flush );
-                }
-            } );
-        }
-
-        @Override
         public void logMessage( String msg, boolean flush )
         {
             if (logger.isDebugEnabled())
@@ -162,15 +151,43 @@ public class LogbackService
         }
 
         @Override
-        public void addRotationListener( Runnable listener )
+        public void logMessage( Level level, String msg )
         {
-            // Ignore
+            switch (level)
+            {
+                case DEBUG:
+                    logger.debug( msg );
+                    return;
+                case INFO:
+                    logger.info( msg );
+                    return;
+                case WARN:
+                    logger.warn( msg );
+                    return;
+                case ERROR:
+                    logger.error( msg );
+                    return;
+            }
         }
 
         @Override
-        public void flush()
+        public void logMessage( Level level, String msg, Throwable throwable )
         {
-            // Ignore
+            switch (level)
+            {
+                case DEBUG:
+                    logger.debug( msg, throwable );
+                    return;
+                case INFO:
+                    logger.info( msg, throwable );
+                    return;
+                case WARN:
+                    logger.warn( msg, throwable );
+                    return;
+                case ERROR:
+                    logger.error( msg, throwable );
+                    return;
+            }
         }
 
         @Override

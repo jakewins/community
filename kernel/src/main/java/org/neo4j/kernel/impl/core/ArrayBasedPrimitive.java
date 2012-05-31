@@ -19,13 +19,12 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import static org.neo4j.kernel.impl.cache.SizeOfs.withArrayOverheadIncludingReferences;
-import static org.neo4j.kernel.impl.cache.SizeOfs.withObjectOverhead;
-
 import org.neo4j.kernel.impl.cache.EntityWithSize;
 import org.neo4j.kernel.impl.cache.SizeOfs;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
 import org.neo4j.kernel.impl.util.ArrayMap;
+
+import static org.neo4j.kernel.impl.cache.SizeOfs.*;
 
 /**
  * A {@link Primitive} which uses a {@link PropertyData}[] for caching properties.

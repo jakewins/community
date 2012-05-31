@@ -20,8 +20,11 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.File;
-import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -31,8 +34,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 import org.junit.Test;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.MapUtil;
@@ -43,9 +45,8 @@ import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
-import org.neo4j.kernel.impl.util.StringLogger;
-
-import static org.junit.Assert.*;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class TestDynamicStore
 {
@@ -115,12 +116,19 @@ public class TestDynamicStore
 
     private void createEmptyStore( String fileName, int blockSize )
     {
-        new StoreFactory(config(), ID_GENERATOR_FACTORY, FILE_SYSTEM, null, StringLogger.SYSTEM, null).createDynamicArrayStore(fileName, blockSize);
+        newStore(fileName, blockSize).createStorage();
     }
 
-    private DynamicArrayStore newStore()
+    private DynamicArrayStore newStore(int blockSize) {
+        return newStore(dynamicStoreFile(), blockSize);
+    }
+    
+    private DynamicArrayStore newStore(String fileName, int blockSize)
     {
-        return new DynamicArrayStore( dynamicStoreFile(), config(), IdType.ARRAY_BLOCK, ID_GENERATOR_FACTORY, FILE_SYSTEM, StringLogger.SYSTEM);
+        DynamicArrayStore store = new DynamicArrayStore(config(), IdType.ARRAY_BLOCK, ID_GENERATOR_FACTORY, FILE_SYSTEM, StringLogger.SYSTEM);
+        store.setStorageFileName(fileName);
+        store.setCreationBlockSize(blockSize);
+        return store;
     }
 
     private void deleteBothFiles()
@@ -138,24 +146,21 @@ public class TestDynamicStore
     }
 
     @Test
-    public void testStickyStore() throws IOException
+    public void testStickyStore() throws Throwable
     {
-        Logger log = Logger.getLogger( CommonAbstractStore.class.getName() );
-        Level level = log.getLevel();
         try
         {
-            log.setLevel( Level.OFF );
             createEmptyStore( dynamicStoreFile(), 30 );
             FileChannel fileChannel = new RandomAccessFile( dynamicStoreFile(), "rw" ).getChannel();
             fileChannel.truncate( fileChannel.size() - 2 );
             fileChannel.close();
-            DynamicArrayStore store = newStore();
+            DynamicArrayStore store = newStore(30);
+            store.start();
             store.makeStoreOk();
-            store.close();
+            store.stop();
         }
         finally
         {
-            log.setLevel( level );
             deleteBothFiles();
         }
     }
@@ -173,7 +178,9 @@ public class TestDynamicStore
         try
         {
             createEmptyStore( dynamicStoreFile(), 30 );
-            DynamicArrayStore store = newStore();
+            LifeSupport life = new LifeSupport();
+            DynamicArrayStore store = life.add( newStore(30));
+            life.start();
             long blockId = store.nextBlockId();
             Collection<DynamicRecord> records = store.allocateRecords( blockId,
                 new byte[10] );
@@ -181,7 +188,7 @@ public class TestDynamicStore
             {
                 store.updateRecord( record );
             }
-            store.close();
+            life.shutdown();
             /*
              * try { store.allocateRecords( blockId, new byte[10] ); fail(
              * "Closed store should throw exception" ); } catch (
@@ -211,13 +218,15 @@ public class TestDynamicStore
     }
 
     @Test
-    public void testStoreGetCharsFromString()
+    public void testStoreGetCharsFromString() throws Throwable
     {
         try
         {
             final String STR = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
             createEmptyStore( dynamicStoreFile(), 30 );
-            DynamicArrayStore store = newStore();
+            DynamicArrayStore store = newStore(30);
+            store.start();
+            
             long blockId = store.nextBlockId();
             char[] chars = new char[STR.length()];
             STR.getChars( 0, STR.length(), chars, 0 );
@@ -228,7 +237,7 @@ public class TestDynamicStore
                 store.updateRecord( record );
             }
             // assertEquals( STR, new String( store.getChars( blockId ) ) );
-            store.close();
+            store.stop();
         }
         finally
         {
@@ -237,11 +246,13 @@ public class TestDynamicStore
     }
 
     @Test
-    public void testRandomTest()
+    public void testRandomTest() throws Throwable
     {
         Random random = new Random( System.currentTimeMillis() );
         createEmptyStore( dynamicStoreFile(), 30 );
-        DynamicArrayStore store = newStore();
+        DynamicArrayStore store = newStore(30);
+        store.start();
+        
         ArrayList<Long> idsTaken = new ArrayList<Long>();
         Map<Long,byte[]> byteData = new HashMap<Long,byte[]>();
         float deleteIndex = 0.2f;
@@ -289,14 +300,15 @@ public class TestDynamicStore
                 }
                 if ( rIndex > (1.0f - closeIndex) || rIndex < closeIndex )
                 {
-                    store.close();
-                    store = newStore();
+                    store.stop();
+                    store = newStore(30);
+                    store.start();
                 }
             }
         }
         finally
         {
-            store.close();
+            store.stop();
             deleteBothFiles();
         }
     }
@@ -375,7 +387,9 @@ public class TestDynamicStore
     public void testAddDeleteSequenceEmptyNumberArray()
     {
         createEmptyStore( dynamicStoreFile(), 30 );
-        DynamicArrayStore store = newStore();
+        LifeSupport life = new LifeSupport();
+        DynamicArrayStore store = life.add( newStore(30) );
+        life.start();
         try
         {
             byte[] emptyToWrite = createBytes( 0 );
@@ -393,7 +407,7 @@ public class TestDynamicStore
         }
         finally
         {
-            store.close();
+            life.shutdown();
             deleteBothFiles();
         }
     }
@@ -402,9 +416,12 @@ public class TestDynamicStore
     public void testAddDeleteSequenceEmptyStringArray()
     {
         createEmptyStore( dynamicStoreFile(), 30 );
-        DynamicArrayStore store = newStore();
+        LifeSupport life = new LifeSupport();
+        DynamicArrayStore store = life.add( newStore(30) );
         try
         {
+            life.start();
+            
             long blockId = create( store, new String[0] );
             store.getLightRecords( blockId );
             String[] readBack = (String[]) PropertyStore.getArrayFor( blockId,
@@ -420,7 +437,7 @@ public class TestDynamicStore
         }
         finally
         {
-            store.close();
+            life.shutdown();
             deleteBothFiles();
         }
     }

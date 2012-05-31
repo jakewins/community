@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.UTF8;
@@ -31,7 +32,7 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * An abstract representation of a store. A store is a file that contains
@@ -50,7 +51,10 @@ public abstract class AbstractStore extends CommonAbstractStore
         public static final GraphDatabaseSetting.BooleanSetting rebuild_idgenerators_fast = GraphDatabaseSettings.rebuild_idgenerators_fast;
     }
 
-    private Config conf;
+    public AbstractStore( StringLogger logger, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
+    {
+        super( logger, conf, idType, idGeneratorFactory, fileSystemAbstraction );
+    }
 
     /**
      * Returns the fixed size of each record in this store.
@@ -71,11 +75,40 @@ public abstract class AbstractStore extends CommonAbstractStore
             throw new RuntimeException( e );
         }
     }
-
-    public AbstractStore( String fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger )
+    
+    @Override
+    protected void createStorage() throws Throwable 
     {
-        super( fileName, conf, idType, idGeneratorFactory, fileSystemAbstraction, stringLogger );
-        this.conf = conf;
+        String typeAndVersionDescriptor = getTypeAndVersionDescriptor();
+        
+        // sanity checks
+        if ( storageFileName == null )
+        {
+            throw new IllegalArgumentException( "Null filename" );
+        }
+        if ( fileSystemAbstraction.fileExists( storageFileName ) )
+        {
+            throw new IllegalStateException( "Can't create store[" + storageFileName
+                    + "], file already exists" );
+        }
+
+        // write the header
+        try
+        {
+            FileChannel channel = fileSystemAbstraction.create(storageFileName);
+            int endHeaderSize = UTF8.encode(typeAndVersionDescriptor).length;
+            ByteBuffer buffer = ByteBuffer.allocate( endHeaderSize );
+            buffer.put( UTF8.encode( typeAndVersionDescriptor ) ).flip();
+            channel.write( buffer );
+            channel.force( false );
+            channel.close();
+        }
+        catch ( IOException e )
+        {
+            throw new UnderlyingStorageException( "Unable to create store "
+                    + storageFileName, e );
+        }
+        idGeneratorFactory.create( fileSystemAbstraction, storageFileName + ".id" );
     }
 
     @Override
@@ -163,7 +196,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             throw new ReadOnlyDbException();
         }
 
-        logger.fine( "Rebuilding id generator for[" + getStorageFileName()
+        logger.debug( "Rebuilding id generator for[" + getStorageFileName()
             + "] ..." );
         closeIdGenerator();
         if ( fileSystemAbstraction.fileExists( getStorageFileName() + ".id" ) )
@@ -181,7 +214,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             long fileSize = fileChannel.size();
             int recordSize = getRecordSize();
             boolean fullRebuild = true;
-            if ( conf.getBoolean( Configuration.rebuild_idgenerators_fast) )
+            if ( config.get( Configuration.rebuild_idgenerators_fast) )
             {
                 fullRebuild = false;
                 highId = findHighIdBackwards();
@@ -221,10 +254,8 @@ public abstract class AbstractStore extends CommonAbstractStore
                 "Unable to rebuild id generator " + getStorageFileName(), e );
         }
         setHighId( highId + 1 );
-        stringLogger.logMessage( getStorageFileName() + " rebuild id generator, highId=" + getHighId() +
+        logger.debug( getStorageFileName() + " rebuild id generator, highId=" + getHighId() +
                 " defragged count=" + defraggedCount, true );
-        logger.fine( "[" + getStorageFileName() + "] high id=" + getHighId()
-            + " (defragged=" + defraggedCount + ")" );
         closeIdGenerator();
         openIdGenerator( false );
     }

@@ -20,9 +20,13 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +47,8 @@ import org.neo4j.kernel.DefaultIdGeneratorFactory;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.neo4j.test.impl.EphemeralFileSystemAbstraction;
 import org.neo4j.test.subprocess.BreakPoint;
@@ -54,8 +59,6 @@ import org.neo4j.test.subprocess.EnabledBreakpoints;
 import org.neo4j.test.subprocess.ForeignBreakpoints;
 import org.neo4j.test.subprocess.SubProcessTestRunner;
 import org.neo4j.tooling.GlobalGraphOperations;
-
-import static org.junit.Assert.*;
 
 @RunWith( Suite.class )
 @SuiteClasses( { IdGeneratorRebuildFailureEmulationTest.FailureBeforeRebuild.class,
@@ -116,7 +119,8 @@ public class IdGeneratorRebuildFailureEmulationTest
         NeoStore neostore = null;
         try
         {
-            neostore = factory.newNeoStore( prefix + File.separator + "neostore" );
+            neostore = factory.createNeoStore();
+            life.start();
             // emulate a failure during rebuild:
             emulateFailureOnRebuildOf( neostore );
         }
@@ -128,7 +132,7 @@ public class IdGeneratorRebuildFailureEmulationTest
         {
             // we want close to not misbehave
             // (and for example truncate the file based on the wrong highId)
-            if ( neostore != null ) neostore.close();
+            life.shutdown();
         }
     }
 
@@ -139,6 +143,7 @@ public class IdGeneratorRebuildFailureEmulationTest
 
     private FileSystem fs;
     private StoreFactory factory;
+    private LifeSupport life = new LifeSupport();
     private String prefix;
 
     @Before
@@ -151,7 +156,9 @@ public class IdGeneratorRebuildFailureEmulationTest
         graphdb.shutdown();
         Map<String, String> config = new HashMap<String, String>();
         config.put( GraphDatabaseSettings.rebuild_idgenerators_fast.name(), GraphDatabaseSetting.FALSE );
-        factory = new StoreFactory( new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fs, null, StringLogger.SYSTEM, null );
+        config.put( NeoStore.Configuration.neo_store.name(), prefix + File.separator + "neostore" );
+        factory = new StoreFactory( new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), 
+                null, new DefaultIdGeneratorFactory(), fs, StringLogger.SYSTEM, null, life);
     }
 
     @After

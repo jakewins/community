@@ -20,9 +20,7 @@
 package org.neo4j.kernel.impl.transaction.xaframework;
 
 import java.util.TimeZone;
-
 import javax.transaction.xa.Xid;
-
 import org.neo4j.helpers.Format;
 
 public abstract class LogEntry

@@ -26,9 +26,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
@@ -38,13 +37,15 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Contains common implementation for {@link AbstractStore} and
  * {@link AbstractDynamicStore}.
  */
 public abstract class CommonAbstractStore
+    implements Lifecycle
 {
     public static abstract class Configuration
     {
@@ -60,16 +61,13 @@ public abstract class CommonAbstractStore
     public static final String ALL_STORES_VERSION = "v0.A.0";
     public static final String UNKNOWN_VERSION = "Uknown";
 
-    protected static final Logger logger = Logger
-        .getLogger( CommonAbstractStore.class.getName() );
-
-    protected Config configuration;
+    protected final StringLogger logger;
+    protected Config config;
     protected IdGeneratorFactory idGeneratorFactory;
     protected FileSystemAbstraction fileSystemAbstraction;
-
-    protected final String storageFileName;
-    private final IdType idType;
-    protected StringLogger stringLogger;
+    protected String storageFileName;
+    
+    protected final IdType idType;
     private IdGenerator idGenerator = null;
     private FileChannel fileChannel = null;
     private PersistenceWindowPool windowPool;
@@ -83,9 +81,34 @@ public abstract class CommonAbstractStore
     private long highestUpdateRecordId = -1;
 
     /**
-     * Opens and validates the store contained in <CODE>fileName</CODE>
-     * loading any configuration defined in <CODE>config</CODE>. After
-     * validation the <CODE>initStorage</CODE> method is called.
+     * Create a new CommonAbstractStore
+     *
+     * @param idType
+     *            The Id used to index into this store
+     */
+    public CommonAbstractStore( StringLogger logger, Config configuration, IdType idType,
+                                IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction)
+    {
+        this.logger = logger;
+        this.config = configuration;
+        this.idGeneratorFactory = idGeneratorFactory;
+        this.fileSystemAbstraction = fileSystemAbstraction;
+        this.idType = idType;
+    }
+
+    @Override
+    public void init()
+        throws Throwable
+    {
+    }
+
+    /**
+     * Creates new store files if needed using the {@link #createStorage()}
+     * method.
+     * <p>
+     * Opens and validates the store contained in {@link #storageFileName}
+     * loading any configuration defined in {@link #config}. After
+     * validation the {@link #loadStorage()} method is called.
      * <p>
      * If the store had a clean shutdown it will be marked as <CODE>ok</CODE>
      * and the {@link #getStoreOk()} method will return true.
@@ -93,34 +116,59 @@ public abstract class CommonAbstractStore
      * must be invoked.
      *
      * throws IOException if the unable to open the storage or if the
-     * <CODE>initStorage</CODE> method fails
-     *
-     * @param idType
-     *            The Id used to index into this store
+     * {@link #loadStorage()} method fails
      */
-    public CommonAbstractStore( String fileName, Config configuration, IdType idType,
-                                IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger)
+    @Override
+    public void start()
+        throws Throwable
     {
-        this.storageFileName = fileName;
-        this.configuration = configuration;
-        this.idGeneratorFactory = idGeneratorFactory;
-        this.fileSystemAbstraction = fileSystemAbstraction;
-        this.idType = idType;
-        this.stringLogger = stringLogger;
-        grabFileLock = configuration.getBoolean( Configuration.grab_file_lock );
-
+        grabFileLock = config.get( Configuration.grab_file_lock );
+        readOnly = config.get( Configuration.read_only );
+        backupSlave = config.get( Configuration.backup_slave );
+        
         try
         {
-            checkStorage();
+            createStorageIfNeeded();
+            
+            openStorage();
             checkVersion(); // Overriden in NeoStore
             loadStorage();
         }
         catch ( Exception e )
         {
-            if ( fileChannel != null )
-                closeChannel();
+            closeStorage();
             throw launderedException( e );
         }
+    }
+
+    private void createStorageIfNeeded() throws Throwable
+    {
+        if( storageFileName == null ) {
+            throw new IllegalArgumentException("Storage file name cannot be null when starting a store.");
+        }
+        
+        if (!readOnly && !fileSystemAbstraction.fileExists( storageFileName ) )
+        {
+            createStorage();
+        }
+    }
+
+    @Override
+    public void stop()
+        throws Throwable
+    {
+        closeStorage();
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
+    }
+
+    public StringLogger getLogger()
+    {
+        return logger;
     }
 
     public String getTypeAndVersionDescriptor()
@@ -144,11 +192,16 @@ public abstract class CommonAbstractStore
      * @return This store's implementation type and version identifier
      */
     public abstract String getTypeDescriptor();
-
-    protected void checkStorage()
+    
+    /**
+     * Called if the store files do not exist and this is not a read-only
+     * database. This should create the underlying store file and put any
+     * required headers or other initialization data into it.
+     */
+    protected abstract void createStorage() throws Throwable;
+    
+    protected void openStorage()
     {
-        readOnly = configuration.getBoolean( Configuration.read_only );
-        backupSlave = configuration.getBoolean( Configuration.backup_slave );
         if ( !fileSystemAbstraction.fileExists( storageFileName ) )
         {
             throw new IllegalStateException( "No such store[" + storageFileName
@@ -220,9 +273,9 @@ public abstract class CommonAbstractStore
         }
         loadIdGenerator();
 
-        setWindowPool( new PersistenceWindowPool( getStorageFileName(),
-            getEffectiveRecordSize(), getFileChannel(), calculateMappedMemory(configuration.getParams(), storageFileName ),
-            configuration.getBoolean( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
+        setWindowPool( new PersistenceWindowPool( logger,  getStorageFileName(),
+            getEffectiveRecordSize(), getFileChannel(), calculateMappedMemory(config.getParams(), storageFileName ),
+            config.get( Configuration.use_memory_mapped_buffers ), isReadOnly() && !isBackupSlave() ) );
     }
 
     protected abstract int getEffectiveRecordSize();
@@ -252,10 +305,7 @@ public abstract class CommonAbstractStore
         {
             if ( !getStoreOk() )
             {
-                if ( stringLogger != null )
-                {
-                    stringLogger.logMessage( getStorageFileName() + " non clean shutdown detected", true );
-                }
+                logger.warn( getStorageFileName() + " non clean shutdown detected", true );
             }
         }
     }
@@ -298,14 +348,91 @@ public abstract class CommonAbstractStore
     protected abstract void rebuildIdGenerator();
 
     /**
-     * This method should close/release all resources that the implementation of
-     * this store has allocated and is called just before the <CODE>close()</CODE>
-     * method returns. Override this method to clean up stuff the constructor.
-     * <p>
-     * This default implementation does nothing.
+     * This method should close/release all resources that openStorage() has
+     * allocated.
      */
     protected void closeStorage()
+        throws Throwable
     {
+        if ( fileChannel == null )
+        {
+            return;
+        }
+        
+        if ( windowPool != null )
+        {
+            windowPool.close();
+            windowPool = null;
+        }
+        if ( (isReadOnly() && !isBackupSlave()) || idGenerator == null || !storeOk )
+        {
+            try
+            {
+                fileChannel.close();
+            }
+            catch ( IOException e )
+            {
+                throw new UnderlyingStorageException( e );
+            }
+            return;
+        }
+        long highId = idGenerator.getHighId();
+        int recordSize = -1;
+        if ( this instanceof AbstractDynamicStore )
+        {
+            recordSize = ((AbstractDynamicStore) this).getBlockSize();
+        }
+        else if ( this instanceof AbstractStore )
+        {
+            recordSize = ((AbstractStore) this).getRecordSize();
+        }
+        idGenerator.close( true );
+        boolean success = false;
+        IOException storedIoe = null;
+        // hack for WINBLOWS
+        if ( !readOnly || backupSlave )
+        {
+            for ( int i = 0; i < 10; i++ )
+            {
+                try
+                {
+                    fileChannel.position( highId * recordSize );
+                    ByteBuffer buffer = ByteBuffer.wrap(
+                        UTF8.encode( getTypeAndVersionDescriptor() ) );
+                    fileChannel.write( buffer );
+                    fileChannel.truncate( fileChannel.position() );
+                    fileChannel.force( false );
+                    releaseFileLockAndCloseFileChannel();
+                    success = true;
+                    break;
+                }
+                catch ( IOException e )
+                {
+                    storedIoe = e;
+                    System.gc();
+                }
+            }
+        }
+        else
+        {
+            releaseFileLockAndCloseFileChannel();
+            success = true;
+//=======
+//            try
+//            {
+//                fileChannel.close();
+//            }
+//            catch ( IOException e )
+//            {
+//                logger.log( Level.WARNING, "Could not close fileChannel [" + storageFileName + "]", e );
+//            }
+//>>>>>>> parent of 739f974... Change start-up sequence so that version number in neostore gets checked, not just in the child stores
+        }
+        if ( !success )
+        {
+            throw new UnderlyingStorageException( "Unable to close store "
+                + getStorageFileName(), storedIoe );
+        }
     }
 
     boolean isReadOnly()
@@ -494,7 +621,7 @@ public abstract class CommonAbstractStore
      */
     protected String getStoreDir()
     {
-        return configuration.get( Configuration.store_dir );
+        return config.get( Configuration.store_dir );
     }
 
     /**
@@ -562,6 +689,24 @@ public abstract class CommonAbstractStore
     {
         return storageFileName;
     }
+    
+    /**
+     * Set the full path to the file that this
+     * store should use. This should only be used while this 
+     * store is stopped, changing store path while the store 
+     * is running would be like shifting into reverse while 
+     * driving down the interstate.
+     * 
+     * Stores that contain nested stores should override this
+     * method and rename their nested stores appropriately when
+     * this method is called.
+     * 
+     * @param path
+     */
+    protected void setStorageFileName(String storageFileName)
+    {
+        this.storageFileName = storageFileName;
+    }
 
     /**
      * Opens the {@link IdGenerator} used by this store.
@@ -615,103 +760,6 @@ public abstract class CommonAbstractStore
         }
     }
 
-    /**
-     * Closes this store. This will cause all buffers and channels to be closed.
-     * Requesting an operation from after this method has been invoked is
-     * illegal and an exception will be thrown.
-     * <p>
-     * This method will start by invoking the {@link #closeStorage} method
-     * giving the implementing store way to do anything that it needs to do
-     * before the fileChannel is closed.
-     */
-    public void close()
-    {
-        if ( fileChannel == null )
-        {
-            return;
-        }
-        closeStorage();
-        if ( windowPool != null )
-        {
-            windowPool.close();
-            windowPool = null;
-        }
-        if ( (isReadOnly() && !isBackupSlave()) || idGenerator == null || !storeOk )
-        {
-            closeChannel();
-            return;
-        }
-        long highId = idGenerator.getHighId();
-        int recordSize = -1;
-        if ( this instanceof AbstractDynamicStore )
-        {
-            recordSize = ((AbstractDynamicStore) this).getBlockSize();
-        }
-        else if ( this instanceof AbstractStore )
-        {
-            recordSize = ((AbstractStore) this).getRecordSize();
-        }
-        idGenerator.close( true );
-        boolean success = false;
-        IOException storedIoe = null;
-        // hack for WINBLOWS
-        if ( !readOnly || backupSlave )
-        {
-            for ( int i = 0; i < 10; i++ )
-            {
-                try
-                {
-                    fileChannel.position( highId * recordSize );
-                    ByteBuffer buffer = ByteBuffer.wrap(
-                        UTF8.encode( getTypeAndVersionDescriptor() ) );
-                    fileChannel.write( buffer );
-                    fileChannel.truncate( fileChannel.position() );
-                    fileChannel.force( false );
-                    releaseFileLockAndCloseFileChannel();
-                    success = true;
-                    break;
-                }
-                catch ( IOException e )
-                {
-                    storedIoe = e;
-                    System.gc();
-                }
-            }
-        }
-        else
-        {
-            releaseFileLockAndCloseFileChannel();
-            success = true;
-//=======
-//            try
-//            {
-//                fileChannel.close();
-//            }
-//            catch ( IOException e )
-//            {
-//                logger.log( Level.WARNING, "Could not close fileChannel [" + storageFileName + "]", e );
-//            }
-//>>>>>>> parent of 739f974... Change start-up sequence so that version number in neostore gets checked, not just in the child stores
-        }
-        if ( !success )
-        {
-            throw new UnderlyingStorageException( "Unable to close store "
-                + getStorageFileName(), storedIoe );
-        }
-    }
-
-    private void closeChannel()
-    {
-        try
-        {
-            fileChannel.close();
-        }
-        catch ( IOException e )
-        {
-            throw new UnderlyingStorageException( e );
-        }
-    }
-
     protected void releaseFileLockAndCloseFileChannel()
     {
         try
@@ -726,7 +774,7 @@ public abstract class CommonAbstractStore
             }
         } catch ( IOException e )
         {
-            logger.log( Level.WARNING, "Could not close [" + storageFileName + "]", e );
+            logger.warn("Could not close [" + storageFileName + "]", e );
         }
         fileChannel = null;
     }
@@ -784,14 +832,14 @@ public abstract class CommonAbstractStore
         }
     }
 
-    public void logVersions( StringLogger.LineLogger logger)
+    public void logVersions( List<String> logger)
     {
-        logger.logLine( "  " + getTypeAndVersionDescriptor() );
+        logger.add( "  " + getTypeAndVersionDescriptor() );
     }
 
-    public void logIdUsage(StringLogger.LineLogger lineLogger )
+    public void logIdUsage(List<String> lineLogger )
     {
-        lineLogger.logLine( String.format( "  %s: used=%s high=%s", getTypeDescriptor(),
+        lineLogger.add( String.format( "  %s: used=%s high=%s", getTypeDescriptor(),
                 getNumberOfIdsInUse(), getHighestPossibleIdInUse() ) );
     }
 

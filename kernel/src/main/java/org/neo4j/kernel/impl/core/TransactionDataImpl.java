@@ -22,7 +22,6 @@ package org.neo4j.kernel.impl.core;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.event.PropertyEntry;

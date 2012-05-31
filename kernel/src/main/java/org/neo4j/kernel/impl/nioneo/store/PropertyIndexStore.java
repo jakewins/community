@@ -22,7 +22,7 @@ package org.neo4j.kernel.impl.nioneo.store;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Implementation of the property store.
@@ -38,10 +38,10 @@ public class PropertyIndexStore extends AbstractNameStore<PropertyIndexRecord>
     public static final String TYPE_DESCRIPTOR = "PropertyIndexStore";
     private static final int RECORD_SIZE = 1/*inUse*/ + 4/*prop count*/ + 4/*nameId*/;
 
-    public PropertyIndexStore(String fileName, Config config,
+    public PropertyIndexStore(Config config,
                               IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger, DynamicStringStore nameStore)
     {
-        super(fileName, config, IdType.PROPERTY_INDEX, idGeneratorFactory, fileSystemAbstraction, stringLogger, nameStore);
+        super(config, IdType.PROPERTY_INDEX, idGeneratorFactory, fileSystemAbstraction, stringLogger, nameStore);
     }
 
     @Override
@@ -80,5 +80,12 @@ public class PropertyIndexStore extends AbstractNameStore<PropertyIndexRecord>
     public String getTypeDescriptor()
     {
         return TYPE_DESCRIPTOR;
+    }
+    
+    @Override
+    protected void setStorageFileName(String fileName)
+    {
+        super.setStorageFileName(fileName);
+        nameStore.setStorageFileName(fileName + ".keys");
     }
 }

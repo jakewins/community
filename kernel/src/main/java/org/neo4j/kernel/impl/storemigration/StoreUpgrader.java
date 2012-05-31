@@ -24,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
@@ -31,7 +33,8 @@ import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class StoreUpgrader
 {
@@ -103,16 +106,19 @@ public class StoreUpgrader
 
         String upgradeFileName = new File( upgradeDirectory, NeoStore.DEFAULT_NAME ).getPath();
         Map<String, String> upgradeConfig = new HashMap<String, String>( originalConfig.getParams() );
-        upgradeConfig.put( "neo_store", upgradeFileName );
-
-
+        upgradeConfig.put( NeoStore.Configuration.neo_store.name(), upgradeFileName );
+        upgradeConfig.put( GraphDatabaseSettings.allow_store_upgrade.name(), "false"); // Ironic, isn't it?
 
         Config upgradeConfiguration = new Config( upgradeConfig );
         
-        NeoStore neoStore = new StoreFactory(upgradeConfiguration, idGeneratorFactory, fileSystemAbstraction, null, StringLogger.DEV_NULL, null).createNeoStore(upgradeFileName);
+        LifeSupport life = new LifeSupport();
+        NeoStore neoStore = new StoreFactory(upgradeConfiguration, null, idGeneratorFactory, fileSystemAbstraction, StringLogger.SYSTEM, null, life).createNeoStore();
+
+        life.start();
+
         try
         {
-            storeMigrator.migrate( new LegacyStore( storageFileName ), neoStore );
+            storeMigrator.migrate( new LegacyStore( storageFileName, StringLogger.SYSTEM ), neoStore );
         }
         catch ( IOException e )
         {
@@ -120,7 +126,7 @@ public class StoreUpgrader
         }
         finally
         {
-            neoStore.close();
+            life.shutdown();
         }
     }
 

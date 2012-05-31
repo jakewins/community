@@ -26,16 +26,23 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
+import org.neo4j.kernel.impl.storemigration.ConfigMapUpgradeConfiguration;
+import org.neo4j.kernel.impl.storemigration.DatabaseFiles;
+import org.neo4j.kernel.impl.storemigration.StoreMigrator;
+import org.neo4j.kernel.impl.storemigration.StoreUpgrader;
+import org.neo4j.kernel.impl.storemigration.UpgradableDatabase;
+import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
 import org.neo4j.kernel.impl.transaction.TxHook;
 import org.neo4j.kernel.impl.util.Bits;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * This class contains the references to the "NodeStore,RelationshipStore,
@@ -49,6 +56,7 @@ public class NeoStore extends AbstractStore
         extends AbstractStore.Configuration
     {
         public static final GraphDatabaseSetting.IntegerSetting relationship_grab_size = GraphDatabaseSettings.relationship_grab_size;
+        public static final GraphDatabaseSetting.StringSetting neo_store = AbstractGraphDatabase.Configuration.neo_store;
     }
 
     public static final String TYPE_DESCRIPTOR = "NeoStore";
@@ -58,6 +66,7 @@ public class NeoStore extends AbstractStore
      */
     public static final int RECORD_SIZE = 9;
 
+    @Deprecated // Please use GraphDatabaseSettings#neo_store instead
     public static final String DEFAULT_NAME = "neostore";
 
     private NodeStore nodeStore;
@@ -69,26 +78,48 @@ public class NeoStore extends AbstractStore
     private long lastCommittedTx = -1;
 
     private final int REL_GRAB_SIZE;
-    private final String fileName;
-    private final Config conf;
     private final LastCommittedTxIdSetter lastCommittedTxIdSetter;
 
-    public NeoStore(String fileName, Config conf,
+    public NeoStore(Config conf,
                     LastCommittedTxIdSetter lastCommittedTxIdSetter,
                     IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction,
                     StringLogger stringLogger, TxHook txHook,
                     RelationshipTypeStore relTypeStore, PropertyStore propStore, RelationshipStore relStore, NodeStore nodeStore)
     {
-        super( fileName, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, fileSystemAbstraction, stringLogger);
-        this.fileName = fileName;
-        this.conf = conf;
+        super( stringLogger, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, fileSystemAbstraction);
         this.lastCommittedTxIdSetter = lastCommittedTxIdSetter;
         this.relTypeStore = relTypeStore;
         this.propStore = propStore;
         this.relStore = relStore;
         this.nodeStore = nodeStore;
-        REL_GRAB_SIZE = conf.getInteger( Configuration.relationship_grab_size );
+        REL_GRAB_SIZE = conf.get( Configuration.relationship_grab_size );
         this.txHook = txHook;
+    }
+    
+    @Override
+    public void start() throws Throwable 
+    {
+        try {
+            attemptStart();
+        } catch( NotCurrentStoreVersionException e ) {
+            upgradeStores();
+            attemptStart();
+        }
+    }
+ 
+    @Override
+    public void stop() throws Throwable 
+    {
+        super.stop();
+        logger.info( "NeoStore closed" );
+    }
+    
+    private void attemptStart() throws Throwable 
+    {
+        // Set storage file names
+        setStorageFileName(config.get(Configuration.neo_store));
+        
+        super.start();
 
         /* [MP:2012-01-03] Fix for the problem in 1.5.M02 where store version got upgraded but
          * corresponding store version record was not added. That record was added in the release
@@ -112,6 +143,60 @@ public class NeoStore extends AbstractStore
         finally
         {
             unsetRecovered();
+        }
+    }
+    
+    private void upgradeStores() {
+        new StoreUpgrader(config, logger, new ConfigMapUpgradeConfiguration(config),
+                new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( logger, System.out ) ),
+                new DatabaseFiles(), idGeneratorFactory, fileSystemAbstraction ).attemptUpgrade( storageFileName );
+    }
+
+    @Override
+    protected void createStorage() 
+            throws Throwable
+    {
+        logger.info( "Creating new db @ " + storageFileName, true );
+        ensureParentDirectoriesExist( storageFileName );
+        
+        super.createStorage();
+        
+        try {
+            openStorage();
+            checkVersion(); // Overriden in NeoStore
+            loadStorage();
+            
+            StoreId storeId = new StoreId();
+            
+            /*
+             *  created time | random long | backup version | tx id | store version | next prop
+             */
+             for ( int i = 0; i < 6; i++ ) nextId();
+             setCreationTime( storeId.getCreationTime() );
+             setRandomNumber( storeId.getRandomId() );
+             setVersion( 0 );
+             setLastCommittedTx( 1 );
+             setStoreVersion( storeId.getStoreVersion() );
+             setGraphNextProp( -1 );
+             
+        } finally {
+            closeStorage();
+        }
+    }
+    
+    private void ensureParentDirectoriesExist( String store ) throws IOException
+    {
+        String fileSeparator = System.getProperty( "file.separator" );
+        int index = store.lastIndexOf( fileSeparator );
+        String dirs = store.substring( 0, index );
+        File directories = new File( dirs );
+        if ( !directories.exists() )
+        {
+            if ( !directories.mkdirs() )
+            {
+                throw new IOException( "Unable to create directory path["
+                    + dirs + "] for Neo4j store." );
+            }
         }
     }
 
@@ -141,7 +226,7 @@ public class NeoStore extends AbstractStore
                  * in garbage.
                  * Yes, this has to be fixed to be prettier.
                  */
-                String foundVersion = versionLongToString( getStoreVersion(fileSystemAbstraction, configuration.get( Configuration.neo_store) ));
+                String foundVersion = versionLongToString( getStoreVersion(fileSystemAbstraction, config.get( Configuration.neo_store) ));
                 if ( !CommonAbstractStore.ALL_STORES_VERSION.equals( foundVersion ) )
                 {
                     throw new IllegalStateException(
@@ -174,6 +259,15 @@ public class NeoStore extends AbstractStore
             insertRecord( 5, -1 );
             registerIdFromUpdateRecord( 5 );
         }
+    }
+    
+    @Override
+    protected void setStorageFileName(String fileName) {
+        super.setStorageFileName(fileName);
+        relTypeStore.setStorageFileName(fileName + ".relationshiptypestore.db");
+        propStore.setStorageFileName(fileName + ".propertystore.db");
+        relStore.setStorageFileName(fileName + ".relationshipstore.db");
+        nodeStore.setStorageFileName(fileName + ".nodestore.db");
     }
 
     private void insertRecord( int recordPosition, long value ) throws IOException
@@ -213,29 +307,10 @@ public class NeoStore extends AbstractStore
      * Closes the node,relationship,property and relationship type stores.
      */
     @Override
-    protected void closeStorage()
+    public void shutdown()
+        throws Throwable
     {
         if ( lastCommittedTxIdSetter != null ) lastCommittedTxIdSetter.close();
-        if ( relTypeStore != null )
-        {
-            relTypeStore.close();
-            relTypeStore = null;
-        }
-        if ( propStore != null )
-        {
-            propStore.close();
-            propStore = null;
-        }
-        if ( relStore != null )
-        {
-            relStore.close();
-            relStore = null;
-        }
-        if ( nodeStore != null )
-        {
-            nodeStore.close();
-            nodeStore = null;
-        }
     }
 
     @Override
@@ -429,7 +504,7 @@ public class NeoStore extends AbstractStore
             }
             catch ( RuntimeException e )
             {
-                logger.log( Level.WARNING, "Could not set last committed tx id", e );
+                logger.warn( "Could not set last committed tx id", e );
             }
         }
         lastCommittedTx = txId;
@@ -594,28 +669,25 @@ public class NeoStore extends AbstractStore
     }
 
     @Override
-    public void logVersions( StringLogger.LineLogger msgLog)
+    public void logVersions( List<String> msgLog)
     {
-        msgLog.logLine( "Store versions:" );
+        msgLog.add( "Store versions:" );
 
         super.logVersions( msgLog );
         nodeStore.logVersions( msgLog );
         relStore.logVersions( msgLog );
         relTypeStore.logVersions( msgLog );
         propStore.logVersions(msgLog  );
-
-        stringLogger.flush();
     }
 
     @Override
-    public void logIdUsage( StringLogger.LineLogger msgLog )
+    public void logIdUsage( List<String> msgLog )
     {
-        msgLog.logLine( "Id usage:" );
+        msgLog.add( "Id usage:" );
         nodeStore.logIdUsage(msgLog );
         relStore.logIdUsage(msgLog );
         relTypeStore.logIdUsage( msgLog);
         propStore.logIdUsage( msgLog );
-        stringLogger.flush();
     }
 
     public NeoStoreRecord asRecord()

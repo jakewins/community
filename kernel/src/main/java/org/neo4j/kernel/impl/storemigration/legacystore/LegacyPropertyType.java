@@ -19,7 +19,8 @@
  */
 package org.neo4j.kernel.impl.storemigration.legacystore;
 
-import org.neo4j.kernel.impl.nioneo.store.*;
+import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
+import org.neo4j.kernel.impl.nioneo.store.ShortString;
 
 public enum LegacyPropertyType
 {

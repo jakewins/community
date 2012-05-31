@@ -29,8 +29,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
+
 import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -38,20 +38,18 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.Exceptions;
+import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
-import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.index.IndexStore;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
 import org.neo4j.kernel.impl.nioneo.store.Store;
-import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.store.WindowPoolStats;
 import org.neo4j.kernel.impl.persistence.IdGenerationFailedException;
@@ -68,10 +66,11 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransactionFactory;
 import org.neo4j.kernel.impl.util.ArrayMap;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsExtractor;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.info.DiagnosticsPhase;
+import org.neo4j.kernel.lifecycle.Lifecycle;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * A <CODE>NeoStoreXaDataSource</CODE> is a factory for
@@ -82,7 +81,7 @@ import org.neo4j.kernel.info.DiagnosticsPhase;
  * {@link XaResource XaResources} when running transactions and performing
  * operations on the node space.
  */
-public class NeoStoreXaDataSource extends LogBackedXaDataSource
+public class NeoStoreXaDataSource extends LogBackedXaDataSource implements Lifecycle
 {
     public static abstract class Configuration
         extends LogBackedXaDataSource.Configuration
@@ -95,33 +94,34 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
     }
 
     public static final byte BRANCH_ID[] = UTF8.encode( "414141" );
+    
+    @Deprecated // Please use GraphDatabaseSettings#logical_log instead
     public static final String LOGICAL_LOG_DEFAULT_NAME = "nioneo_logical.log";
-
-    private static Logger logger = Logger.getLogger(
-        NeoStoreXaDataSource.class.getName() );
-
-    private final NeoStore neoStore;
-    private final XaContainer xaContainer;
-    private final ArrayMap<Class<?>,Store> idGenerators;
 
     private final LockManager lockManager;
     private final LockReleaser lockReleaser;
-    private final String storeDir;
-    private final boolean readOnly;
-
-    private Config config;
+    private final Config config;
+    private final XaFactory xaFactory;
     private final List<Pair<TransactionInterceptorProvider, Object>> providers;
+    private final StringLogger msgLog;
+    private final DependencyResolver dependencyResolver;
+
+    private NeoStore neoStore;
+    private XaContainer xaContainer;
+    private ArrayMap<Class<?>,Store> idGenerators;
+
+    private String storeDir;
+    private boolean readOnly;
 
     private boolean logApplied = false;
 
-    private final StringLogger msgLog;
 
     private enum Diagnostics implements DiagnosticsExtractor<NeoStoreXaDataSource>
     {
         NEO_STORE_VERSIONS( "Store versions:" )
         {
             @Override
-            void dump( NeoStoreXaDataSource source, StringLogger.LineLogger log )
+            void dump( NeoStoreXaDataSource source, List<String> log )
             {
                 source.neoStore.logVersions( log );
             }
@@ -129,7 +129,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         NEO_STORE_ID_USAGE( "Id usage:" )
         {
             @Override
-            void dump( NeoStoreXaDataSource source, StringLogger.LineLogger log )
+            void dump( NeoStoreXaDataSource source, List<String> log )
             {
                 source.neoStore.logIdUsage( log );
             }
@@ -147,19 +147,20 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         {
             if ( phase.isInitialization() || phase.isExplicitlyRequested() )
             {
-                log.logLongMessage( message, new Visitor<StringLogger.LineLogger>()
+                log.debug( Format.logLongMessage(message, new Iterable<String>()
                 {
                     @Override
-                    public boolean visit( StringLogger.LineLogger logger )
+                    public Iterator<String> iterator()
                     {
-                        dump( source, logger );
-                        return false;
+                        List<String> lines = new ArrayList<String>(  );
+                        dump( source, lines );
+                        return lines.iterator();
                     }
-                }, true );
+                }));
             }
         }
 
-        abstract void dump( NeoStoreXaDataSource source, StringLogger.LineLogger log );
+        abstract void dump( NeoStoreXaDataSource source, List<String> log );
     }
 
     /**
@@ -171,37 +172,45 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
      * and in the map passed into this constructor will take the value from the
      * map.
      * <p>
-     * If <CODE>config</CODE> parameter is set but file doesn't exist an
-     * <CODE>IOException</CODE> is thrown. If any problem is found with that
-     * configuration file or Neo4j store can't be loaded an <CODE>IOException is
-     * thrown</CODE>.
-     *
-     * @throws IOException
-     *             If unable to create data source
      */
-    public NeoStoreXaDataSource( Config conf, StoreFactory sf, FileSystemAbstraction fileSystemAbstraction, LockManager lockManager, LockReleaser lockReleaser, StringLogger stringLogger, XaFactory xaFactory,
-                                 List<Pair<TransactionInterceptorProvider, Object>> providers, DependencyResolver dependencyResolver) throws IOException
+    public NeoStoreXaDataSource( Config conf,
+                                 NeoStore neoStore,
+                                 LockManager lockManager,
+                                 LockReleaser lockReleaser,
+                                 StringLogger stringLogger,
+                                 XaFactory xaFactory,
+                                 List<Pair<TransactionInterceptorProvider, Object>> providers,
+                                 DependencyResolver dependencyResolver
+    )
     {
         super( BRANCH_ID, Config.DEFAULT_DATA_SOURCE_NAME );
-        config = conf;
+        
+        this.config = conf;
+        this.neoStore = neoStore;
+        this.xaFactory = xaFactory;
         this.providers = providers;
 
-        readOnly = conf.getBoolean( Configuration.read_only );
         this.lockManager = lockManager;
         this.lockReleaser = lockReleaser;
         msgLog = stringLogger;
-        storeDir = conf.get( Configuration.store_dir );
-        String store = conf.get( Configuration.neo_store );
-        File file = new File( store );
-        if ( !readOnly && !fileSystemAbstraction.fileExists( store ))
-        {
-            msgLog.logMessage( "Creating new db @ " + store, true );
-            autoCreatePath( store );
-            sf.createNeoStore(store).close();
-        }
+        this.dependencyResolver = dependencyResolver;
+    }
+
+    @Override
+    public void init()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void start()
+        throws Throwable
+    {
+        readOnly = config.get( Configuration.read_only );
+        storeDir = config.get( Configuration.store_dir );
 
         final TransactionFactory tf;
-        boolean shouldIntercept = conf.getBoolean( Configuration.intercept_committing_transactions );
+        boolean shouldIntercept = config.get( Configuration.intercept_committing_transactions );
         if ( shouldIntercept && !providers.isEmpty() )
         {
             tf = new InterceptingTransactionFactory( dependencyResolver );
@@ -210,9 +219,8 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         {
             tf = new TransactionFactory();
         }
-        neoStore = sf.newNeoStore(store);
         
-        xaContainer = xaFactory.newXaContainer(this, conf.get( Configuration.logical_log ), new CommandFactory( neoStore ), tf,
+        xaContainer = xaFactory.newXaContainer(this, config.get( Configuration.logical_log ), new CommandFactory( neoStore ), tf,
                 shouldIntercept && !providers.isEmpty() ? providers : null, dependencyResolver );
 
         try
@@ -235,9 +243,10 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
             }
             else
             {
-                logger.fine( "Waiting for TM to take care of recovered " +
-                    "transactions." );
+                msgLog.debug( "Waiting for TM to take care of recovered transactions." );
             }
+            
+            // TODO: Unless this is an optimization, perhaps this should live in NeoStore?
             idGenerators = new ArrayMap<Class<?>,Store>( (byte)5, false, false );
             this.idGenerators.put( Node.class, neoStore.getNodeStore() );
             this.idGenerators.put( Relationship.class,
@@ -248,46 +257,28 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
                 neoStore.getPropertyStore() );
             this.idGenerators.put( PropertyIndex.class,
                 neoStore.getPropertyStore().getIndexStore() );
-            setKeepLogicalLogsIfSpecified( conf.getBoolean( new GraphDatabaseSetting.BooleanSetting( "online_backup_enabled")) ? "true" : conf.get( Configuration.keep_logical_logs ), Config.DEFAULT_DATA_SOURCE_NAME );
+            
+            setKeepLogicalLogsIfSpecified( config.get( new GraphDatabaseSetting.BooleanSetting( "online_backup_enabled")) ? "true" : config.get( Configuration.keep_logical_logs ), Config.DEFAULT_DATA_SOURCE_NAME );
             setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
         }
         catch ( Throwable e )
         {   // Something unexpected happened during startup
             try
             {   // Close the neostore, so that locks are released properly
-                neoStore.close();
+                // TODO: This should probably be handled by lifecycle?
+                neoStore.stop();
             }
             catch ( Exception closeException )
             {
-                msgLog.logMessage( "Couldn't close neostore after startup failure" );
+                msgLog.error( "Couldn't close neostore after startup failure" );
             }
             throw Exceptions.launderedException( e );
         }
     }
 
-    private void autoCreatePath( String store ) throws IOException
-    {
-        String fileSeparator = System.getProperty( "file.separator" );
-        int index = store.lastIndexOf( fileSeparator );
-        String dirs = store.substring( 0, index );
-        File directories = new File( dirs );
-        if ( !directories.exists() )
-        {
-            if ( !directories.mkdirs() )
-            {
-                throw new IOException( "Unable to create directory path["
-                    + dirs + "] for Neo4j store." );
-            }
-        }
-    }
-
-    public NeoStore getNeoStore()
-    {
-        return neoStore;
-    }
-
     @Override
-    public void close()
+    public void stop()
+        throws Throwable
     {
         if ( !readOnly )
         {
@@ -299,9 +290,22 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
             neoStore.rebuildIdGenerators();
             logApplied = false;
         }
-        neoStore.close();
-        logger.fine( "NeoStore closed" );
-        msgLog.logMessage( "NeoStore closed", true );
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
+    }
+
+    public NeoStore getNeoStore()
+    {
+        return neoStore;
+    }
+
+    @Override
+    public void close()
+    {
     }
 
     public StoreId getStoreId()
@@ -371,14 +375,14 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         @Override
         public void recoveryComplete()
         {
-            logger.fine( "Recovery complete, "
-                + "all transactions have been resolved" );
-            logger.fine( "Rebuilding id generators as needed. "
-                + "This can take a while for large stores..." );
+            msgLog.debug( "Recovery complete, "
+                          + "all transactions have been resolved" );
+            msgLog.debug( "Rebuilding id generators as needed. "
+                          + "This can take a while for large stores..." );
             neoStore.flushAll();
             neoStore.makeStoreOk();
             neoStore.setVersion( xaContainer.getLogicalLog().getHighestLogVersion() );
-            logger.fine( "Rebuild of id generators complete." );
+            msgLog.debug( "Rebuild of id generators complete." );
         }
 
         @Override

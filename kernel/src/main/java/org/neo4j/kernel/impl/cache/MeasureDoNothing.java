@@ -20,7 +20,7 @@
 
 package org.neo4j.kernel.impl.cache;
 
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public class MeasureDoNothing extends Thread
 {
@@ -65,7 +65,7 @@ public class MeasureDoNothing extends Thread
     @Override
     public synchronized void run()
     {
-        logger.logMessage( "GC Monitor started. " );
+        logger.info( "GC Monitor started. " );
         while ( measure )
         {
             long start = System.currentTimeMillis();
@@ -82,11 +82,11 @@ public class MeasureDoNothing extends Thread
             {
                 long blockTime = (time - TIME_TO_WAIT);
                 timeBlocked += blockTime;
-                logger.logMessage( "GC Monitor: Application threads blocked for an additional " + blockTime + 
+                logger.info( "GC Monitor: Application threads blocked for an additional " + blockTime +
                         "ms [total block time: " + (timeBlocked / 1000.0f) + "s]", true );
             }
         }
-        logger.logMessage( "GC Monitor stopped. " );
+        logger.info( "GC Monitor stopped. " );
     }
     
     public void stopMeasuring()

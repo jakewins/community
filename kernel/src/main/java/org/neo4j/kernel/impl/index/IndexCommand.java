@@ -19,25 +19,15 @@
  */
 package org.neo4j.kernel.impl.index;
 
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read2bMap;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read3bLengthAndString;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readBytes;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readDouble;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readFloat;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readInt;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readLong;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readShort;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.write2bLengthAndString;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.write3bLengthAndString;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Map;
-
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
+
+import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.*;
 
 /**
  * Created from {@link IndexDefineCommand} or read from a logical log.

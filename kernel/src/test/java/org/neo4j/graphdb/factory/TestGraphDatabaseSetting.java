@@ -20,12 +20,17 @@
 
 package org.neo4j.graphdb.factory;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+
+import java.util.HashMap;
+
 import org.junit.Test;
+import org.neo4j.kernel.configuration.Config;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
-
-public class GraphDatabaseSettingTest
+public class TestGraphDatabaseSetting
 {
     @Test
     public void testStringSetting()
@@ -113,5 +118,57 @@ public class GraphDatabaseSettingTest
             // Ok
             assertThat( e.getMessage(), equalTo( "Value 'option4' is not valid. Valid options are:[option1, option2, option3]" ) );
         }
+    }
+    
+    @Test
+    public void testFileSetting() 
+    {
+        GraphDatabaseSetting.FileSetting fileSetting = new GraphDatabaseSetting.FileSetting("myfile");
+        assertThat( fileSetting.name(), equalTo( "myfile" ) );
+        
+        fileSetting.validate("/some/path");
+        
+        try
+        {
+            fileSetting.validate( null );
+            fail( "null paths should not be allowed" );
+        }
+        catch( IllegalArgumentException e )
+        {
+            // Ok
+            assertThat( e.getMessage(), equalTo( "Must be a valid file path." ) );
+        }
+    }
+
+    @Test
+    public void testRelativeFileSetting() 
+    {
+        GraphDatabaseSetting.DirectorySetting baseDir = new GraphDatabaseSetting.DirectorySetting("myDirectory");
+        GraphDatabaseSetting.FileSetting fileSetting = new GraphDatabaseSetting.FileSetting("myfile", baseDir, true, true);
+        
+        Config config = new Config(new HashMap<String,String>(){{put("myDirectory","/home/jake");}});
+        
+        // Relative paths
+        assertThat(fileSetting.valueOf("baa", config), equalTo("/home/jake/baa"));
+        
+        // Absolute paths
+        assertThat(fileSetting.valueOf("/baa", config), equalTo("/baa"));
+        
+        // Path with incorrect directory separator
+        assertThat(fileSetting.valueOf("\\baa\\boo", config), equalTo("/baa/boo"));
+    }
+
+    @Test
+    public void testURISetting() 
+    {
+        GraphDatabaseSetting.URISetting setting = new GraphDatabaseSetting.URISetting("myfile", true);
+        
+        Config config = mock(Config.class);
+        
+        assertThat(setting.valueOf("/baa/boo", config).toString(), equalTo("/baa/boo"));
+        
+        // Strip trailing slash
+        assertThat(setting.valueOf("/baa/", config).toString(), equalTo("/baa"));
+        
     }
 }

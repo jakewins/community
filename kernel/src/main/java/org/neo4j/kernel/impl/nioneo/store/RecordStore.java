@@ -46,8 +46,6 @@ public interface RecordStore<R extends AbstractBaseRecord>
 
     public int getRecordHeaderSize();
 
-    public void close();
-
     public static final Predicate<AbstractBaseRecord> IN_USE = new Predicate<AbstractBaseRecord>()
     {
         @Override

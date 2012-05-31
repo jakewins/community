@@ -19,12 +19,12 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import static java.util.Arrays.copyOf;
-
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
-
+import java.util.EnumSet;
 import org.neo4j.kernel.impl.util.Bits;
+
+import static java.util.Arrays.*;
 
 /**
  * Supports encoding alphanumerical and <code>SP . - + , ' : / _</code>

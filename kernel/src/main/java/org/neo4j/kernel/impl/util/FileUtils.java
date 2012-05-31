@@ -31,7 +31,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 import java.util.regex.Pattern;
-
 import org.neo4j.graphdb.NotFoundException;
 
 public class FileUtils

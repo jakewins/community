@@ -20,9 +20,9 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.AbstractGraphDatabase;
@@ -32,7 +32,10 @@ import org.neo4j.kernel.DefaultLastCommittedTxIdSetter;
 import org.neo4j.kernel.DefaultTxHook;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.ConfigurationDefaults;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.lifecycle.LifeSupport;
+import org.neo4j.kernel.logging.ClassicLoggingService;
+import org.neo4j.kernel.logging.Loggers;
+import org.neo4j.kernel.logging.StringLogger;
 
 /**
  * Not thread safe (since DiffRecordStore is not thread safe), intended for
@@ -41,38 +44,61 @@ import org.neo4j.kernel.impl.util.StringLogger;
 public class StoreAccess
 {
     // Top level stores
-    private final RecordStore<NodeRecord> nodeStore;
-    private final RecordStore<RelationshipRecord> relStore;
-    private final RecordStore<RelationshipTypeRecord> relTypeStore;
-    private final RecordStore<PropertyRecord> propStore;
+    private RecordStore<NodeRecord> nodeStore;
+    private  RecordStore<RelationshipRecord> relStore;
+    private  RecordStore<RelationshipTypeRecord> relTypeStore;
+    private  RecordStore<PropertyRecord> propStore;
     // Transitive stores
-    private final RecordStore<DynamicRecord> stringStore, arrayStore;
-    private final RecordStore<PropertyIndexRecord> propIndexStore;
-    private final RecordStore<DynamicRecord> typeNameStore;
-    private final RecordStore<DynamicRecord> propKeyStore;
+    private  RecordStore<DynamicRecord> stringStore, arrayStore;
+    private  RecordStore<PropertyIndexRecord> propIndexStore;
+    private  RecordStore<DynamicRecord> typeNameStore;
+    private  RecordStore<DynamicRecord> propKeyStore;
     // internal state
-    private boolean closeable;
     private NeoStore neoStore;
+    private LifeSupport life = new LifeSupport();
 
     public StoreAccess( AbstractGraphDatabase graphdb )
     {
-        this( getNeoStoreFrom( graphdb ) );
-    }
-
-    private static NeoStore getNeoStoreFrom( AbstractGraphDatabase graphdb )
-    {
-        return graphdb.getXaDataSourceManager().getNeoStoreDataSource().getNeoStore();
+        this( graphdb.getXaDataSourceManager().getNeoStoreDataSource().getNeoStore() );
     }
 
     public StoreAccess( NeoStore store )
     {
-        this( store.getNodeStore(), store.getRelationshipStore(), store.getPropertyStore(),
-                store.getRelationshipTypeStore() );
         this.neoStore = store;
+        initStores( store.getNodeStore(), store.getRelationshipStore(), store.getPropertyStore(),
+                store.getRelationshipTypeStore() );
     }
 
-    public StoreAccess( NodeStore nodeStore, RelationshipStore relStore, PropertyStore propStore,
-            RelationshipTypeStore typeStore )
+    public StoreAccess( String path )
+    {
+        this( path, defaultParams() );
+    }
+
+    public StoreAccess( String path, Map<String, String> params )
+    {
+        Config config = new Config( new ConfigurationDefaults( GraphDatabaseSettings.class, ClassicLoggingService.class )
+                                              .apply( requiredParams( params, path ) ) );
+
+
+        StringLogger logger = initLogger( path, config );
+        
+        neoStore = new StoreFactory(config, 
+                new DefaultLastCommittedTxIdSetter(), 
+                new DefaultIdGeneratorFactory(), 
+                new DefaultFileSystemAbstraction(), 
+                logger, new DefaultTxHook(), life).createNeoStore();
+        
+        life.start();
+        
+        initStores( neoStore.getNodeStore(), neoStore.getRelationshipStore(), neoStore.getPropertyStore(),
+                    neoStore.getRelationshipTypeStore() );
+    }
+
+    private void initStores( NodeStore nodeStore,
+                             RelationshipStore relStore,
+                             PropertyStore propStore,
+                             RelationshipTypeStore typeStore
+    )
     {
         this.nodeStore = wrapStore( nodeStore );
         this.relStore = wrapStore( relStore );
@@ -85,33 +111,18 @@ public class StoreAccess
         this.propKeyStore = wrapStore( propStore.getIndexStore().getNameStore() );
     }
 
-    public StoreAccess( String path )
+    private StringLogger initLogger( String path, Config config )
     {
-        this( path, defaultParams() );
-    }
-
-    public StoreAccess( String path, Map<String, String> params )
-    {
-        this(
-            new StoreFactory( new Config( new ConfigurationDefaults( GraphDatabaseSettings.class )
-                                              .apply( requiredParams( params, path ) ) ), new DefaultIdGeneratorFactory(),
-                              new DefaultFileSystemAbstraction(),
-                              new DefaultLastCommittedTxIdSetter(), initLogger( path ),
-                              new DefaultTxHook() ).attemptNewNeoStore( new File( path, "neostore" ).getAbsolutePath() ) );
-        this.closeable = true;
-    }
-
-    private static StringLogger initLogger( String path )
-    {
-        StringLogger logger = StringLogger.logger( path );
-        logger.logMessage( "Starting " + StoreAccess.class.getSimpleName() );
+        ClassicLoggingService loggingService = life.add( new ClassicLoggingService( config ));
+        StringLogger logger = loggingService.getLogger( Loggers.NEO4J+".storeaccess" );
         return logger;
     }
 
     private static Map<String, String> requiredParams( Map<String, String> params, String path )
     {
         params = new HashMap<String, String>( params );
-        params.put( "neo_store", new File( path, "neostore" ).getAbsolutePath() );
+        params.put( NeoStore.Configuration.store_dir.name(), path );
+        params.put( GraphDatabaseSettings.allow_store_upgrade.name(), "false");
         return params;
     }
 
@@ -214,11 +225,8 @@ public class StoreAccess
     }
 
     public synchronized void close()
+        throws Throwable
     {
-        if ( closeable )
-        {
-            closeable = false;
-            neoStore.close();
-        }
+        life.shutdown();
     }
 }

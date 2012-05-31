@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.logging;
 
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 
 public class DevNullLoggingService

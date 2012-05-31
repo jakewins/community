@@ -19,11 +19,16 @@
  */
 package org.neo4j.kernel.impl.event;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
+
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
+
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.event.ErrorState;
@@ -34,9 +39,7 @@ import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
-import org.neo4j.kernel.impl.util.StringLogger;
-
-import static org.junit.Assert.*;
+import org.neo4j.kernel.logging.ClassicLoggingService;
 
 public class TestKernelPanic
 {
@@ -85,13 +88,13 @@ public class TestKernelPanic
     }
 
     private void assertMessageLogContains(String path, String exceptionString) throws FileNotFoundException {
-        final File logFile = new File(path, StringLogger.DEFAULT_NAME);
+        final File logFile = new File(path, ClassicLoggingService.DEFAULT_NAME);
         assertTrue("exists "+logFile,logFile.exists() && logFile.isFile());
         final Scanner scanner = new Scanner(logFile).useDelimiter("\n");
         for (String line : IteratorUtil.asIterable(scanner)) {
             if (line.contains(exceptionString)) return;
         }
-        fail(logFile+" did not contain: "+exceptionString);
+        fail( logFile + " did not contain: '" + exceptionString + "'.");
     }
 
     private static class Panic implements KernelEventHandler

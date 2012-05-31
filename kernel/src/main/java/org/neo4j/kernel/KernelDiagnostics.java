@@ -20,14 +20,14 @@
 package org.neo4j.kernel;
 
 import java.io.File;
-
+import java.util.ArrayList;
+import java.util.List;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.helpers.Format;
 import org.neo4j.helpers.Service;
-import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.kernel.info.DiagnosticsPhase;
 import org.neo4j.kernel.info.DiagnosticsProvider;
@@ -55,17 +55,17 @@ abstract class KernelDiagnostics implements DiagnosticsProvider
         @Override
         void dump( StringLogger logger )
         {
-            logger.logMessage( "Graph Database: " + graphDb.getName() + " " + storeId );
-            logger.logMessage( "Kernel version: " + Version.getKernel() );
-            logger.logMessage( "Neo4j component versions:" );
+            logger.info( "Graph Database: " + graphDb.getName() + " " + storeId );
+            logger.info( "Kernel version: " + Version.getKernel() );
+            logger.info( "Neo4j component versions:" );
             for ( Version componentVersion : Service.load( Version.class ) )
             {
-                logger.logMessage( "  " + componentVersion );
+                logger.info( "  " + componentVersion );
             }
         }
     }
 
-    private static class StoreFiles extends KernelDiagnostics implements Visitor<StringLogger.LineLogger>
+    private static class StoreFiles extends KernelDiagnostics
     {
         private final File storeDir;
 
@@ -77,23 +77,19 @@ abstract class KernelDiagnostics implements DiagnosticsProvider
         @Override
         void dump( StringLogger logger )
         {
-            logger.logLongMessage( "Storage files:", this, true );
+            List<String> lines = new ArrayList<String>(  );
+            logStoreFiles( lines, "", storeDir );
+
+            logger.debug( Format.logLongMessage("Storage files:", lines ));
         }
 
-        @Override
-        public boolean visit( StringLogger.LineLogger logger )
-        {
-            logStoreFiles( logger, "",  storeDir );
-            return false;
-        }
-
-        private static long logStoreFiles( StringLogger.LineLogger logger, String prefix, File dir )
+        private static long logStoreFiles( List<String> lines, String prefix, File dir )
         {
             if ( !dir.isDirectory() ) return 0;
             File[] files = dir.listFiles();
             if ( files == null )
             {
-                logger.logLine( prefix + "<INACCESSIBLE>" );
+                lines.add( prefix + "<INACCESSIBLE>" );
                 return 0;
             }
             long total = 0;
@@ -103,15 +99,15 @@ abstract class KernelDiagnostics implements DiagnosticsProvider
                 String filename = file.getName();
                 if ( file.isDirectory() )
                 {
-                    logger.logLine( prefix + filename + ":" );
-                    size = logStoreFiles( logger, prefix + "  ", file );
+                    lines.add( prefix + filename + ":" );
+                    size = logStoreFiles( lines, prefix + "  ", file );
                     filename = "- Total";
                 }
                 else
                 {
                     size = file.length();
                 }
-                logger.logLine( prefix + filename + ": " + Format.bytes( size ) );
+                lines.add( prefix + filename + ": " + Format.bytes( size ) );
                 total += size;
             }
             return total;

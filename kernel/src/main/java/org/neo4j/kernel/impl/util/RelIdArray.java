@@ -19,17 +19,13 @@
  */
 package org.neo4j.kernel.impl.util;
 
-import static org.neo4j.kernel.impl.cache.SizeOfs.sizeOf;
-import static org.neo4j.kernel.impl.cache.SizeOfs.withArrayOverhead;
-import static org.neo4j.kernel.impl.cache.SizeOfs.withObjectOverhead;
-import static org.neo4j.kernel.impl.cache.SizeOfs.withReference;
-
 import java.util.Collection;
 import java.util.NoSuchElementException;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.kernel.impl.cache.SizeOf;
 import org.neo4j.kernel.impl.cache.SizeOfs;
+
+import static org.neo4j.kernel.impl.cache.SizeOfs.*;
 
 public class RelIdArray implements SizeOf
 {

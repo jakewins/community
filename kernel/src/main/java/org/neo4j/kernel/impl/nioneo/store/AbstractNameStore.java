@@ -24,10 +24,11 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.logging.StringLogger;
 
 public abstract class AbstractNameStore<T extends AbstractNameRecord> extends AbstractStore implements Store, RecordStore<T>
 {
@@ -37,15 +38,16 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
         
     }
     
-    private DynamicStringStore nameStore;
+    protected DynamicStringStore nameStore;
     public static final int NAME_STORE_BLOCK_SIZE = 30;
 
-    public AbstractNameStore(String fileName, Config configuration, IdType idType,
+    public AbstractNameStore(Config configuration, IdType idType,
                              IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger,
                              DynamicStringStore nameStore)
     {
-        super( fileName, configuration, idType, idGeneratorFactory, fileSystemAbstraction, stringLogger );
+        super( stringLogger, configuration, idType, idGeneratorFactory, fileSystemAbstraction);
         this.nameStore = nameStore;
+        nameStore.setCreationBlockSize(NAME_STORE_BLOCK_SIZE);
     }
 
     DynamicStringStore getNameStore()
@@ -96,16 +98,6 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
     public void freeBlockId( int id )
     {
         nameStore.freeBlockId( id );
-    }
-
-    @Override
-    protected void closeStorage()
-    {
-        if ( nameStore != null )
-        {
-            nameStore.close();
-            nameStore = null;
-        }
     }
 
     @Override
@@ -381,6 +373,13 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
         list.add( nameStore.getWindowPoolStats() );
         list.add( getWindowPoolStats() );
         return list;
+    }
+    
+    @Override
+    protected void setStorageFileName(String storageFileName)
+    {
+        super.setStorageFileName(storageFileName);
+        nameStore.setStorageFileName(storageFileName + ".names");
     }
 
 }
