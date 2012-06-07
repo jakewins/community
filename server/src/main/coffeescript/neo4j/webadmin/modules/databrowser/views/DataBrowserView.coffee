@@ -22,22 +22,21 @@ define(
   ['neo4j/webadmin/utils/ItemUrlResolver'
    './TabularView'
    './VisualizedView'
+   './ConsoleView'
    './CreateRelationshipDialog'
    'ribcage/View'
    './base'
    'lib/amd/jQuery'], 
-  (ItemUrlResolver, TabularView, VisualizedView, CreateRelationshipDialog, View, template, $) ->
+  (ItemUrlResolver, TabularView, VisualizedView, ConsoleView, CreateRelationshipDialog, View, template, $) ->
 
     class DataBrowserView extends View
       
       template : template
 
       events : 
-        "keypress #data-console" : "consoleKeyPressed"
         "click #data-create-node" : "createNode"
         "click #data-create-relationship" : "createRelationship"
         "click #data-switch-view" : "switchView"
-        "click #data-execute-console" : "search"
 
       initialize : (options)->
         @dataModel = options.dataModel
@@ -45,7 +44,8 @@ define(
         @server = options.state.getServer()
 
         @urlResolver = new ItemUrlResolver(@server)
-        
+        @consoleView = new ConsoleView(options)        
+
         @dataModel.bind("change:query", @queryChanged)
         @switchToTabularView()
 
@@ -54,7 +54,14 @@ define(
           query : @dataModel.getQuery()
           viewType : @viewType
           dataType : @dataModel.getDataType() )
+
+        @renderConsoleView()
         @renderDataView()
+
+      renderConsoleView : =>
+        @consoleView.attach($("#data-console-area", @el).empty())
+        @consoleView.render()
+        return this
 
       renderDataView : =>
         @dataView.attach($("#data-area", @el).empty())
@@ -130,8 +137,8 @@ define(
       detach : ->
         @unbind()
         @hideCreateRelationshipDialog()
-        if @dataView?
-          @dataView.detach()
+        if @dataView? then @dataView.detach()
+        if @consoleView? then @consoleView.detach()
         super()
 
       remove : =>

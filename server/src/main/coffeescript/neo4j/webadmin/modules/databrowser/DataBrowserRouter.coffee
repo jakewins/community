@@ -13,7 +13,6 @@ define(
 
       routes : 
         "/data/" : "base"
-        "/data/search/*query" : "search"
         "/data/visualization/settings/" : "visualizationSettings"
         "/data/visualization/settings/profile/" : "createVisualizationProfile"
         "/data/visualization/settings/profile/:id/" : "editVisualizationProfile"
@@ -23,6 +22,10 @@ define(
         "v" : "switchDataView"
 
       init : (appState) =>
+        # Because we need to be able to match newlines, we need to define
+        # this route with our own regex
+        @route(/data\/search\/([\s\S]*)/i, 'search', @search)
+
         @appState = appState
         @server = appState.get "server"
         @searcher = new QueuedSearch(@server)
@@ -39,6 +42,8 @@ define(
         query = decodeURIComponent query
         while query.charAt(query.length-1) == "/"
           query = query.substr(0, query.length - 1)
+
+        console.log query
 
         @dataModel.setQuery query
         @appState.set( mainView : @getDataBrowserView() )
@@ -92,10 +97,14 @@ define(
           location.hash = url
         
         if @dataModel.get "queryOutOfSyncWithData"
-          @searcher.exec(@dataModel.get "query").then(@showResult, @showResult)
+          @searcher.exec(@dataModel.get "query").then(@showResult, @showError)
 
       showResult : (result) =>
         @dataModel.setData(result)
+
+      showError : (error) =>
+        # TODO: Show error page
+        @dataModel.setData(error)
 
       getDataBrowserView : =>
         @view ?= new DataBrowserView

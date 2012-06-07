@@ -18,22 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
-define ["neo4j/webadmin/utils/ItemUrlResolver"], (ItemUrlResolver) ->
+define [], () ->
 
-  class CypherSearcher
-
-    constructor : (server) ->
-      @server = server
-      @urlResolver = new ItemUrlResolver(server)
-      @pattern = /// ^ 
-                    (start|cypher|create) # Start with "start", "cypher" or "create"
-                    ([\s\S]+)  # followed by anything
-                    $
-                 ///i
-
-    match : (statement) =>
-      @pattern.test(statement)
-      
-    exec : (statement) =>
-      @server.query(statement)
- 
+  class Keys
+    @BACKSPACE : 8
+    @TAB       : 9
+    @ENTER     : 13
