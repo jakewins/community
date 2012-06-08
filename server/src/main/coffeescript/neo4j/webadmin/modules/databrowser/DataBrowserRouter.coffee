@@ -42,7 +42,6 @@ define(
           query = query.substr(0, query.length - 1)
 
         @dataModel.setQuery query
-        console.log "CHANGED QUERY TO: ", query
         @appState.set( mainView : @getDataBrowserView() )
 
       visualizationSettings : () =>
@@ -84,7 +83,7 @@ define(
       queryChanged : =>
         query = @dataModel.get "query"
         if query == null
-          return @search("0")
+          return @search("start n=node(0) return n")
 
         url = "#/data/search/#{encodeURIComponent(query)}/"
 

@@ -63,10 +63,6 @@ define(
             state = DataBrowserState.State.NOT_EXECUTED
           else
             state = @getState()
-
-          
-          console.log "STATE CHANGED TO: ", state
-
           
           @set {"query":val, "state":state, "queryOutOfSyncWithData": not isForCurrentData }, opts
           if state is DataBrowserState.State.NOT_EXECUTED
