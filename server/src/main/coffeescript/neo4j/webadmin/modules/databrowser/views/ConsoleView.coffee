@@ -50,6 +50,11 @@ define(
           mode: "text/x-cypher"
         })
 
+        # WebDriver functional tests are unable to enter
+        # text into the editor. Give them a global reference
+        # to use programatically.
+        if document? then document.dataBrowserEditor = @_editor
+
         @_adjustEditorHeightToNumberOfNewlines()
         @el
     

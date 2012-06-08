@@ -86,7 +86,7 @@ define(
       queryChanged : =>
         query = @dataModel.getQuery()
         if query == null
-          return @search("START n=node(0) RETURN n")
+          return @search("START root=node(0) RETURN root")
 
         url = "#/data/search/#{encodeURIComponent(query)}/"
 
@@ -121,9 +121,9 @@ define(
                     # Super basic cypher queries
                     (start 
                      \s+ 
-                     n=node\(\d+\)
+                     [a-z]+=node\(\d+\)
                      \s+
-                     return\s+n)           | # or
+                     return \s+ [a-z]+)    | # or
  
                     # Direct node id lookups
                     ((node:)?\d+)          | # or
