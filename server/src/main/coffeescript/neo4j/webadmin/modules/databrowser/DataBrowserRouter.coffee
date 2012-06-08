@@ -18,7 +18,7 @@ define(
         "/data/visualization/settings/profile/:id/" : "editVisualizationProfile"
 
       shortcuts : 
-        "s" : "focusOnSearchField"
+        "s" : "focusOnEditor"
         "v" : "switchDataView"
 
       init : (appState) =>
@@ -28,7 +28,7 @@ define(
 
         @appState = appState
 
-        @dataModel = new DataBrowserState( server : @server )
+        @dataModel = new DataBrowserState( server : @appState.getServer() )
 
         @dataModel.bind "change:query", @queryChanged
 
@@ -43,6 +43,9 @@ define(
 
         @dataModel.setQuery query
         @appState.set( mainView : @getDataBrowserView() )
+
+        if @_looksLikeReadOnlyQuery(query)
+          @dataModel.executeCurrentQuery()
 
       visualizationSettings : () =>
         @saveLocation()
@@ -69,9 +72,9 @@ define(
       # Keyboard shortcuts
       # 
 
-      focusOnSearchField : (ev) =>
+      focusOnEditor : (ev) =>
         @base()
-        setTimeout( (-> $("#data-console").focus()), 1)
+        setTimeout( (=> @getDataBrowserView().focusOnEditor()), 1)
 
       switchDataView : (ev) =>
         @getDataBrowserView().switchView()
@@ -81,7 +84,7 @@ define(
       #
 
       queryChanged : =>
-        query = @dataModel.get "query"
+        query = @dataModel.getQuery()
         if query == null
           return @search("START n=node(0) RETURN n")
 
@@ -104,4 +107,34 @@ define(
           
       getDataBrowserSettings : ->
         @dataBrowserSettings ?= new DataBrowserSettings @appState.getSettings()
+
+
+      # We only auto-execute read-only queries,
+      # and we determine if a query is read-only here.
+      # Note: Since we execute queries from the current URL,
+      # this is a very real security issue. If modifying queries
+      # slip through here, attackers can redirect an adminstrator
+      # to a webadmin URL with a malicious Cypher query. Please
+      # opt for better-safe-than-sorry when updating this regex.
+      _looksLikeReadOnlyQuery : (query) ->
+        pattern = ///^(
+                    # Super basic cypher queries
+                    (start 
+                     \s+ 
+                     n=node\(\d+\)
+                     \s+
+                     return\s+n)           | # or
+ 
+                    # Direct node id lookups
+                    ((node:)?\d+)          | # or
+
+                    # Direct rel id lookups 
+                    (rel:\d+)              | # or
+
+                    # Direct rel id lookups
+                    (rels:\d+)
+                     )$
+                  ///i
+
+        pattern.test(query)
 )

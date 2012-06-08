@@ -19,14 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
 define(
-  ['neo4j/webadmin/modules/databrowser/search/QueuedSearch',
-   'ribcage/View'
+  ['ribcage/View'
    'neo4j/webadmin/utils/Keys'
    'lib/amd/CodeMirror'
    'neo4j/codemirror/cypher'
    './consoleTemplate'
    'lib/amd/jQuery.putCursorAtEnd'], 
-  (QueuedSearch, View, Keys, CodeMirror, cypherHighlighting, template, $) ->
+  (View, Keys, CodeMirror, cypherHighlighting, template, $) ->
 
     class ConsoleView extends View
       
@@ -39,7 +38,6 @@ define(
       initialize : (options)->
         @dataModel = options.dataModel
         
-        @searcher = new QueuedSearch(options.state.getServer())
         @dataModel.bind("change:query", @onDataModelQueryChanged)
 
       render : =>
@@ -54,29 +52,15 @@ define(
 
         @_adjustEditorHeightToNumberOfNewlines()
         @el
-
-      _executeQuery : (query) ->
-        @dataModel.setQuery(query, false, { force:true, silent:true})
-        @dataModel.trigger("change:query")
-        
-        setResultData = (result) => @dataModel.setData(result)
-
-        @searcher.exec(query).then(setResultData,setResultData)
-
-      _adjustEditorHeightToNumberOfNewlines : =>
-        @_setEditorLines @_newlinesIn(@_getEditorValue()) + 1
-
-      _setEditorLines : (numberOfLines) ->
-        # TODO: Create single source of truth for line height here
-        height = 10 + 14 * numberOfLines
-        $(".CodeMirror-scroll",@el).css("height",height)
-        @_editor.refresh()
-
-      _getEditorValue : ()  -> @_editor.getValue()
-      _setEditorValue : (v) -> @_editor.setValue(v)
-
-      _newlinesIn : (string) ->
-        if string.match(/\n/g) then string.match(/\n/g).length else 0
+    
+      focusOnEditor : =>
+        if @_editor?
+          @_editor.focus()
+          
+          # Select all
+          start = {line:0,ch:0}
+          end = {line:@_editor.lineCount()-1,ch:@_editor.getLine(@_editor.lineCount()-1).length}
+          @_editor.setSelection(start, end)
 
       # Event handling
 
@@ -106,15 +90,46 @@ define(
 
       onKeyUp : (ev) =>
         @_adjustEditorHeightToNumberOfNewlines()
+        @_saveCurrentEditorContents()
 
       onPaste : (ev) =>
         # We don't have an API to access the text being pasted,
         # so we work around it by adding this little job to the
         # end of the js work queue.
         setTimeout( @_adjustEditorHeightToNumberOfNewlines, 0)
+        setTimeout( @_saveCurrentEditorContents, 0)
 
       onDataModelQueryChanged : (ev) =>
         if @dataModel.getQuery() != @_getEditorValue()
           @render()
+
+      # Internals
+
+      _executeQuery : (query) ->
+        @_saveQueryInModel(query)
+        @dataModel.trigger("change:query")
+        @dataModel.executeCurrentQuery()
+
+      _saveQueryInModel : (query) ->
+        @dataModel.setQuery(query, false, { force:true, silent:true})
+
+      _adjustEditorHeightToNumberOfNewlines : =>
+        @_setEditorLines @_newlinesIn(@_getEditorValue()) + 1
+
+      _saveCurrentEditorContents : =>
+        @_saveQueryInModel(@_getEditorValue())
+
+      _setEditorLines : (numberOfLines) ->
+        # TODO: Create single source of truth for line height here 
+        # (eg. now it is both here and in style.css)
+        height = 10 + 14 * numberOfLines
+        $(".CodeMirror-scroll",@el).css("height",height)
+        @_editor.refresh()
+
+      _getEditorValue : ()  -> @_editor.getValue()
+      _setEditorValue : (v) -> @_editor.setValue(v)
+
+      _newlinesIn : (string) ->
+        if string.match(/\n/g) then string.match(/\n/g).length else 0
 
 )

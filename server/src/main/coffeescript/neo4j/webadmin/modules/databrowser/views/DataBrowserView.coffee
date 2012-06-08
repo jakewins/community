@@ -54,6 +54,10 @@ define(
         @renderConsoleView()
         @renderDataView()
 
+      focusOnEditor : =>
+        if @consoleView?
+          @consoleView.focusOnEditor()
+
       renderConsoleView : =>
         @consoleView.attach($("#data-console-area", @el).empty())
         @consoleView.render()
@@ -87,11 +91,6 @@ define(
           @createRelationshipDialog.remove()
           delete(@createRelationshipDialog)
           $("#data-create-relationship").removeClass("selected")
-
-      consoleKeyPressed : (ev) =>
-        if ev.which is 13# and ev.ctrlKey # ctrl + enter
-          ev.stopPropagation()
-          @search()
 
       switchView : (ev) =>
         if @viewType == "visualized"

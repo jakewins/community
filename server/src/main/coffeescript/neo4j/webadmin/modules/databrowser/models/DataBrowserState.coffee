@@ -19,12 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
 define(
-  ['./NodeProxy'
+  ['neo4j/webadmin/modules/databrowser/search/QueuedSearch',
+   './NodeProxy'
    './NodeList'
    './RelationshipProxy'
    './RelationshipList'
    'ribcage/Model'], 
-  (NodeProxy, NodeList, RelationshipProxy, RelationshipList, Model) ->
+  (QueuedSearch, NodeProxy, NodeList, RelationshipProxy, RelationshipList, Model) ->
   
     class DataBrowserState extends Model
 
@@ -46,7 +47,7 @@ define(
         state : DataBrowserState.State.NOT_EXECUTED
 
       initialize : (options) =>
-        @server = options.server
+        @searcher = new QueuedSearch(options.server)
 
       getQuery : =>
         @get "query"
@@ -58,7 +59,7 @@ define(
         @get "state"
 
       setQuery : (val, isForCurrentData=false, opts={}) =>
-        if @get("query") != val or opts.force is true
+        if @getQuery() != val or opts.force is true
           if not isForCurrentData
             state = DataBrowserState.State.NOT_EXECUTED
           else
@@ -67,6 +68,9 @@ define(
           @set {"query":val, "state":state, "queryOutOfSyncWithData": not isForCurrentData }, opts
           if state is DataBrowserState.State.NOT_EXECUTED
             @set {"data":null}, opts
+
+      executeCurrentQuery : =>
+        @searcher.exec(@getQuery()).then(@setData,@setData)
 
       setData : (result, basedOnCurrentQuery=true, opts={}) =>
 
