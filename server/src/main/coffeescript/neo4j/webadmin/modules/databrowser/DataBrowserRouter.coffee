@@ -83,7 +83,7 @@ define(
       queryChanged : =>
         query = @dataModel.get "query"
         if query == null
-          return @search("start n=node(0) return n")
+          return @search("START n=node(0) RETURN n")
 
         url = "#/data/search/#{encodeURIComponent(query)}/"
 

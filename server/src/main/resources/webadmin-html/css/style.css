@@ -7,6 +7,7 @@
 @import url(forms.css);
 @import url(grid.css);
 @import url(../lib/colorpicker/css/colorpicker.css);
+@import url(../js/lib/codemirror2/codemirror.css);
 
 body { 
   width:100%; 
@@ -197,10 +198,25 @@ body {
   font-family:monospace;
   width: 85%;
   float:left;
+  outline:none;
+  border: 1px solid #CCCCCC;
+  border-radius: 3px 3px 3px 3px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.8) inset;
+  -moz-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.8) inset;
+  -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.8) inset;
+  padding: 4px 3px;
 }
 
-textarea#data-console {
-  height:38px;
+/** Overide codemirror defaults **/
+.CodeMirror-scroll {
+  overflow: hidden; /* Don't show scroll bars. */
+  /* This is needed to prevent an IE[67] bug where the scrolled content
+     is visible outside of the scrolling box. */
+  position: relative;
+  outline: none;
+}
+.CodeMirror-scrollbar {
+  display:none !important;
 }
 
 #data-area {

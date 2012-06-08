@@ -22,17 +22,17 @@ define(
   ['neo4j/webadmin/modules/databrowser/search/QueuedSearch',
    'ribcage/View'
    'neo4j/webadmin/utils/Keys'
+   'lib/amd/CodeMirror'
+   'neo4j/codemirror/cypher'
    './consoleTemplate'
    'lib/amd/jQuery.putCursorAtEnd'], 
-  (QueuedSearch, View, Keys, template, $) ->
+  (QueuedSearch, View, Keys, CodeMirror, cypherHighlighting, template, $) ->
 
     class ConsoleView extends View
       
       template : template
 
       events : 
-        "keypress #data-console"      : "onKeyPress"
-        "keyup #data-console"         : "onKeyUp"
         "paste #data-console"         : "onPaste"
         "click #data-execute-console" : "onSearchClicked"
 
@@ -43,8 +43,16 @@ define(
         @dataModel.bind("change:query", @onDataModelQueryChanged)
 
       render : =>
-        $(@el).html template( query : @dataModel.getQuery() )
-        @_adjustConsoleHeightToNumberOfNewlines()
+        $(@el).html template()
+
+        # TODO: Check if there is a way to re-use this
+        @_editor = CodeMirror($("#data-console").get(0),{
+          value: @dataModel.getQuery()
+          onKeyEvent: @onKeyEvent
+          mode: "text/x-cypher"
+        })
+
+        @_adjustEditorHeightToNumberOfNewlines()
         @el
 
       _executeQuery : (query) ->
@@ -55,16 +63,17 @@ define(
 
         @searcher.exec(query).then(setResultData,setResultData)
 
-      _setConsoleLines : (numberOfLines) ->
-        height = 2 + 18 * numberOfLines
-        @_getConsoleElement().css("height",height)
+      _adjustEditorHeightToNumberOfNewlines : =>
+        @_setEditorLines @_newlinesIn(@_getEditorValue()) + 1
 
-      _adjustConsoleHeightToNumberOfNewlines : =>
-        @_setConsoleLines @_newlinesIn(@_getConsoleValue()) + 1
+      _setEditorLines : (numberOfLines) ->
+        # TODO: Create single source of truth for line height here
+        height = 10 + 14 * numberOfLines
+        $(".CodeMirror-scroll",@el).css("height",height)
+        @_editor.refresh()
 
-      _getConsoleValue : ()  -> @_getConsoleElement().val()
-      _setConsoleValue : (v) -> @_getConsoleElement().val(v)
-      _getConsoleElement : () -> $("#data-console",@el)
+      _getEditorValue : ()  -> @_editor.getValue()
+      _setEditorValue : (v) -> @_editor.setValue(v)
 
       _newlinesIn : (string) ->
         if string.match(/\n/g) then string.match(/\n/g).length else 0
@@ -72,13 +81,19 @@ define(
       # Event handling
 
       onSearchClicked : (ev) =>
-        @_executeQuery @_getConsoleValue()
+        @_executeQuery @_getEditorValue()
+
+      onKeyEvent : (editor, ev) =>
+        #ev = jQuery.Event(ev.type)
+        switch ev.type
+          when "keyup"    then @onKeyUp(ev)
+          when "keypress" then @onKeyPress(ev)
 
       onKeyPress : (ev) =>
 
         if ev.which is Keys.ENTER and ev.ctrlKey or ev.which is 10 # WebKit
           ev.stopPropagation()
-          @_executeQuery @_getConsoleValue()
+          @_executeQuery @_getEditorValue()
 
         # Pre-emptively set the height here, because if we
         # only do it after this event (eg. onKeyUp), then
@@ -87,19 +102,19 @@ define(
         # onKeyUp, to correct the height in case the user has
         # pasted something or has removed newlines
         else if ev.which is Keys.ENTER
-          @_setConsoleLines(@_newlinesIn(@_getConsoleValue()) + 2)
+          @_setEditorLines(@_newlinesIn(@_getEditorValue()) + 2)
 
       onKeyUp : (ev) =>
-        @_adjustConsoleHeightToNumberOfNewlines()
+        @_adjustEditorHeightToNumberOfNewlines()
 
       onPaste : (ev) =>
         # We don't have an API to access the text being pasted,
         # so we work around it by adding this little job to the
         # end of the js work queue.
-        setTimeout( @_adjustConsoleHeightToNumberOfNewlines, 0)
+        setTimeout( @_adjustEditorHeightToNumberOfNewlines, 0)
 
       onDataModelQueryChanged : (ev) =>
-        if @dataModel.getQuery() != @_getConsoleValue()
+        if @dataModel.getQuery() != @_getEditorValue()
           @render()
 
 )
