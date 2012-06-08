@@ -90,8 +90,8 @@ define(
         # scroll bar for a split second. We still re-do this
         # onKeyUp, to correct the height in case the user has
         # pasted something or has removed newlines
-        else if ev.which is Keys.ENTER
-          @_setEditorLines(@_newlinesIn(@_getEditorValue()) + 2)
+        #else if ev.which is Keys.ENTER
+        #  @_setEditorLines(@_newlinesIn(@_getEditorValue()) + 2)
 
       onKeyUp : (ev) =>
         @_adjustEditorHeightToNumberOfNewlines()

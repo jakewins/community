@@ -46,6 +46,7 @@ define(
 
         @dataModel = options.dataModel
         @dataModel.bind("change:data", @render)
+        @dataModel.bind("change:state", @render)
 
       render : =>
         state = @dataModel.getState()
