@@ -46,15 +46,11 @@ define(
         @urlResolver = new ItemUrlResolver(@server)
         @consoleView = new ConsoleView(options)        
 
-        @dataModel.bind("change:query", @queryChanged)
         @switchToTabularView()
 
       render : =>
         $(@el).html @template( 
-          query : @dataModel.getQuery()
-          viewType : @viewType
-          dataType : @dataModel.getDataType() )
-
+          viewType : @viewType)
         @renderConsoleView()
         @renderDataView()
 
@@ -67,13 +63,6 @@ define(
         @dataView.attach($("#data-area", @el).empty())
         @dataView.render()
         return this
-
-      queryChanged : =>
-        $("#data-console",@el).val(@dataModel.getQuery())
-
-      search : (ev) =>
-        @dataModel.setQuery( $("#data-console",@el).val(), false, { force:true, silent:true})
-        @dataModel.trigger("change:query")
 
       createNode : =>
         @server.node({}).then (node) =>
@@ -130,19 +119,14 @@ define(
         @tabularView ?= new TabularView(dataModel:@dataModel, appState:@appState, server:@server)
         @viewType = "tabular"
         @dataView = @tabularView
-
-      unbind : ->
-        @dataModel.unbind("change:query", @queryChanged)
         
       detach : ->
-        @unbind()
         @hideCreateRelationshipDialog()
         if @dataView? then @dataView.detach()
         if @consoleView? then @consoleView.detach()
         super()
 
       remove : =>
-        @unbind()
         @hideCreateRelationshipDialog()
         @dataView.remove()
 

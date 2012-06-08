@@ -27,12 +27,23 @@ define(
   (NodeProxy, NodeList, RelationshipProxy, RelationshipList, Model) ->
   
     class DataBrowserState extends Model
+
+      @State :
+        ERROR               : -1
+        EMPTY               : 0
+        NOT_EXECUTED        : 1
+        SINGLE_NODE         : 2
+        SINGLE_RELATIONSHIP : 3
+        NODE_LIST           : 4
+        RELATIONSHIP_LIST   : 5
+        CYPHER_RESULT       : 6
+        
       
       defaults :
-        type : null
         data : null
         query : null
         queryOutOfSyncWithData : true
+        state : DataBrowserState.State.NOT_EXECUTED
 
       initialize : (options) =>
         @server = options.server
@@ -43,42 +54,68 @@ define(
       getData : =>
         @get "data"
       
-      getDataType : =>
-        @get "type"
-
-      dataIsSingleNode : () =>
-        return @get("type") == "node"
-     
-      dataIsSingleRelationship : () =>
-        return @get("type") == "relationship"
+      getState : =>
+        @get "state"
 
       setQuery : (val, isForCurrentData=false, opts={}) =>
         if @get("query") != val or opts.force is true
-          @set {"queryOutOfSyncWithData": not isForCurrentData }, opts
-          @set {"query" : val }, opts
+          if not isForCurrentData
+            state = DataBrowserState.State.NOT_EXECUTED
+          else
+            state = @getState()
+
+          
+          console.log "STATE CHANGED TO: ", state
+
+          
+          @set {"query":val, "state":state, "queryOutOfSyncWithData": not isForCurrentData }, opts
+          if state is DataBrowserState.State.NOT_EXECUTED
+            @set {"data":null}, opts
 
       setData : (result, basedOnCurrentQuery=true, opts={}) =>
-        @set({"data":result, "queryOutOfSyncWithData" : not basedOnCurrentQuery }, {silent:true})
+
+        # These two to be determined below
+        state = null
+        data = null
 
         if result instanceof neo4j.models.Node
-          return @set({type:"node","data":new NodeProxy(result)}, opts)
+          state = DataBrowserState.State.SINGLE_NODE
+          data = new NodeProxy(result)
 
         else if result instanceof neo4j.models.Relationship
-          return @set({type:"relationship","data":new RelationshipProxy(result)}, opts)
+          state = DataBrowserState.State.SINGLE_RELATIONSHIP
+          data = new RelationshipProxy(result)
 
-        else if _(result).isArray() and result.length > 0 
+        else if _(result).isArray() and result.length is 0 
+          state = DataBrowserState.State.EMPTY
 
-          if result.length is 1 # If only showing one item, show it in single-item view
-            return @setData(result[0], basedOnCurrentQuery, opts)
-          else
-            if result[0] instanceof neo4j.models.Relationship
-              return @set({type:"relationshipList", "data":new RelationshipList(result)}, opts)
-            else if result[0] instanceof neo4j.models.Node
-              return @set({type:"nodeList", "data":new NodeList(result)}, opts)
-        else if result instanceof neo4j.cypher.QueryResult and result.size() > 0
-          @set({type:"cypher"})
-          return @trigger "change:data"
+        else if _(result).isArray() and result.length is 1
+          # If only showing one item, show it in single-item view
+          return @setData(result[0], basedOnCurrentQuery, opts)
 
-        @set({type:"not-found", "data":null}, opts)
+        else if _(result).isArray()
+          if result[0] instanceof neo4j.models.Relationship
+            state = DataBrowserState.State.RELATIONSHIP_LIST
+            data = new RelationshipList(result)
+
+          else if result[0] instanceof neo4j.models.Node
+            state = DataBrowserState.State.NODE_LIST
+            data = new NodeList(result)
+        
+        else if result instanceof neo4j.cypher.QueryResult and result.size() is 0
+          state = DataBrowserState.State.EMPTY
+
+        else if result instanceof neo4j.cypher.QueryResult
+          state = DataBrowserState.State.CYPHER_RESULT
+          data = result
+      
+        else if result instanceof neo4j.exceptions.NotFoundException
+          state = DataBrowserState.State.EMPTY
+
+        else
+          state = DataBrowserState.State.ERROR
+          data = result
+
+        @set({"state":state, "data":data, "queryOutOfSyncWithData" : not basedOnCurrentQuery }, opts)
 
 )

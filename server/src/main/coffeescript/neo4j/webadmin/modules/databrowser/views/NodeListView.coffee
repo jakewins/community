@@ -32,7 +32,7 @@ define(
         ))
         return this
       
-      setDataModel : (dataModel) =>
-        @dataModel = dataModel
+      setData : (list) =>
+        @list = list
 
 )

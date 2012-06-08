@@ -27,8 +27,6 @@ define(
         @route(/data\/search\/([\s\S]*)/i, 'search', @search)
 
         @appState = appState
-        @server = appState.get "server"
-        @searcher = new QueuedSearch(@server)
 
         @dataModel = new DataBrowserState( server : @server )
 
@@ -43,9 +41,8 @@ define(
         while query.charAt(query.length-1) == "/"
           query = query.substr(0, query.length - 1)
 
-        console.log query
-
         @dataModel.setQuery query
+        console.log "CHANGED QUERY TO: ", query
         @appState.set( mainView : @getDataBrowserView() )
 
       visualizationSettings : () =>
@@ -75,9 +72,7 @@ define(
 
       focusOnSearchField : (ev) =>
         @base()
-        setTimeout( () -> 
-          $("#data-console").focus()
-        1)
+        setTimeout( (-> $("#data-console").focus()), 1)
 
       switchDataView : (ev) =>
         @getDataBrowserView().switchView()
@@ -95,16 +90,9 @@ define(
 
         if location.hash != url
           location.hash = url
-        
-        if @dataModel.get "queryOutOfSyncWithData"
-          @searcher.exec(@dataModel.get "query").then(@showResult, @showError)
 
       showResult : (result) =>
         @dataModel.setData(result)
-
-      showError : (error) =>
-        # TODO: Show error page
-        @dataModel.setData(error)
 
       getDataBrowserView : =>
         @view ?= new DataBrowserView

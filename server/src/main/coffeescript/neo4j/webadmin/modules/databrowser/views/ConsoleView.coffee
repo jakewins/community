@@ -19,16 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
 define(
-  ['ribcage/View'
+  ['neo4j/webadmin/modules/databrowser/search/QueuedSearch',
+   'ribcage/View'
    'neo4j/webadmin/utils/Keys'
    './consoleTemplate'
    'lib/amd/jQuery.putCursorAtEnd'], 
-  (View, Keys, template, $) ->
+  (QueuedSearch, View, Keys, template, $) ->
 
     class ConsoleView extends View
-
-      @MULTILINE = "multiline"
-      @SINGLELINE = "singleline"
       
       template : template
 
@@ -39,8 +37,9 @@ define(
         "click #data-execute-console" : "onSearchClicked"
 
       initialize : (options)->
-        @lineMode = ConsoleView.SINGLELINE
         @dataModel = options.dataModel
+        
+        @searcher = new QueuedSearch(options.state.getServer())
         @dataModel.bind("change:query", @onDataModelQueryChanged)
 
       render : =>
@@ -49,19 +48,16 @@ define(
         @el
 
       _executeQuery : (query) ->
-        @dataModel.setQuery(query , false, { force:true, silent:true})
+        @dataModel.setQuery(query, false, { force:true, silent:true})
         @dataModel.trigger("change:query")
+        
+        setResultData = (result) => @dataModel.setData(result)
+
+        @searcher.exec(query).then(setResultData,setResultData)
 
       _setConsoleLines : (numberOfLines) ->
         height = 2 + 18 * numberOfLines
         @_getConsoleElement().css("height",height)
-        if numberOfLines > 1
-          
-          if @lineMode isnt ConsoleView.MULTILINE
-            @lineMode = ConsoleView.MULTILINE
-
-        else if @lineMode isnt ConsoleView.SINGLELINE
-            @lineMode = ConsoleView.SINGLELINE
 
       _adjustConsoleHeightToNumberOfNewlines : =>
         @_setConsoleLines @_newlinesIn(@_getConsoleValue()) + 1
@@ -79,36 +75,22 @@ define(
         @_executeQuery @_getConsoleValue()
 
       onKeyPress : (ev) =>
-        if @lineMode is ConsoleView.SINGLELINE
 
-          if (ev.which is Keys.ENTER and ev.ctrlKey) or ev.which is 10 # WebKit
-            ev.stopPropagation()
-            @_setConsoleLines(2)
-            @_setConsoleValue(@_getConsoleValue() + "\n")
+        if ev.which is Keys.ENTER and ev.ctrlKey or ev.which is 10 # WebKit
+          ev.stopPropagation()
+          @_executeQuery @_getConsoleValue()
 
-          else if ev.which is Keys.ENTER
-            ev.stopPropagation()
-            @_executeQuery @_getConsoleValue()
-            return false # Don't add the newline to the console
-
-        else if @lineMode is ConsoleView.MULTILINE
-
-          if ev.which is Keys.ENTER and ev.ctrlKey or ev.which is 10 # WebKit
-            ev.stopPropagation()
-            @_executeQuery @_getConsoleValue()
-
-          # Pre-emptively set the height here, because if we
-          # only do it after this event (eg. onKeyUp), then
-          # there is a visual jump as the browser renders a 
-          # scroll bar for a split second. We still re-do this
-          # onKeyUp, to correct the height in case the user has
-          # pasted something or has removed newlines
-          else if ev.which is Keys.ENTER
-            @_setConsoleLines(@_newlinesIn(@_getConsoleValue()) + 2)
+        # Pre-emptively set the height here, because if we
+        # only do it after this event (eg. onKeyUp), then
+        # there is a visual jump as the browser renders a 
+        # scroll bar for a split second. We still re-do this
+        # onKeyUp, to correct the height in case the user has
+        # pasted something or has removed newlines
+        else if ev.which is Keys.ENTER
+          @_setConsoleLines(@_newlinesIn(@_getConsoleValue()) + 2)
 
       onKeyUp : (ev) =>
-        if @lineMode is ConsoleView.MULTILINE
-          @_adjustConsoleHeightToNumberOfNewlines()
+        @_adjustConsoleHeightToNumberOfNewlines()
 
       onPaste : (ev) =>
         # We don't have an API to access the text being pasted,

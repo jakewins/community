@@ -24,11 +24,16 @@ define(
    './RelationshipListView'
    './NodeListView'
    './CypherResultView'
+   'neo4j/webadmin/modules/databrowser/models/DataBrowserState'
    'ribcage/View'
    './notfound'
+   './notExecutedTemplate'
+   './errorTemplate'
    'lib/amd/jQuery'], 
-  (NodeView, RelationshipView, RelationshipListView, NodeListView, CypherResultView, View, notFoundTemplate, $) ->
+  (NodeView, RelationshipView, RelationshipListView, NodeListView, CypherResultView, DataBrowserState, View, notFoundTemplate, notExecutedTemplate, errorTemplate, $) ->
   
+    State = DataBrowserState.State
+
     class SimpleView extends View
 
       initialize : (options)->
@@ -43,26 +48,51 @@ define(
         @dataModel.bind("change:data", @render)
 
       render : =>
-        type = @dataModel.get("type")
-        switch type
-          when "node"
+        state = @dataModel.getState()
+        switch state
+          when State.SINGLE_NODE
             view = @nodeView
-          when "nodeList"
+          when State.NODE_LIST
             view = @nodeListView
-          when "relationship"
+          when State.SINGLE_RELATIONSHIP
             view = @relationshipView
-          when "relationshipList"
+          when State.RELATIONSHIP_LIST
             view = @relationshipListView
-          when "cypher"
+          when State.CYPHER_RESULT
             view = @cypherResultView
-          else
+          when State.EMPTY
             $(@el).html(notFoundTemplate())
             return this
-        view.setDataModel(@dataModel)
+          when State.NOT_EXECUTED
+            $(@el).html(notExecutedTemplate())
+            return this
+          when State.ERROR
+            @renderError(@dataModel.getData())
+            return this
+
+        view.setData(@dataModel.getData())
         $(@el).html(view.render().el)
         view.delegateEvents()
         return this
       
+      renderError : (error)->
+        title = "Unknown error"
+        description = "An unknown error occurred, was unable to retrieve a result for you."
+        monospaceDescription = null
+
+        if error instanceof neo4j.exceptions.HttpException
+          if error.data.exception = "SyntaxException"
+            title = "Invalid query"
+            description = null
+            monospaceDescription = error.data.message
+        
+        $(@el).html(errorTemplate(
+          "title":title
+          "description":description
+          "monospaceDescription":monospaceDescription
+        ))
+
+
       remove : =>
         @dataModel.unbind("change", @render)
         @nodeView.remove()
