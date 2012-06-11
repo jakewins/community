@@ -33,7 +33,8 @@ define(
         @dataModel.bind "change:query", @queryChanged
 
       base : =>
-        @queryChanged()
+        @search "START root=node(0) // Get the reference node\n"+
+                "RETURN root        // And return it"
 
       search : (query) =>
         @saveLocation()
@@ -86,7 +87,7 @@ define(
       queryChanged : =>
         query = @dataModel.getQuery()
         if query == null
-          return @search("START root=node(0) RETURN root")
+          return
 
         url = "#/data/search/#{encodeURIComponent(query)}/"
 

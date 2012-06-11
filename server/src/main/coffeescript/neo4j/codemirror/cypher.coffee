@@ -18,6 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
+# Based off of the MySQL highlighter,
+# still some stuff remaining to clear up from there.
 define ['lib/amd/CodeMirror'], (CodeMirror) ->
 
   CodeMirror.defineMode "cypher", (config) ->
@@ -67,9 +69,9 @@ define ['lib/amd/CodeMirror'], (CodeMirror) ->
         curPunc = ch
         return null
 
-      else if ch is "-"
+      else if ch is "/"
         ch2 = stream.next()
-        if(ch2=="-")
+        if(ch2=="/")
           stream.skipToEnd()
           return "comment"
 

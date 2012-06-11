@@ -116,6 +116,8 @@ define(
           state = DataBrowserState.State.ERROR
           data = result
 
-        @set({"state":state, "data":data, "queryOutOfSyncWithData" : not basedOnCurrentQuery }, opts)
+        @set({"state":state, "data":data, "queryOutOfSyncWithData" : not basedOnCurrentQuery }, {silent:true})
+        if not opts.silent
+          @trigger "change:data"
 
 )
