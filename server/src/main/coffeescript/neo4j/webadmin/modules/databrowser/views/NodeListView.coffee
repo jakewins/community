@@ -28,7 +28,7 @@ define(
 
       render : =>
         $(@el).html(template(
-          nodeList : @dataModel.getData()    
+          nodeList : @list
         ))
         return this
       

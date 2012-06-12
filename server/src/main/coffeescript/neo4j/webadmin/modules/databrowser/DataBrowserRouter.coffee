@@ -1,4 +1,5 @@
 
+# TODO: Split into one Module class and one Router class
 define(
   ['./search/QueuedSearch',
    './views/DataBrowserView',
@@ -6,20 +7,20 @@ define(
    './visualization/views/VisualizationProfileView',
    './models/DataBrowserState', 
    './DataBrowserSettings', 
+   'neo4j/webadmin/modules/baseui/models/MainMenuModel',
    'ribcage/Router'], 
-  (QueuedSearch, DataBrowserView, VisualizationSettingsView, VisualizationProfileView, DataBrowserState, DataBrowserSettings, Router) ->
+  (QueuedSearch, DataBrowserView, VisualizationSettingsView, VisualizationProfileView, DataBrowserState, DataBrowserSettings, MainMenuModel, Router) ->
 
     class DataBrowserRouter extends Router
 
       routes : 
-        "/data/" : "base"
         "/data/visualization/settings/" : "visualizationSettings"
         "/data/visualization/settings/profile/" : "createVisualizationProfile"
         "/data/visualization/settings/profile/:id/" : "editVisualizationProfile"
 
       shortcuts : 
-        "s" : "focusOnEditor"
-        "v" : "switchDataView"
+        "s" : "onEditorFocusShortcut"
+        "v" : "onViewTypeToggleShortcut"
 
       init : (appState) =>
         # Because we need to be able to match newlines, we need to define
@@ -27,14 +28,15 @@ define(
         @route(/data\/search\/([\s\S]*)/i, 'search', @search)
 
         @appState = appState
-
         @dataModel = new DataBrowserState( server : @appState.getServer() )
+        
+        @dataModel.bind "change:query", @onQueryChangedInModel
+        @dataModel.bind "change:data", @onDataChangedInModel
 
-        @dataModel.bind "change:query", @queryChanged
-
-      base : =>
-        @search "START root=node(0) // Get the reference node\n"+
-                "RETURN root        // And return it"
+        @menuItem = new MainMenuModel.Item 
+          title : "Data browser",
+          subtitle:"Explore and edit",
+          url : @_getCurrentQueryURI()
 
       search : (query) =>
         @saveLocation()
@@ -69,33 +71,41 @@ define(
         v.setProfileToManage profile
         @appState.set mainView : v
 
+      #
+      # Bootstrapper SPI
+      #
+
+      getMenuItems : ->
+        [@menuItem]
+
       # 
-      # Keyboard shortcuts
+      # Event handlers
       # 
 
-      focusOnEditor : (ev) =>
-        @base()
+      onEditorFocusShortcut : (ev) =>
+        @search(@dataModel.getQuery())
         setTimeout( (=> @getDataBrowserView().focusOnEditor()), 1)
 
-      switchDataView : (ev) =>
+      onViewTypeToggleShortcut : (ev) =>
         @getDataBrowserView().switchView()
 
-      #
-      # Internals
-      #
+      onQueryChangedInModel : =>
+        url = @_getCurrentQueryURI()
 
-      queryChanged : =>
-        query = @dataModel.getQuery()
-        if query == null
-          return
+        @menuItem.setUrl(url)
 
-        url = "#/data/search/#{encodeURIComponent(query)}/"
+        #if location.hash != url
+        #  location.hash = url
+
+      onDataChangedInModel : =>
+        url = @_getCurrentQueryURI()
 
         if location.hash != url
           location.hash = url
 
-      showResult : (result) =>
-        @dataModel.setData(result)
+      #
+      # Internals
+      #
 
       getDataBrowserView : =>
         @view ?= new DataBrowserView
@@ -138,4 +148,8 @@ define(
                   ///i
 
         pattern.test(query)
+
+      _getCurrentQueryURI : ->
+        query = @dataModel.getQuery()
+        return "#/data/search/#{encodeURIComponent(query)}/"
 )

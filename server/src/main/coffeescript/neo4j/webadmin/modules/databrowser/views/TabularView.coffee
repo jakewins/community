@@ -27,10 +27,8 @@ define(
    'neo4j/webadmin/modules/databrowser/models/DataBrowserState'
    'ribcage/View'
    './notfound'
-   './notExecutedTemplate'
-   './errorTemplate'
    'lib/amd/jQuery'], 
-  (NodeView, RelationshipView, RelationshipListView, NodeListView, CypherResultView, DataBrowserState, View, notFoundTemplate, notExecutedTemplate, errorTemplate, $) ->
+  (NodeView, RelationshipView, RelationshipListView, NodeListView, CypherResultView, DataBrowserState, View, notFoundTemplate, $) ->
   
     State = DataBrowserState.State
 
@@ -64,34 +62,14 @@ define(
             $(@el).html(notFoundTemplate())
             return this
           when State.NOT_EXECUTED
-            $(@el).html(notExecutedTemplate())
             return this
           when State.ERROR
-            @renderError(@dataModel.getData())
             return this
 
         view.setData(@dataModel.getData())
         $(@el).html(view.render().el)
         view.delegateEvents()
         return this
-      
-      renderError : (error)->
-        title = "Unknown error"
-        description = "An unknown error occurred, was unable to retrieve a result for you."
-        monospaceDescription = null
-
-        if error instanceof neo4j.exceptions.HttpException
-          if error.data.exception = "SyntaxException"
-            title = "Invalid query"
-            description = null
-            monospaceDescription = error.data.message
-        
-        $(@el).html(errorTemplate(
-          "title":title
-          "description":description
-          "monospaceDescription":monospaceDescription
-        ))
-
 
       remove : =>
         @dataModel.unbind("change", @render)

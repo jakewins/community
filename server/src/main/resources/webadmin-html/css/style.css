@@ -95,7 +95,7 @@ body {
 #header { width:100%; height:50px; background:url("../img/tab_shade.png") repeat-x scroll center bottom #333333;  }
 #logo { float:left; margin: 4px 99px 0 10px; }
 
-  #mainmenu {
+  #mainmenu, #mainmenu ul {
     height: 50px;
     list-style: none outside none;
     margin: 0;
@@ -219,10 +219,33 @@ body {
   display:none !important;
 }
 
+#data-query-metadata {
+  font-size:12px;
+  border-bottom:1px solid #ccc;
+  background:#efefef;
+}
+
+#data-query-metadata ul {
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+
+#data-query-metadata ul li {
+  float:left;
+  padding:0.5em 10px 0.5em 0;
+}
+
 #data-area {
   background: none repeat scroll 0 0 #EEEEEE;
   border-bottom: 1px solid #DDDDDD;
   border-top: 1px solid #DDD;
+}
+
+.workarea .controls {
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.9) inset;
+  -moz-box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.9) inset;
+  -webkit-box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.9) inset;
 }
 
 .data-console-wrap .form-tooltip {

@@ -127,10 +127,10 @@ define(
             # TODO
             return this
           when State.EMPTY
-            # Do nothing
+            return this
+          when State.NOT_EXECUTED
             return this
           when State.ERROR
-            # TODO
             return this
 
         return this

@@ -84,15 +84,6 @@ define(
           ev.stopPropagation()
           @_executeQuery @_getEditorValue()
 
-        # Pre-emptively set the height here, because if we
-        # only do it after this event (eg. onKeyUp), then
-        # there is a visual jump as the browser renders a 
-        # scroll bar for a split second. We still re-do this
-        # onKeyUp, to correct the height in case the user has
-        # pasted something or has removed newlines
-        #else if ev.which is Keys.ENTER
-        #  @_setEditorLines(@_newlinesIn(@_getEditorValue()) + 2)
-
       onKeyUp : (ev) =>
         @_adjustEditorHeightToNumberOfNewlines()
         @_saveCurrentEditorContents()
@@ -110,13 +101,13 @@ define(
 
       # Internals
 
+      _saveQueryInModel : (query) ->
+        @dataModel.setQuery(query, false)
+
       _executeQuery : (query) ->
         @_saveQueryInModel(query)
         @dataModel.trigger("change:query")
         @dataModel.executeCurrentQuery()
-
-      _saveQueryInModel : (query) ->
-        @dataModel.setQuery(query, false, { force:true, silent:true})
 
       _adjustEditorHeightToNumberOfNewlines : =>
         @_setEditorLines @_newlinesIn(@_getEditorValue()) + 1

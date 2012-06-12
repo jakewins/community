@@ -24,8 +24,9 @@ define(
    './NodeList'
    './RelationshipProxy'
    './RelationshipList'
+   'ribcage/time/Timer'
    'ribcage/Model'], 
-  (QueuedSearch, NodeProxy, NodeList, RelationshipProxy, RelationshipList, Model) ->
+  (QueuedSearch, NodeProxy, NodeList, RelationshipProxy, RelationshipList, Timer, Model) ->
   
     class DataBrowserState extends Model
 
@@ -38,16 +39,33 @@ define(
         NODE_LIST           : 4
         RELATIONSHIP_LIST   : 5
         CYPHER_RESULT       : 6
+
+      class @QueryMetaData extends Model
+        
+        defaults : 
+          executionTime : 0
+          numberOfRows  : 0
+
+        getExecutionTime : -> @get "executionTime"
+        getNumberOfRows  : -> @get "numberOfRows"
+
+        setExecutionTime : (t) -> @set executionTime : t
+        setNumberOfRows  : (n) -> @set numberOfRows : n
         
       
       defaults :
         data : null
-        query : null
+        query : "START root=node(0) // Start with the reference node\n" +
+                "RETURN root        // and return it.\n" +
+                "\n" +
+                "// Hit CTRL+ENTER to execute"
         queryOutOfSyncWithData : true
         state : DataBrowserState.State.NOT_EXECUTED
+        querymeta : new DataBrowserState.QueryMetaData()
 
       initialize : (options) =>
         @searcher = new QueuedSearch(options.server)
+        @_executionTimer = new Timer
 
       getQuery : =>
         @get "query"
@@ -57,6 +75,9 @@ define(
       
       getState : =>
         @get "state"
+      
+      getQueryMetadata : =>
+        @get "querymeta"
 
       setQuery : (val, isForCurrentData=false, opts={}) =>
         if @getQuery() != val or opts.force is true
@@ -70,13 +91,19 @@ define(
             @set {"data":null}, opts
 
       executeCurrentQuery : =>
+        @_executionTimer.start()
         @searcher.exec(@getQuery()).then(@setData,@setData)
 
       setData : (result, basedOnCurrentQuery=true, opts={}) =>
+        @_executionTimer.stop()
+  
+        executionTime = @_executionTimer.getTimePassed()
+        originalState = @getState()
 
-        # These two to be determined below
+        # These to be determined below
         state = null
         data = null
+        numberOfRows = null
 
         if result instanceof neo4j.models.Node
           state = DataBrowserState.State.SINGLE_NODE
@@ -116,8 +143,27 @@ define(
           state = DataBrowserState.State.ERROR
           data = result
 
+        # Query meta data
+        if state isnt DataBrowserState.State.ERROR
+          @_updateQueryMetaData(data,executionTime)
+
         @set({"state":state, "data":data, "queryOutOfSyncWithData" : not basedOnCurrentQuery }, {silent:true})
         if not opts.silent
           @trigger "change:data"
+          @trigger "change:state" if originalState != state
+
+      _updateQueryMetaData : (data, executionTime) ->
+        if data?
+          if data instanceof neo4j.cypher.QueryResult
+            numberOfRows = data.data.length
+          else
+            numberOfRows = if data.length? then data.length else 1
+        else
+          numberOfRows = 0
+        meta = @getQueryMetadata()
+        meta.setNumberOfRows(numberOfRows)
+        meta.setExecutionTime(executionTime)
+        
+        @trigger "change:querymeta"
 
 )

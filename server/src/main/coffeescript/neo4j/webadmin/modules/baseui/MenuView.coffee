@@ -19,45 +19,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
 define(
-  ['./base',
-   './MenuView',
+  ['./menuTemplate',
    'ribcage/View',
    'lib/amd/jQuery'], 
-  (template, MenuView, View, $) ->
+  (template, View, $) ->
   
-    class BaseView extends View
+    class MenuView extends View
       
       template : template
+      tagName : "ul"
       
-      init : (@appState) =>
-        $("body").append(@el)
-        @appState.bind 'change:mainView', @onMainViewChanged
-        @menuView = new MenuView(@appState.getMainMenuModel())
+      constructor : (@menuModel) ->
+        @menuModel.bind 'change', @onMenuChange
+        super()
 
-      onMainViewChanged : (event) =>
-        if @mainView?
-          @mainView.detach()
-        @mainView = event.attributes.mainView
+      onMenuChange : (event) =>
         @render()
 
-      render : ->
-        $(@el).html( @template() )
-        @_renderMainView()
-        @_renderMenu()
+      render : =>
+        $(@el).html( @template( 
+          menuitems : @menuModel.getMenuItems()
+          current : @menuModel.getCurrentItem()
+        ))
         return this
 
       remove : =>
-        @appState.unbind 'change:mainView', @mainViewChanged
-        if @mainView?
-            @mainView.remove()
+        @menuModel.unbind 'change', @onMenuChange
         super()
-
-      _renderMainView : ->
-        if @mainView?
-          @mainView.attach($("#contents"))
-          @mainView.render()
-
-      _renderMenu : ->
-        @menuView.attach($("#mainmenu"))
-        @menuView.render()
 )

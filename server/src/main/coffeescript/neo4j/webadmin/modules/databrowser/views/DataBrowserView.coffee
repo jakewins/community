@@ -24,10 +24,16 @@ define(
    './VisualizedView'
    './ConsoleView'
    './CreateRelationshipDialog'
+   'neo4j/webadmin/modules/databrowser/models/DataBrowserState'
    'ribcage/View'
    './base'
+   './queryMetadataTemplate'
+   './notExecutedTemplate'
+   './errorTemplate'
    'lib/amd/jQuery'], 
-  (ItemUrlResolver, TabularView, VisualizedView, ConsoleView, CreateRelationshipDialog, View, template, $) ->
+  (ItemUrlResolver, TabularView, VisualizedView, ConsoleView, CreateRelationshipDialog, DataBrowserState, View, template, queryMetadataTemplate, notExecutedTemplate, errorTemplate, $) ->
+
+    State = DataBrowserState.State
 
     class DataBrowserView extends View
       
@@ -46,27 +52,62 @@ define(
         @urlResolver = new ItemUrlResolver(@server)
         @consoleView = new ConsoleView(options)        
 
+        @dataModel.bind("change:querymeta", @renderQueryMetadataView)
+        @dataModel.bind("change:state",     @renderQueryMetadataView)
+
         @switchToTabularView()
+
+      focusOnEditor : =>
+        if @consoleView?
+          @consoleView.focusOnEditor()
 
       render : =>
         $(@el).html @template( 
           viewType : @viewType)
         @renderConsoleView()
         @renderDataView()
-
-      focusOnEditor : =>
-        if @consoleView?
-          @consoleView.focusOnEditor()
+        @renderQueryMetadataView()
 
       renderConsoleView : =>
         @consoleView.attach($("#data-console-area", @el).empty())
         @consoleView.render()
         return this
 
+      renderQueryMetadataView : =>
+        metaBar = $("#data-query-metadata", @el)
+        switch @dataModel.getState() 
+          when State.NOT_EXECUTED
+            metaBar.html(notExecutedTemplate())
+            return this
+          when State.ERROR
+            @renderError(@dataModel.getData())
+            return this
+          else 
+            metaBar.html queryMetadataTemplate(
+              meta : @dataModel.getQueryMetadata())
+        return this
+
       renderDataView : =>
         @dataView.attach($("#data-area", @el).empty())
         @dataView.render()
         return this
+
+      renderError : (error)->
+        title = "Unknown error"
+        description = "An unknown error occurred, was unable to retrieve a result for you."
+        monospaceDescription = null
+
+        if error instanceof neo4j.exceptions.HttpException
+          if error.data.exception = "SyntaxException"
+            title = "Invalid query"
+            description = null
+            monospaceDescription = error.data.message
+        
+        $("#data-query-metadata", @el).html(errorTemplate(
+          "title":title
+          "description":description
+          "monospaceDescription":monospaceDescription
+        ))
 
       createNode : =>
         @server.node({}).then (node) =>
