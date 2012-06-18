@@ -48,7 +48,6 @@ define(
           value: @dataModel.getQuery()
           onKeyEvent: @onKeyEvent
           mode: "text/x-cypher"
-          #mode: "text" # Disable highlighting
         })
 
         # WebDriver functional tests are unable to enter
@@ -80,9 +79,8 @@ define(
           when "keypress" then @onKeyPress(ev)
 
       onKeyPress : (ev) =>
-
         if ev.which is Keys.ENTER and ev.ctrlKey or ev.which is 10 # WebKit
-          ev.stopPropagation()
+          ev.stop()
           @_executeQuery @_getEditorValue()
 
       onKeyUp : (ev) =>
