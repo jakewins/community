@@ -48,6 +48,7 @@ define(
           value: @dataModel.getQuery()
           onKeyEvent: @onKeyEvent
           mode: "text/x-cypher"
+          #mode: "text" # Disable highlighting
         })
 
         # WebDriver functional tests are unable to enter

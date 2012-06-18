@@ -62,15 +62,21 @@ define(
           @consoleView.focusOnEditor()
 
       render : =>
+        @detachConsoleView()
         $(@el).html @template( 
           viewType : @viewType)
         @renderConsoleView()
         @renderDataView()
         @renderQueryMetadataView()
 
+      detachConsoleView : =>
+        @consoleView.detach()
+
       renderConsoleView : =>
-        @consoleView.attach($("#data-console-area", @el).empty())
-        @consoleView.render()
+        @consoleView.attach($("#data-console-area", @el))
+        if not @consoleViewRendered
+          @consoleViewRendered = true
+          @consoleView.render()
         return this
 
       renderQueryMetadataView : =>
