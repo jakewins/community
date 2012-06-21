@@ -36,11 +36,11 @@ import org.neo4j.server.modules.RESTApiModule;
 import org.neo4j.server.modules.ServerModule;
 import org.neo4j.server.plugins.Injectable;
 import org.neo4j.server.plugins.PluginManager;
+import org.neo4j.server.preflight.PreFlightTasks;
+import org.neo4j.server.preflight.PreflightFailedException;
 import org.neo4j.server.security.KeyStoreFactory;
 import org.neo4j.server.security.KeyStoreInformation;
 import org.neo4j.server.security.SslCertificateFactory;
-import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
-import org.neo4j.server.startup.healthcheck.StartupHealthCheckFailedException;
 import org.neo4j.server.statistic.StatisticCollector;
 import org.neo4j.server.web.SimpleUriBuilder;
 import org.neo4j.server.web.WebServer;
@@ -55,15 +55,13 @@ public abstract class AbstractNeoServer implements NeoServer
     
 	protected final StatisticCollector statisticsCollector = new StatisticCollector();
 	
-    private StartupHealthCheck startupHealthCheck;
+    private PreFlightTasks preflight;
     private PluginInitializer pluginInitializer;
 
     private final List<ServerModule> serverModules = new ArrayList<ServerModule>();
-
     private final SimpleUriBuilder uriBuilder = new SimpleUriBuilder();
-    
 
-    protected abstract StartupHealthCheck createHealthCheck();
+    protected abstract PreFlightTasks createPreflightTasks();
 
 	protected abstract Iterable<ServerModule> createServerModules();
 
@@ -75,7 +73,7 @@ public abstract class AbstractNeoServer implements NeoServer
     @Override
 	public void init() 
     {
-    	this.startupHealthCheck = createHealthCheck();
+    	this.preflight = createPreflightTasks();
         this.database = createDatabase();
         this.webServer = createWebServer();
         
@@ -90,14 +88,17 @@ public abstract class AbstractNeoServer implements NeoServer
     }
 
 	@Override
-    public void start()
+    public void start() throws ServerStartupException
     {
+		InterruptThreadTimer interruptStartupTimer = createInterruptStartupTimer();
+		
 		try 
 		{
-	        // Start at the bottom of the stack and work upwards to the Web
-	        // container
-	        startupHealthCheck();
-	
+	        // Pre-flight tasks run outside the boot timeout limit
+	        runPreflightTasks();
+
+        	interruptStartupTimer.startCountdown();
+	        
 	        configureWebServer();
 	
 	        database.start();
@@ -114,8 +115,18 @@ public abstract class AbstractNeoServer implements NeoServer
 	        startWebServer( logger );
 	
 	        logger.logMessage( "--- SERVER STARTUP END ---", true );
-		} catch(Throwable t)
+	        
+        	interruptStartupTimer.stopCountdown();
+	        
+		}catch(Throwable t)
 		{
+			if(interruptStartupTimer.wasTriggered())
+			{
+				throw new ServerStartupException(
+						"Startup took longer than "+interruptStartupTimer.getTimeoutMillis()+"ms, and was stopped. You can disable this behavior by setting '" + Configurator.STARTUP_TIMEOUT + "' to 0.",
+						1);
+			}
+			
 			if(t instanceof RuntimeException)
 			{
 				throw (RuntimeException)t;
@@ -126,7 +137,21 @@ public abstract class AbstractNeoServer implements NeoServer
 		}
     }
 
-    /**
+	protected InterruptThreadTimer createInterruptStartupTimer() {
+		long startupTimeout = getConfiguration().getInt(Configurator.STARTUP_TIMEOUT, Configurator.DEFAULT_STARTUP_TIMEOUT) * 1000;
+		InterruptThreadTimer stopStartupTimer;
+		if(startupTimeout > 0) 
+        {
+			stopStartupTimer = InterruptThreadTimer.createTimer(
+					startupTimeout,
+					Thread.currentThread());
+        } else {
+        	stopStartupTimer = InterruptThreadTimer.createNoOpTimer();
+        }
+		return stopStartupTimer;
+	}
+
+	/**
      * Use this method to register server modules from subclasses
      *
      * @param clazz
@@ -160,11 +185,11 @@ public abstract class AbstractNeoServer implements NeoServer
         }
     }
 
-    private void startupHealthCheck()
+    private void runPreflightTasks()
     {
-        if ( !startupHealthCheck.run() )
+        if ( !preflight.run() )
         {
-            throw new StartupHealthCheckFailedException( startupHealthCheck.failedRule() );
+            throw new PreflightFailedException( preflight.failedTask() );
         }
     }
 
