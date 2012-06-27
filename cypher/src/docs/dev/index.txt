@@ -16,7 +16,13 @@ include::identifiers.txt[]
 
 include::comments.txt[]
 
+include::updating.txt[]
+
 include::transactions.txt[]
+
+:leveloffset: 1
+
+include::ql/pattern/patterns.txt[]
 
 :leveloffset: 2
 
@@ -68,6 +74,10 @@ include::ql/set/index.txt[]
 
 :leveloffset: 2
 
+include::ql/relate/index.txt[]
+
+:leveloffset: 2
+
 include::ql/foreach/index.txt[]
 
 :leveloffset: 2
@@ -77,4 +87,8 @@ include::ql/functions/index.txt[]
 :leveloffset: 2
 
 include::compatibility.txt[]
+
+:leveloffset: 2
+
+include::{importdir}/neo4j-examples-docs-jar/dev/examples/from-sql-to-cypher.txt[]
 

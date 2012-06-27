@@ -19,12 +19,12 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.search.IndexSearcher;
 import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.IndexIdentifier;
 
@@ -38,23 +38,25 @@ class CommitContext
     final IndexIdentifier identifier;
     final IndexType indexType;
     final Map<Long, DocumentContext> documents = new HashMap<Long, DocumentContext>();
-    
+    final boolean recovery;
+
+    IndexReference searcher;
     IndexWriter writer;
-    IndexSearcher searcher;
-    
-    CommitContext( LuceneDataSource dataSource, IndexIdentifier identifier, IndexType indexType )
+
+    CommitContext( LuceneDataSource dataSource, IndexIdentifier identifier, IndexType indexType, boolean recovery )
     {
         this.dataSource = dataSource;
         this.identifier = identifier;
         this.indexType = indexType;
+        this.recovery = recovery;
     }
-    
+
     void ensureWriterInstantiated()
     {
-        if ( writer == null )
+        if ( searcher == null )
         {
-            writer = dataSource.getIndexWriter( identifier );
-            searcher = dataSource.getIndexSearcher( identifier, false ).getSearcher();
+            searcher = dataSource.getIndexSearcher( identifier );
+            writer = searcher.getWriter();
         }
     }
     
@@ -66,8 +68,8 @@ class CommitContext
         {
             return context;
         }
-        
-        Document document = LuceneDataSource.findDocument( indexType, searcher, id );
+
+        Document document = LuceneDataSource.findDocument( indexType, searcher.getSearcher(), id );
         if ( document != null )
         {
             context = new DocumentContext( document, true, id );
@@ -79,6 +81,40 @@ class CommitContext
             documents.put( id, context );
         }
         return context;
+    }
+
+    private void applyDocuments( IndexWriter writer, IndexType type,
+            Map<Long, DocumentContext> documents ) throws IOException
+    {
+        for ( Map.Entry<Long, DocumentContext> entry : documents.entrySet() )
+        {
+            DocumentContext context = entry.getValue();
+            if ( context.exists )
+            {
+                if ( LuceneDataSource.documentIsEmpty( context.document ) )
+                {
+                    writer.deleteDocuments( type.idTerm( context.entityId ) );
+                }
+                else
+                {
+                    writer.updateDocument( type.idTerm( context.entityId ), context.document );
+                }
+            }
+            else
+            {
+                writer.addDocument( context.document );
+            }
+        }
+    }
+    
+    public void close() throws IOException
+    {
+        if ( searcher != null )
+        {
+            applyDocuments( writer, indexType, documents );
+            dataSource.invalidateIndexSearcher( identifier );
+            searcher.close();
+        }
     }
 
     static class DocumentContext

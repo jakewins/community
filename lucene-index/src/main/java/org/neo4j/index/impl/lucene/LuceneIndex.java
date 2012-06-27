@@ -166,47 +166,46 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
                     tx.getRemovedIds( this, keyForDirectLookup, valueForDirectLookup ) :
                     tx.getRemovedIds( this, query );
         }
+        IndexHits<EntityId> idIterator = null;
+        IndexReference searcher = null;
         LuceneDataSource dataSource = (LuceneDataSource) getProvider().dataSource();
         dataSource.getReadLock();
-        IndexHits<EntityId> idIterator = null;
-        IndexSearcherRef searcher = null;
         try
         {
-            searcher = dataSource.getIndexSearcher( getIdentifier(), true );
-            if ( searcher != null )
-            {
-                boolean foundInCache = false;
-//                LruCache<String, Collection<Long>> cachedIdsMap = null;
-//                if ( keyForDirectLookup != null )
-//                {
-//                    cachedIdsMap = dataSource.getFromCache( getIdentifier(), keyForDirectLookup );
-//                    foundInCache = fillFromCache( cachedIdsMap, ids,
-//                            keyForDirectLookup, valueForDirectLookup.toString(), removedIds );
-//                }
-
-                if ( !foundInCache )
-                {
-                    DocToIdIterator searchedIds = new DocToIdIterator( search( searcher,
-                            query, additionalParametersOrNull, additionsSearcher, removedIds ), removedIds, searcher );
-                    if ( ids.isEmpty() )
-                    {
-                        idIterator = searchedIds;
-                    }
-                    else
-                    {
-                        Collection<IndexHits<EntityId>> iterators = new ArrayList<IndexHits<EntityId>>();
-                        iterators.add( searchedIds );
-                        iterators.add( new ConstantScoreIterator<EntityId>( ids, Float.NaN ) );
-                        idIterator = new CombinedIndexHits<EntityId>( iterators );
-                    }
-                }
-            }
+            searcher = dataSource.getIndexSearcher( getIdentifier() );
         }
         finally
         {
-            // The DocToIdIterator closes the IndexSearchRef instance anyways,
-            // or the LazyIterator if it's a lazy one. So no need here.
             dataSource.releaseReadLock();
+        }
+        
+        if ( searcher != null )
+        {
+//            boolean foundInCache = false;
+//            LruCache<String, Collection<Long>> cachedIdsMap = null;
+//            if ( keyForDirectLookup != null )
+//            {
+//                cachedIdsMap = dataSource.getFromCache( getIdentifier(), keyForDirectLookup );
+//                foundInCache = fillFromCache( cachedIdsMap, ids, keyForDirectLookup,
+//                        valueForDirectLookup.toString(), removedIds );
+//            }
+//
+//            if ( !foundInCache )
+//            {
+                DocToIdIterator searchedIds = new DocToIdIterator( search( searcher,
+                        query, additionalParametersOrNull, additionsSearcher, removedIds ), removedIds, searcher );
+                if ( ids.isEmpty() )
+                {
+                    idIterator = searchedIds;
+                }
+                else
+                {
+                    Collection<IndexHits<EntityId>> iterators = new ArrayList<IndexHits<EntityId>>();
+                    iterators.add( searchedIds );
+                    iterators.add( new ConstantScoreIterator<EntityId>( ids, Float.NaN ) );
+                    idIterator = new CombinedIndexHits<EntityId>( iterators );
+                }
+//            }
         }
 
         idIterator = idIterator == null ? new ConstantScoreIterator<EntityId>( ids, 0 ) : idIterator;
@@ -261,7 +260,7 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
 //        return found;
 //    }
 
-    private IndexHits<Document> search( IndexSearcherRef searcherRef, Query query,
+    private IndexHits<Document> search( IndexReference searcherRef, Query query,
             QueryContext additionalParametersOrNull, IndexSearcher additionsSearcher, Collection<EntityId> removed )
     {
         try

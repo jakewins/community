@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
+import org.neo4j.graphdb.factory.GraphDatabaseSetting.BooleanSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.StringSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.Index;
@@ -61,7 +62,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         public static final GraphDatabaseSetting.StringSetting index_dir_name = new StringSetting( "index_dir_name", ".*", "" );
         public static final GraphDatabaseSetting.StringSetting index_logical_log = new StringSetting( "index_logical_log", ".*", "" );
         public static final GraphDatabaseSetting.StringSetting index_provider_db = new StringSetting( "index_provider_db", ".*", "" );
-        public static final GraphDatabaseSetting.BooleanSetting ephemeral = GraphDatabaseSettings.ephemeral;
+        public static final GraphDatabaseSetting.BooleanSetting ephemeral = new BooleanSetting( "ephemeral" );
     }
     
     private final XaContainer xaContainer;
@@ -111,8 +112,6 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
                     throw new RuntimeException( "Unable to open logical log in " + this.storeDir, e );
                 }
                 
-                boolean backupEnabled = config.isSet( Configuration.online_backup_enabled ) ? config.getBoolean( Configuration.online_backup_enabled ) : false;
-                setKeepLogicalLogsIfSpecified( backupEnabled ? "true" : config.get( Configuration.keep_logical_logs ), dataSourceName );
                 setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
             }
             else
@@ -330,4 +329,10 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     }
     
     public abstract void deleteIndex( IndexIdentifier identifier, boolean recovered );
+
+    protected void assertNotClosed()
+    {
+        if ( closed )
+            throw new IllegalStateException( "Lucene index provider has been shut down" );
+    }
 }

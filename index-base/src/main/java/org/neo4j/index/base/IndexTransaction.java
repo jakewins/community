@@ -37,11 +37,11 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 
 public abstract class IndexTransaction extends XaTransaction
 {
-    private final Map<IndexIdentifier, TxDataBoth> txData =
+    protected final Map<IndexIdentifier, TxDataBoth> txData =
             new HashMap<IndexIdentifier, TxDataBoth>();
     
     private IndexDefininitionsCommand definitions;
-    private final Map<IndexIdentifier,Collection<IndexCommand>> commandMap = 
+    protected final Map<IndexIdentifier,Collection<IndexCommand>> commandMap = 
             new HashMap<IndexIdentifier,Collection<IndexCommand>>();
     private final IndexDataSource dataSource;
 
@@ -105,12 +105,10 @@ public abstract class IndexTransaction extends XaTransaction
         return data;
     }
     
-    protected IndexDefininitionsCommand getDefinitions( boolean create )
+    protected IndexDefininitionsCommand getDefinitions( boolean allowCreate )
     {
-        if ( definitions == null && create )
-        {
+        if ( definitions == null && allowCreate )
             definitions = new IndexDefininitionsCommand();
-        }
         return definitions;
     }
     

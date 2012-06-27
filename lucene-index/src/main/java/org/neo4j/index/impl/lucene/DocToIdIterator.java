@@ -33,10 +33,10 @@ import org.neo4j.index.base.EntityId;
 class DocToIdIterator extends AbstractIndexHits<EntityId>
 {
     private final Collection<EntityId> exclude;
-    private IndexSearcherRef searcherOrNull;
+    private IndexReference searcherOrNull;
     private final IndexHits<Document> source;
     
-    DocToIdIterator( IndexHits<Document> source, Collection<EntityId> exclude, IndexSearcherRef searcherOrNull )
+    DocToIdIterator( IndexHits<Document> source, Collection<EntityId> exclude, IndexReference searcherOrNull )
     {
         this.source = source;
         this.exclude = exclude;
@@ -75,7 +75,7 @@ class DocToIdIterator extends AbstractIndexHits<EntityId>
     {
         if ( !isClosed() )
         {
-            this.searcherOrNull.closeStrict();
+            this.searcherOrNull.close();
             this.searcherOrNull = null;
         }
     }

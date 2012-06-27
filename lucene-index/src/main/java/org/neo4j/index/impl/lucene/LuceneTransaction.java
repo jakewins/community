@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.neo4j.graphdb.PropertyContainer;
@@ -111,7 +110,7 @@ class LuceneTransaction extends IndexTransaction
         Collection<EntityId> ids = added.query( query, contextOrNull );
         return ids != null ? ids : Collections.<EntityId>emptySet();
     }
-    
+
     @Override
     protected void doCommit()
     {
@@ -139,45 +138,45 @@ class LuceneTransaction extends IndexTransaction
                 }
                 
                 IndexType type = dataSource.getType( identifier );
-                CommitContext context = new CommitContext( dataSource, identifier, type );
-                for ( IndexCommand command : entry.getValue() )
+                CommitContext context = new CommitContext( dataSource, identifier, type, isRecovered() );
+                try
                 {
-                    if ( command instanceof AddCommand || command instanceof AddRelationshipCommand )
+                    for ( IndexCommand command : entry.getValue() )
                     {
-                        context.ensureWriterInstantiated();
-                        String key = def.getKey( command.getKeyId() );
-                        context.indexType.addToDocument( context.getDocument( command.getEntityId(), true ).document, key, command.getValue() );
-//                        context.dataSource.invalidateCache( context.identifier, key, command.getValue() );
-                    }
-                    else if ( command instanceof RemoveCommand )
-                    {
-                        context.ensureWriterInstantiated();
-                        DocumentContext document = context.getDocument( command.getEntityId(), false );
-                        if ( document != null )
+                        if ( command instanceof AddCommand || command instanceof AddRelationshipCommand )
                         {
+                            context.ensureWriterInstantiated();
                             String key = def.getKey( command.getKeyId() );
-                            context.indexType.removeFromDocument( document.document, key, command.getValue() );
-//                            context.dataSource.invalidateCache( context.identifier, key, value );
+                            context.indexType.addToDocument( context.getDocument( command.getEntityId(), true ).document, key, command.getValue() );
+                        }
+                        else if ( command instanceof RemoveCommand )
+                        {
+                            context.ensureWriterInstantiated();
+                            DocumentContext document = context.getDocument( command.getEntityId(), false );
+                            if ( document != null )
+                            {
+                                String key = def.getKey( command.getKeyId() );
+                                context.indexType.removeFromDocument( document.document, key, command.getValue() );
+                            }
+                        }
+                        else if ( command instanceof DeleteCommand )
+                        {
+                            context.documents.clear();
+                            context.dataSource.deleteIndex( context.identifier, isRecovered() );
+                        }
+                        else
+                        {
+                            throw new IllegalArgumentException( command + ", " + command.getClass().getName() );
                         }
                     }
-                    else if ( command instanceof DeleteCommand )
-                    {
-                        context.documents.clear();
-                        context.dataSource.deleteIndex( context.identifier, isRecovered() );
-                    }
-                    else
-                    {
-                        throw new IllegalArgumentException( command + ", " + command.getClass().getName() );
-                    }
                 }
-                
-                applyDocuments( context.writer, type, context.documents );
-                if ( context.writer != null )
+                finally
                 {
-                    dataSource.invalidateIndexSearcher( identifier );
+                    if ( context != null )
+                        context.close();
                 }
             }
-            
+
             dataSource.setLastCommittedTxId( getCommitTxId() );
             closeTxData();
         }
@@ -191,70 +190,46 @@ class LuceneTransaction extends IndexTransaction
         }
     }
 
-    private void applyDocuments( IndexWriter writer, IndexType type,
-            Map<Long, DocumentContext> documents ) throws IOException
+    // This is all for the abandoned ids
+    @Override
+    protected void doPrepare()
     {
-        for ( Map.Entry<Long, DocumentContext> entry : documents.entrySet() )
+        boolean containsDeleteCommand = false;
+        for ( Collection<IndexCommand> list : commandMap.values() )
         {
-            DocumentContext context = entry.getValue();
-            if ( context.exists )
+            for ( IndexCommand command : list )
             {
-                if ( LuceneDataSource.documentIsEmpty( context.document ) )
-                {
-                    writer.deleteDocuments( type.idTerm( context.entityId ) );
-                }
-                else
-                {
-                    writer.updateDocument( type.idTerm( context.entityId ), context.document );
-                }
+                if ( command instanceof DeleteCommand )
+                    containsDeleteCommand = true;
+                addCommand( command );
             }
-            else
+        }
+        if ( !containsDeleteCommand )
+        { // unless the entire index is deleted
+            addAbandonedEntitiesToTheTx();
+        } // else: the DeleteCommand will clear abandonedIds
+    }
+
+    private void addAbandonedEntitiesToTheTx()
+    {
+        IndexDefininitionsCommand def = getDefinitions( true );
+        for ( Map.Entry<IndexIdentifier, TxDataBoth> entry : txData.entrySet() )
+        {
+            Collection<Long> abandonedIds = ((LuceneIndex)entry.getValue().getIndex()).abandonedIds;
+            if ( !abandonedIds.isEmpty() )
             {
-                writer.addDocument( context.document );
+                Collection<IndexCommand> commands = commandMap.get( entry.getKey() );
+                for ( Long id : abandonedIds )
+                {
+                    IndexCommand command = def.remove( entry.getKey().getIndexName(),
+                            entry.getKey().getEntityType(), EntityId.entityId( id ), null, null );
+                    addCommand( command );
+                    commands.add( command );
+                }
+                abandonedIds.clear();
             }
         }
     }
-
-    // TODO this is all for the abandoned ids
-//    @Override
-//    protected void doPrepare()
-//    {
-//        boolean containsDeleteCommand = false;
-//        for ( CommandList list : commandMap.values() )
-//        {
-//            for ( IndexCommand command : list.commands )
-//            {
-//                if ( command instanceof DeleteCommand )
-//                {
-//                    containsDeleteCommand = true;
-//                }
-//                addCommand( command );
-//            }
-//        }
-//        if ( !containsDeleteCommand )
-//        { // unless the entire index is deleted
-//            addAbandonedEntitiesToTheTx();
-//        } // else: the DeleteCommand will clear abandonedIds
-//    }
-//
-//    private void addAbandonedEntitiesToTheTx()
-//    {
-//        for ( Map.Entry<IndexIdentifier, TxDataBoth> entry : txData.entrySet() )
-//        {
-//            Collection<Long> abandonedIds = entry.getValue().index.abandonedIds;
-//            if ( !abandonedIds.isEmpty() )
-//            {
-//                CommandList commands = commandMap.get( entry.getKey() );
-//                for ( Long id : abandonedIds )
-//                {
-//                    RemoveCommand command = new RemoveCommand( entry.getKey(), entry.getKey().entityTypeByte, id, null, null );
-//                    addCommand( command );
-//                    commands.add( command );
-//                }
-//                abandonedIds.clear();
-//            }
-//        }
-//    }
 
     static class CommandList
     {
@@ -265,12 +240,12 @@ class LuceneTransaction extends IndexTransaction
         {
             this.commands.add( command );
         }
-        
+
         boolean containsWrites()
         {
             return containsWrites;
         }
-        
+
         void clear()
         {
             commands.clear();
@@ -284,12 +259,12 @@ class LuceneTransaction extends IndexTransaction
                 containsWrites = true;
             }
         }
-        
+
         boolean isEmpty()
         {
             return commands.isEmpty();
         }
-        
+
         boolean isRecovery()
         {
             return commands.get( 0 ).isRecovered();

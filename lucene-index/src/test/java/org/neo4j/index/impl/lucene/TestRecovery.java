@@ -43,6 +43,7 @@ import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.PlaceboTm;
 import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.LogPruneStrategies;
 import org.neo4j.kernel.impl.transaction.xaframework.RecoveryVerifier;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
@@ -145,7 +146,7 @@ public class TestRecovery
         Config config = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( params ));
         LuceneDataSource ds = new LuceneDataSource( config, new IndexStore( getDbPath(), fileSystem ), fileSystem,
                 new XaFactory(config, TxIdGenerator.DEFAULT, new PlaceboTm(), new DefaultLogBufferFactory(), fileSystem,
-                        StringLogger.DEV_NULL, RecoveryVerifier.ALWAYS_VALID ));
+                        StringLogger.DEV_NULL, RecoveryVerifier.ALWAYS_VALID, LogPruneStrategies.NO_PRUNING ));
         ds.close();
     }
 }

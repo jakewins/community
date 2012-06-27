@@ -32,10 +32,10 @@ define(
         "keyup input.property-value"   : "valueChanged",
         "change input.property-key"    : "keyChangeDone",
         "change input.property-value"  : "valueChangeDone",
-        "click .delete-property" : "deleteProperty",
-        "click .add-property"    : "addProperty",
-        "click .data-save-properties" : "saveChanges"
-        "click .data-delete-item" : "deleteItem"
+        "click .delete-property"       : "deleteProperty",
+        "click .add-property"          : "addProperty",
+        "click .data-save-properties"  : "saveChanges"
+        "click .data-delete-item"      : "deleteItem"
 
       initialize : (opts) =>
         @template = opts.template
@@ -119,9 +119,8 @@ define(
       getPropertyIdForElement : (element) =>
         $(element).closest("ul").find("input.property-id").val()
 
-      setDataModel : (dataModel) =>
+      setData : (@propertyContainer) =>
         @unbind()
-        @propertyContainer = dataModel.getData()
         @propertyContainer.bind "remove:property", @renderProperties
         @propertyContainer.bind "add:property", @renderProperties
         @propertyContainer.bind "change:status", @updateSaveState
@@ -150,10 +149,16 @@ define(
           @propertyContainer.unbind "add:property", @renderProperties
           @propertyContainer.unbind "change:status", @updateSaveState
 
+      stringRegex : /// ^ 
+                    [^
+                      (^(\d+)(‎\.(\d+))?$) # Not stuff that looks like numbers
+                      (^\[(.*)\]$)        # Not stuff that looks like an array
+                    ]
+                    ///i
       shouldBeConvertedToString : (val) =>
         try 
           JSON.parse val
           return false
         catch e
-          return /^[a-z0-9- _\/\\\(\)#%\&!$]+$/i.test(val)
+          return @stringRegex.test(val)
 )
