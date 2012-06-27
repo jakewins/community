@@ -51,14 +51,30 @@ public abstract class IndexTransaction extends XaTransaction
         this.dataSource = dataSource;
     }
 
-    protected abstract <T extends PropertyContainer> void add( AbstractIndex<T> index, T entity,
-            String key, Object value );
+    protected <T extends PropertyContainer> void add( AbstractIndex<T> index, T entity,
+            String key, Object value )
+    {
+        TxDataBoth data = getTxData( index, true );
+        insert( index, entity, key, value, data.added( true ), data.removed( false ) );
+        queueCommand( index.getIdentifier(), getDefinitions( true ).add( index.getName(), index.getEntityTypeEnum(),
+                getEntityId( entity ), key, value ) );
+    }
     
-    protected abstract <T extends PropertyContainer> void remove( AbstractIndex<T> index, T entity,
-            String key, Object value );
+    protected <T extends PropertyContainer> void remove( AbstractIndex<T> index, T entity,
+            String key, Object value )
+    {
+        TxDataBoth data = getTxData( index, true );
+        insert( index, entity, key, value, data.removed( true ), data.added( false ) );
+        queueCommand( index.getIdentifier(), getDefinitions( true ).remove( index.getName(), index.getEntityTypeEnum(),
+                getEntityId( entity ), key, value ) );
+    }
     
-    protected abstract void createIndex( EntityType entityType,
-            String indexName, Map<String, String> config );
+    protected void createIndex( EntityType entityType,
+            String indexName, Map<String, String> config )
+    {
+        queueCommand( new IndexIdentifier( entityType, indexName ),
+                getDefinitions( true ).create( indexName, entityType, config ) );
+    }
     
     protected <T extends PropertyContainer> void deleteIndex( AbstractIndex<T> index )
     {

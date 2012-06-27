@@ -193,4 +193,10 @@ public class IndexDefininitionsCommand extends XaCommand
         return indexNameIdRange.equals( other.indexNameIdRange ) &&
                 keyIdRange.equals( other.keyIdRange );
     }
+    
+    @Override
+    public String toString()
+    {
+        return getClass().getSimpleName(); 
+    }
 }

@@ -110,7 +110,7 @@ public class TestLuceneDataSource
 
     private LuceneDataSource newDataSource( Map<String,String> config )
     {
-        Config conf = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config()) );
+        Config conf = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config ) );
         dataSource = new LuceneDataSource( conf, indexStore, new DefaultFileSystemAbstraction(),
                                            new XaFactory( conf, TxIdGenerator.DEFAULT, new PlaceboTm(), new DefaultLogBufferFactory(), new DefaultFileSystemAbstraction(), StringLogger.DEV_NULL, RecoveryVerifier.ALWAYS_VALID, LogPruneStrategies.NO_PRUNING ) );
         return dataSource;

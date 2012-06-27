@@ -22,10 +22,8 @@ package org.neo4j.index.impl.lucene;
 import static org.neo4j.index.base.EntityType.entityType;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.search.IndexSearcher;
@@ -33,7 +31,6 @@ import org.apache.lucene.search.Query;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.index.base.AbstractIndex;
 import org.neo4j.index.base.EntityId;
-import org.neo4j.index.base.EntityType;
 import org.neo4j.index.base.IndexCommand;
 import org.neo4j.index.base.IndexCommand.AddCommand;
 import org.neo4j.index.base.IndexCommand.AddRelationshipCommand;
@@ -68,24 +65,16 @@ class LuceneTransaction extends IndexTransaction
             String key, Object value )
     {
         value = value instanceof ValueContext ? ((ValueContext) value).getCorrectValue() : value.toString();
-        TxDataBoth data = getTxData( index, true );
-        insert( index, entity, key, value, data.added( true ), data.removed( false ) );
-        queueCommand( index.getIdentifier(), getDefinitions( true ).add( index.getName(), index.getEntityTypeEnum(),
-                getEntityId( entity ), key, value ) );
+        super.add( index, entity, key, value );
     }
 
     @Override
     protected <T extends PropertyContainer> void remove( AbstractIndex<T> index, T entity,
             String key, Object value )
     {
-        TxDataBoth data = getTxData( index, true );
         if ( value != null )
-        {
             value = value instanceof ValueContext ? ((ValueContext) value).getCorrectValue() : value.toString();
-        }
-        insert( index, entity, key, value, data.removed( true ), data.added( false ) );
-        queueCommand( index.getIdentifier(), getDefinitions( true ).remove( index.getName(), index.getEntityTypeEnum(),
-                getEntityId( entity ), key, value ) );
+        super.remove( index, entity, key, value );
     }
     
     <T extends PropertyContainer> Collection<EntityId> getRemovedIds( LuceneIndex<T> index, Query query )
@@ -194,6 +183,7 @@ class LuceneTransaction extends IndexTransaction
     @Override
     protected void doPrepare()
     {
+        addCommand( getDefinitions( false ) );
         boolean containsDeleteCommand = false;
         for ( Collection<IndexCommand> list : commandMap.values() )
         {
@@ -229,53 +219,6 @@ class LuceneTransaction extends IndexTransaction
                 abandonedIds.clear();
             }
         }
-    }
-
-    static class CommandList
-    {
-        private final List<IndexCommand> commands = new ArrayList<IndexCommand>();
-        private boolean containsWrites;
-        
-        void add( IndexCommand command )
-        {
-            this.commands.add( command );
-        }
-
-        boolean containsWrites()
-        {
-            return containsWrites;
-        }
-
-        void clear()
-        {
-            commands.clear();
-            containsWrites = false;
-        }
-
-        void incCounter( IndexCommand command )
-        {
-            if ( command.isConsideredNormalWriteCommand() )
-            {
-                containsWrites = true;
-            }
-        }
-
-        boolean isEmpty()
-        {
-            return commands.isEmpty();
-        }
-
-        boolean isRecovery()
-        {
-            return commands.get( 0 ).isRecovered();
-        }
-    }
-
-    @Override
-    protected void createIndex( EntityType entityType, String indexName, Map<String, String> config )
-    {
-        queueCommand( new IndexIdentifier( entityType, indexName ),
-                getDefinitions( true ).create( indexName, entityType, config ) );
     }
 
     <T extends PropertyContainer> IndexSearcher getAdditionsAsSearcher( LuceneIndex<T> index,
