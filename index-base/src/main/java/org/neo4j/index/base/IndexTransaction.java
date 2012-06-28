@@ -19,6 +19,7 @@
  */
 package org.neo4j.index.base;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,6 +32,11 @@ import javax.transaction.xa.XAException;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.index.base.IndexCommand.AddCommand;
+import org.neo4j.index.base.IndexCommand.AddRelationshipCommand;
+import org.neo4j.index.base.IndexCommand.CreateCommand;
+import org.neo4j.index.base.IndexCommand.DeleteCommand;
+import org.neo4j.index.base.IndexCommand.RemoveCommand;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
@@ -282,9 +288,79 @@ public abstract class IndexTransaction extends XaTransaction
     @Override
     protected void doRollback()
     {
-        // TODO Auto-generated method stub
         commandMap.clear();
         closeTxData();
+    }
+    
+    protected abstract CommitContext newCommitContext( IndexIdentifier identifier );
+    
+    @Override
+    protected void doCommit() throws XAException
+    {
+        IndexDefininitionsCommand def = getDefinitions( false );
+        dataSource.getWriteLock();
+        try
+        {
+            for ( Map.Entry<IndexIdentifier, Collection<IndexCommand>> entry : getCommands().entrySet() )
+            {
+                if ( entry.getValue().isEmpty() ) continue;
+                IndexIdentifier identifier = entry.getKey();
+                IndexCommand firstCommand = entry.getValue().iterator().next();
+                if ( firstCommand instanceof CreateCommand )
+                {
+                    dataSource.createIndex( identifier, ((CreateCommand) firstCommand).getConfig() );
+                    continue;
+                }
+                else if ( firstCommand instanceof DeleteCommand )
+                {
+                    dataSource.deleteIndex( identifier, isRecovered() );
+                    continue;
+                }
+                
+                CommitContext context = newCommitContext( identifier );
+                try
+                {
+                    for ( IndexCommand command : entry.getValue() )
+                    {
+                        if ( command instanceof AddCommand || command instanceof AddRelationshipCommand )
+                        {
+                            context.add( command.getEntityId(), def.getKey( command.getKeyId() ), command.getValue() );
+                        }
+                        else if ( command instanceof RemoveCommand )
+                        {
+                            String key = def.getKey( command.getKeyId() );
+                            Object value = command.getValue();
+                            if ( key == null )
+                                context.remove( command.getEntityId() );
+                            else if ( value == null )
+                                context.remove( command.getEntityId(), key );
+                            else
+                                context.remove( command.getEntityId(), key, value );
+                        }
+                        else
+                        {
+                            throw new IllegalArgumentException( command + ", " + command.getClass().getName() );
+                        }
+                    }
+                }
+                finally
+                {
+                    if ( context != null )
+                        context.close();
+                }
+            }
+
+            dataSource.setLastCommittedTxId( getCommitTxId() );
+            closeTxData();
+        }
+        catch ( IOException e )
+        {
+            throw new RuntimeException( e );
+        }
+        finally
+        {
+            dataSource.releaseWriteLock();
+        }
     }
 
     @Override
@@ -318,10 +394,8 @@ public abstract class IndexTransaction extends XaTransaction
     {
         private TxData add;
         private TxData remove;
-        @SuppressWarnings("unchecked")
         private final AbstractIndex index;
         
-        @SuppressWarnings("unchecked")
         public TxDataBoth( AbstractIndex index )
         {
             this.index = index;

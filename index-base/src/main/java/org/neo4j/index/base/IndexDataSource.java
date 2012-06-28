@@ -71,6 +71,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     final IndexStore indexStore;
     final IndexProviderStore store;
     private boolean closed;
+    private final long version;
 
     /**
      * Constructs this data source.
@@ -80,49 +81,42 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
      * instantiated
      */
     public IndexDataSource( byte[] branchId, String dataSourceName, Config config, IndexStore indexStore,
-            FileSystemAbstraction fileSystem, XaFactory xaFactory ) 
+            FileSystemAbstraction fileSystem, XaFactory xaFactory, long version ) 
     {
         super( branchId, dataSourceName );
-        try
+        this.version = version;
+        String indexDirName = config.isSet( Configuration.index_dir_name ) ? config.get( Configuration.index_dir_name ) : dataSourceName;
+        String dbStoreDir = config.get( Configuration.store_dir );
+        this.storeDir = getIndexStoreDir( dbStoreDir, indexDirName );
+        this.indexStore = indexStore;
+        ensureDirectoryCreated( this.storeDir );
+        boolean allowUpgrade = config.getBoolean( GraphDatabaseSettings.allow_store_upgrade );
+        String providerDb = config.get( Configuration.index_provider_db );
+        this.store = new IndexProviderStore( new File( providerDb != null ? providerDb : getProviderStoreDb( dbStoreDir, dataSourceName ) ),
+                fileSystem, getVersion(), allowUpgrade );
+        boolean isReadOnly = config.getBoolean( Configuration.read_only );
+        initializeBeforeLogicalLog( config );
+        
+        if ( !isReadOnly )
         {
-            String indexDirName = config.isSet( Configuration.index_dir_name ) ? config.get( Configuration.index_dir_name ) : dataSourceName;
-            String dbStoreDir = config.get( Configuration.store_dir );
-            this.storeDir = getIndexStoreDir( dbStoreDir, indexDirName );
-            this.indexStore = indexStore;
-            ensureDirectoryCreated( this.storeDir );
-            boolean allowUpgrade = config.getBoolean( GraphDatabaseSettings.allow_store_upgrade );
-            String providerDb = config.get( Configuration.index_provider_db );
-            this.store = new IndexProviderStore( new File( providerDb != null ? providerDb : getProviderStoreDb( dbStoreDir, dataSourceName ) ),
-                    fileSystem, getVersion(), allowUpgrade );
-            boolean isReadOnly = config.getBoolean( Configuration.read_only );
-            initializeBeforeLogicalLog( config );
+            XaCommandFactory cf = new IndexCommandFactory();
+            XaTransactionFactory tf = new IndexTransactionFactory();
+            String logicalLog = config.get( Configuration.index_logical_log );
+            xaContainer = xaFactory.newXaContainer( this, logicalLog != null ? logicalLog : storeDir + "/logical.log", cf, tf, null, null );
+            try
+            {
+                xaContainer.openLogicalLog();
+            }
+            catch ( IOException e )
+            {
+                throw new RuntimeException( "Unable to open logical log in " + this.storeDir, e );
+            }
             
-            if ( !isReadOnly )
-            {
-                XaCommandFactory cf = new IndexCommandFactory();
-                XaTransactionFactory tf = new IndexTransactionFactory();
-                String logicalLog = config.get( Configuration.index_logical_log );
-                xaContainer = xaFactory.newXaContainer( this, logicalLog != null ? logicalLog : storeDir + "/logical.log", cf, tf, null, null );
-                try
-                {
-                    xaContainer.openLogicalLog();
-                }
-                catch ( IOException e )
-                {
-                    throw new RuntimeException( "Unable to open logical log in " + this.storeDir, e );
-                }
-                
-                setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
-            }
-            else
-            {
-                xaContainer = null;
-            }
+            setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
         }
-        catch ( Throwable e )
+        else
         {
-            e.printStackTrace();
-            throw new RuntimeException( e );
+            xaContainer = null;
         }
     }
     
@@ -130,7 +124,10 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     {
     }
     
-    protected abstract long getVersion();
+    protected long getVersion()
+    {
+        return version;
+    }
 
     protected String getStoreDir()
     {
@@ -327,6 +324,8 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     {
         return new File( getIndexDirectory( identifier.getEntityType() ), identifier.getIndexName() );
     }
+    
+    public abstract void createIndex( IndexIdentifier identifier, Map<String, String> config );
     
     public abstract void deleteIndex( IndexIdentifier identifier, boolean recovered );
 

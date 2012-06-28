@@ -147,7 +147,7 @@ public class LuceneDataSource extends IndexDataSource
     public LuceneDataSource( Config config, IndexStore indexStore, FileSystemAbstraction fileSystemAbstraction,
             XaFactory xaFactory )
     {
-        super( BRANCH_ID, DATA_SOURCE_NAME, config, indexStore, fileSystemAbstraction, xaFactory );
+        super( BRANCH_ID, DATA_SOURCE_NAME, config, indexStore, fileSystemAbstraction, xaFactory, INDEX_VERSION );
     }
     
     @Override
@@ -158,11 +158,6 @@ public class LuceneDataSource extends IndexDataSource
         cleanWriteLocks( getStoreDir() );
         this.typeCache = new IndexTypeCache( getIndexStore() );
         this.directoryGetter = config.get( Configuration.ephemeral ) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
-    }
-    
-    protected long getVersion()
-    {
-        return INDEX_VERSION;
     }
 
     IndexType getType( IndexIdentifier identifier )
@@ -379,6 +374,12 @@ public class LuceneDataSource extends IndexDataSource
         IndexReference searcher = indexSearchers.get( identifier );
         if ( searcher != null )
             searcher.setStale();
+    }
+    
+    @Override
+    public void createIndex( IndexIdentifier identifier, Map<String, String> config )
+    {
+        getIndexStore().setIfNecessary( identifier.getEntityType().getType(), identifier.getIndexName(), config );
     }
 
     @Override

@@ -19,9 +19,6 @@
  */
 package org.neo4j.index.impl.lucene;
 
-import static org.neo4j.index.base.EntityType.entityType;
-
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -30,18 +27,14 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.index.base.AbstractIndex;
+import org.neo4j.index.base.CommitContext;
 import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.IndexCommand;
-import org.neo4j.index.base.IndexCommand.AddCommand;
-import org.neo4j.index.base.IndexCommand.AddRelationshipCommand;
-import org.neo4j.index.base.IndexCommand.CreateCommand;
 import org.neo4j.index.base.IndexCommand.DeleteCommand;
-import org.neo4j.index.base.IndexCommand.RemoveCommand;
 import org.neo4j.index.base.IndexDefininitionsCommand;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.index.base.IndexTransaction;
 import org.neo4j.index.base.TxData;
-import org.neo4j.index.impl.lucene.CommitContext.DocumentContext;
 import org.neo4j.index.lucene.QueryContext;
 import org.neo4j.index.lucene.ValueContext;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
@@ -99,84 +92,12 @@ class LuceneTransaction extends IndexTransaction
         Collection<EntityId> ids = added.query( query, contextOrNull );
         return ids != null ? ids : Collections.<EntityId>emptySet();
     }
-
+    
     @Override
-    protected void doCommit()
+    protected CommitContext newCommitContext( IndexIdentifier identifier )
     {
         LuceneDataSource dataSource = (LuceneDataSource) getDataSource();
-        IndexDefininitionsCommand def = getDefinitions( false );
-        dataSource.getWriteLock();
-        try
-        {
-            for ( Map.Entry<IndexIdentifier, Collection<IndexCommand>> entry : getCommands().entrySet() )
-            {
-                if ( entry.getValue().isEmpty() ) continue;
-                IndexIdentifier identifier = entry.getKey();
-                IndexCommand firstCommand = entry.getValue().iterator().next();
-                if ( firstCommand instanceof CreateCommand )
-                {
-                    CreateCommand createCommand = (CreateCommand) firstCommand;
-                    dataSource.getIndexStore().setIfNecessary( entityType( createCommand.getEntityType() ).getType(),
-                            def.getIndexName( createCommand.getIndexNameId() ), createCommand.getConfig() );
-                    continue;
-                }
-                else if ( firstCommand instanceof DeleteCommand )
-                {
-                    dataSource.deleteIndex( identifier, isRecovered() );
-                    continue;
-                }
-                
-                IndexType type = dataSource.getType( identifier );
-                CommitContext context = new CommitContext( dataSource, identifier, type, isRecovered() );
-                try
-                {
-                    for ( IndexCommand command : entry.getValue() )
-                    {
-                        if ( command instanceof AddCommand || command instanceof AddRelationshipCommand )
-                        {
-                            context.ensureWriterInstantiated();
-                            String key = def.getKey( command.getKeyId() );
-                            context.indexType.addToDocument( context.getDocument( command.getEntityId(), true ).document, key, command.getValue() );
-                        }
-                        else if ( command instanceof RemoveCommand )
-                        {
-                            context.ensureWriterInstantiated();
-                            DocumentContext document = context.getDocument( command.getEntityId(), false );
-                            if ( document != null )
-                            {
-                                String key = def.getKey( command.getKeyId() );
-                                context.indexType.removeFromDocument( document.document, key, command.getValue() );
-                            }
-                        }
-                        else if ( command instanceof DeleteCommand )
-                        {
-                            context.documents.clear();
-                            context.dataSource.deleteIndex( context.identifier, isRecovered() );
-                        }
-                        else
-                        {
-                            throw new IllegalArgumentException( command + ", " + command.getClass().getName() );
-                        }
-                    }
-                }
-                finally
-                {
-                    if ( context != null )
-                        context.close();
-                }
-            }
-
-            dataSource.setLastCommittedTxId( getCommitTxId() );
-            closeTxData();
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
-        }
-        finally
-        {
-            dataSource.releaseWriteLock();
-        }
+        return new LuceneCommitContext( dataSource, identifier, dataSource.getType( identifier ), isRecovered() );
     }
 
     // This is all for the abandoned ids
