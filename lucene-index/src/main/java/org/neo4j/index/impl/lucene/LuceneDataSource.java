@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +56,6 @@ import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
@@ -134,8 +132,6 @@ public class LuceneDataSource extends IndexDataSource
     private IndexClockCache indexSearchers;
     private IndexTypeCache typeCache;
 //    private Cache caching;
-    Map<IndexIdentifier, LuceneIndex<? extends PropertyContainer>> indexes =
-            new HashMap<IndexIdentifier, LuceneIndex<? extends PropertyContainer>>();
     private DirectoryGetter directoryGetter;
 
     /**
@@ -154,7 +150,6 @@ public class LuceneDataSource extends IndexDataSource
     protected void initializeBeforeLogicalLog( Config config )
     {
         indexSearchers = new IndexClockCache( config.get( Configuration.lucene_searcher_cache_size ) );
-        indexes = new HashMap<IndexIdentifier, LuceneIndex<? extends PropertyContainer>>();
         cleanWriteLocks( getStoreDir() );
         this.typeCache = new IndexTypeCache( getIndexStore() );
         this.directoryGetter = config.get( Configuration.ephemeral ) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
@@ -171,7 +166,7 @@ public class LuceneDataSource extends IndexDataSource
     }
 
     @Override
-    protected void actualClose()
+    protected void doClose()
     {
         for ( IndexReference searcher : indexSearchers.values() )
         {
@@ -185,36 +180,6 @@ public class LuceneDataSource extends IndexDataSource
             }
         }
         indexSearchers.clear();
-    }
-
-    public Index<Node> nodeIndex( String indexName, GraphDatabaseService graphDb, AbstractIndexImplementation<LuceneDataSource> luceneIndexImplementation )
-    {
-        IndexIdentifier identifier = new IndexIdentifier( EntityType.NODE, indexName );
-        synchronized ( indexes )
-        {
-            LuceneIndex index = indexes.get( identifier );
-            if ( index == null )
-            {
-                index = new LuceneIndex.NodeIndex( luceneIndexImplementation, graphDb, identifier );
-                indexes.put( identifier, index );
-            }
-            return index;
-        }
-    }
-
-    public RelationshipIndex relationshipIndex( String indexName, GraphDatabaseService gdb, AbstractIndexImplementation<LuceneDataSource> luceneIndexImplementation )
-    {
-        IndexIdentifier identifier = new IndexIdentifier( EntityType.RELATIONSHIP, indexName );
-        synchronized ( indexes )
-        {
-            LuceneIndex index = indexes.get( identifier );
-            if ( index == null )
-            {
-                index = new LuceneIndex.RelationshipIndex( luceneIndexImplementation, gdb, identifier );
-                indexes.put( identifier, index );
-            }
-            return (RelationshipIndex) index;
-        }
     }
 
     @Override
@@ -355,7 +320,7 @@ public class LuceneDataSource extends IndexDataSource
     {
         return new LuceneTransaction( identifier, logicalLog, this );
     }
-            
+    
     private IndexReference refreshSearcherIfNeeded( IndexReference searcher )
     {
         if ( searcher.checkAndClearStale() )
@@ -377,32 +342,16 @@ public class LuceneDataSource extends IndexDataSource
     }
     
     @Override
-    public void createIndex( IndexIdentifier identifier, Map<String, String> config )
+    protected void doCreateIndex( IndexIdentifier identifier, Map<String, String> config )
     {
-        getIndexStore().setIfNecessary( identifier.getEntityType().getType(), identifier.getIndexName(), config );
     }
-
+    
     @Override
-    public void deleteIndex( IndexIdentifier identifier, boolean recovery )
+    protected void doDeleteIndex( IndexIdentifier identifier, boolean recovered )
     {
         closeIndex( identifier );
         deleteFileOrDirectory( getFileDirectory( getStoreDir(), identifier ) );
-//        invalidateCache( identifier );
-        boolean removeFromIndexStore = !recovery || (recovery &&
-                getIndexStore().has( identifier.getEntityType().getType(), identifier.getIndexName() ));
-        if ( removeFromIndexStore )
-        {
-            getIndexStore().remove( identifier.getEntityType().getType(), identifier.getIndexName() );
-        }
         typeCache.invalidate( identifier );
-        synchronized ( indexes )
-        {
-            LuceneIndex<? extends PropertyContainer> index = indexes.remove( identifier );
-            if ( index != null )
-            {
-                index.markAsDeleted();
-            }
-        }
     }
 
     private static void deleteFileOrDirectory( File file )
@@ -418,6 +367,21 @@ public class LuceneDataSource extends IndexDataSource
             }
             file.delete();
         }
+    }
+    
+    @Override
+    protected Index<Node> instantiateNodeIndex( AbstractIndexImplementation<? extends IndexDataSource> implementation,
+            GraphDatabaseService graphDb, IndexIdentifier identifier )
+    {
+        return new LuceneIndex.NodeIndex( (AbstractIndexImplementation)implementation, graphDb, identifier );
+    }
+    
+    @Override
+    protected RelationshipIndex instantiateRelationshipIndex(
+            AbstractIndexImplementation<? extends IndexDataSource> implementation, GraphDatabaseService graphDb,
+            IndexIdentifier identifier )
+    {
+        return new LuceneIndex.RelationshipIndex( (AbstractIndexImplementation)implementation, graphDb, identifier );
     }
 
     private /*synchronized elsewhere*/ IndexWriter newIndexWriter( IndexIdentifier identifier )

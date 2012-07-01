@@ -32,6 +32,7 @@ import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexProvider;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseAPI;
+import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
@@ -80,6 +81,9 @@ public abstract class AbstractIndexProvider extends IndexProvider
     protected abstract IndexDataSource newDataSource( Map<String, String> params, IndexStore indexStore,
             FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory );
     
-    protected abstract AbstractIndexImplementation newIndexImplementation( GraphDatabaseAPI db,
-            IndexDataSource dataSource, Map<String, String> params );
+    protected AbstractIndexImplementation newIndexImplementation( GraphDatabaseAPI db,
+            IndexDataSource dataSource, Map<String, String> params )
+    {
+        return new AbstractIndexImplementation<IndexDataSource>( db, new Config( params ), dataSource );
+    }
 }

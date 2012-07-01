@@ -21,6 +21,11 @@ package org.neo4j.index.base.example;
 
 import java.util.Map;
 
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.index.Index;
+import org.neo4j.graphdb.index.RelationshipIndex;
+import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.index.base.IndexDataSource;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.configuration.Config;
@@ -32,44 +37,55 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 
 public class ExampleIndexDataSource extends IndexDataSource
 {
-    public ExampleIndexDataSource( byte[] branchId, String dataSourceName, Config config, IndexStore indexStore,
+    public static final String DATA_SOURCE_NAME = "example";
+    public static final byte[] BRANCH_ID = "example".getBytes();
+    
+    public ExampleIndexDataSource( Config config, IndexStore indexStore,
             FileSystemAbstraction fileSystem, XaFactory xaFactory )
     {
-        super( branchId, dataSourceName, config, indexStore, fileSystem, xaFactory, 1 );
+        super( BRANCH_ID, DATA_SOURCE_NAME, config, indexStore, fileSystem, xaFactory, 1 );
     }
 
     @Override
-    protected void actualClose()
+    protected void doClose()
     {
-        // TODO Auto-generated method stub
-        
     }
 
     @Override
     protected void flushAll()
     {
-        // TODO Auto-generated method stub
-        
     }
 
     @Override
     protected XaTransaction createTransaction( int identifier, XaLogicalLog logicalLog )
+    {
+        return new ExampleIndexTransaction( identifier, logicalLog, this );
+    }
+    
+    @Override
+    protected void doCreateIndex( IndexIdentifier identifier, Map<String, String> config )
+    {
+    }
+    
+    @Override
+    protected void doDeleteIndex( IndexIdentifier identifier, boolean recovered )
+    {
+    }
+
+    @Override
+    protected Index<Node> instantiateNodeIndex( AbstractIndexImplementation<? extends IndexDataSource> implementation,
+            GraphDatabaseService graphDb, IndexIdentifier identifier )
     {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public void deleteIndex( IndexIdentifier identifier, boolean recovered )
+    protected RelationshipIndex instantiateRelationshipIndex(
+            AbstractIndexImplementation<? extends IndexDataSource> implementation, GraphDatabaseService graphDb,
+            IndexIdentifier identifier )
     {
         // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void createIndex( IndexIdentifier identifier, Map<String, String> config )
-    {
-        // TODO Auto-generated method stub
-        
+        return null;
     }
 }

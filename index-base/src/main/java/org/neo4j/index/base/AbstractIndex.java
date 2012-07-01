@@ -19,11 +19,20 @@
  */
 package org.neo4j.index.base;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.Index;
+import org.neo4j.graphdb.index.IndexHits;
+import org.neo4j.helpers.collection.CatchingIteratorWrapper;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.util.IoPrimitiveUtils;
 
@@ -147,6 +156,53 @@ public abstract class AbstractIndex<T extends PropertyContainer> implements Inde
         }
     }
     
+    @Override
+    public void remove( T entity, String key )
+    {
+        throw new UnsupportedOperationException();
+    }
+    
+    @Override
+    public void remove( T entity )
+    {
+        throw new UnsupportedOperationException();
+    }
+    
+    protected IndexHits<T> read( String key, Object value, ReadCallback callback )
+    {
+        IndexBaseXaConnection connection = getReadOnlyConnection();
+        IndexTransaction tx = connection != null ? connection.getTx() : null;
+        Collection<EntityId> added = tx != null ? tx.getAddedIds( this, key, value ) :
+                Collections.<EntityId>emptyList();
+        Collection<EntityId> removed = tx != null ? tx.getRemovedIds( this, key, value ) :
+                Collections.<EntityId>emptyList();
+        List<EntityId> ids = new ArrayList<EntityId>( added );
+        getProvider().dataSource().getReadLock();
+        try
+        {
+            callback.read( key, value, ids, removed );
+        }
+        finally
+        {
+            getProvider().dataSource().releaseReadLock();
+        }
+        Iterator<T> entities = new CatchingIteratorWrapper<T, EntityId>( ids.iterator() )
+        {
+            @Override
+            protected boolean exceptionOk( Throwable t )
+            {
+                return t instanceof NotFoundException;
+            }
+
+            @Override
+            protected T underlyingObjectToObject( EntityId id )
+            {
+                return idToEntity( id );
+            }
+        };
+        return new IndexHitsImpl<T>( entities, ids.size() );
+    }
+    
     public void delete()
     {
         getConnection().deleteIndex( this );
@@ -174,5 +230,23 @@ public abstract class AbstractIndex<T extends PropertyContainer> implements Inde
     private void assertValueNotNull( Object value )
     {
         if ( value == null ) throw new IllegalArgumentException( "Value can't be null" );
+    }
+    
+    @Override
+    public boolean isWriteable()
+    {
+        return true;
+    }
+    
+    @Override
+    public IndexHits<T> query( String key, Object queryOrQueryObject )
+    {
+        throw new UnsupportedOperationException();
+    }
+    
+    @Override
+    public IndexHits<T> query( Object queryOrQueryObject )
+    {
+        throw new UnsupportedOperationException();
     }
 }

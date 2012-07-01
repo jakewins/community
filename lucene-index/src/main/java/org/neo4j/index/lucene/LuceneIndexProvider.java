@@ -72,22 +72,6 @@ public class LuceneIndexProvider extends AbstractIndexProvider
                 "index_provider_db", new File( new File( storeDir, "index" ), "lucene-store.db" ).getAbsolutePath(),
                 "index_dir_name", "lucene" );
     }
-//=======
-//        Config config = dependencyResolver.resolveDependency(Config.class);
-//        AbstractGraphDatabase gdb = dependencyResolver.resolveDependency(AbstractGraphDatabase.class);
-//        TransactionManager txManager = dependencyResolver.resolveDependency(TransactionManager.class);
-//        IndexStore indexStore = dependencyResolver.resolveDependency(IndexStore.class);
-//        XaFactory xaFactory = dependencyResolver.resolveDependency(XaFactory.class);
-//        FileSystemAbstraction fileSystemAbstraction = dependencyResolver.resolveDependency(FileSystemAbstraction.class);
-//        XaDataSourceManager xaDataSourceManager = dependencyResolver.resolveDependency( XaDataSourceManager.class );
-//
-//        LuceneDataSource luceneDataSource = new LuceneDataSource(config, indexStore, fileSystemAbstraction, xaFactory);
-//
-//        xaDataSourceManager.registerDataSource(luceneDataSource);
-//
-//        IndexConnectionBroker<LuceneXaConnection> broker = config.getBoolean( Configuration.read_only ) ? new ReadOnlyIndexConnectionBroker<LuceneXaConnection>( txManager )
-//                : new ConnectionBroker( txManager, luceneDataSource );
-//>>>>>>> master
 
     @Override
     protected AbstractIndexImplementation newIndexImplementation( GraphDatabaseAPI db,
@@ -95,5 +79,4 @@ public class LuceneIndexProvider extends AbstractIndexProvider
     {
         return new LuceneIndexImplementation( db, new Config( params ), (LuceneDataSource)dataSource );
     }
-
 }

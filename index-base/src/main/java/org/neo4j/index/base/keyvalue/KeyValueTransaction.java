@@ -53,7 +53,7 @@ public abstract class KeyValueTransaction extends IndexTransaction
     public <T extends PropertyContainer> void add( AbstractIndex<T> index, T entity, String key,
             Object value )
     {
-        TxDataBoth data = getTxData( index, true );
+        TransactionChangeSet data = getTxData( index, true );
         insert( index, entity, key, value, data.added( true ), data.removed( false ) );
 
         IndexCommand command = getDefinitions( true ).add( index.getName(), index.getEntityTypeEnum(),
@@ -65,7 +65,7 @@ public abstract class KeyValueTransaction extends IndexTransaction
     public <T extends PropertyContainer> void remove( AbstractIndex<T> index, T entity,
             String key, Object value )
     {
-        TxDataBoth data = getTxData( index, true );
+        TransactionChangeSet data = getTxData( index, true );
         insert( index, entity, key, value, data.removed( true ), data.added( false ) );
         IndexCommand command = getDefinitions( true ).remove( index.getName(),
                 index.getEntityTypeEnum(), getEntityId( entity ), key, valueAsString( value ) );
@@ -124,7 +124,7 @@ public abstract class KeyValueTransaction extends IndexTransaction
                     continue;
                 }
 
-                TxDataBoth data = getTxData( identifier );
+                TransactionChangeSet data = getTxData( identifier );
                 KeyValueTxData added = (KeyValueTxData) data.added( false );
                 if ( added != null )
                 {

@@ -27,14 +27,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.BooleanSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.StringSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexProvider;
+import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
@@ -72,6 +77,8 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     final IndexProviderStore store;
     private boolean closed;
     private final long version;
+    private Map<IndexIdentifier, Index<? extends PropertyContainer>> indexes =
+            new ConcurrentHashMap<IndexIdentifier, Index<? extends PropertyContainer>>();
 
     /**
      * Constructs this data source.
@@ -173,6 +180,57 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         return dir.getAbsolutePath();
     }
     
+    public Index<Node> nodeIndex( String indexName, GraphDatabaseService graphDb, AbstractIndexImplementation<? extends IndexDataSource> abstractIndexImplementation )
+    {
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.NODE, indexName );
+        Index index = indexes.get( identifier );
+        if ( index != null )
+            return index;
+        
+        synchronized ( indexes )
+        {
+            index = indexes.get( identifier );
+            if ( index != null )
+                return index;
+            
+            index = instantiateNodeIndex( abstractIndexImplementation, graphDb, identifier );
+            indexes.put( identifier, index );
+            return index;
+        }
+    }
+
+    public RelationshipIndex relationshipIndex( String indexName, GraphDatabaseService graphDb, AbstractIndexImplementation<? extends IndexDataSource> implementation )
+    {
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.RELATIONSHIP, indexName );
+        RelationshipIndex index = (RelationshipIndex) indexes.get( identifier );
+        if ( index != null )
+            return index;
+        
+        synchronized ( indexes )
+        {
+            index = (RelationshipIndex) indexes.get( identifier );
+            if ( index != null )
+                return index;
+            
+            index = instantiateRelationshipIndex( implementation, graphDb, identifier );
+            indexes.put( identifier, index );
+            return index;
+        }
+    }
+    
+    protected abstract Index<Node> instantiateNodeIndex( AbstractIndexImplementation<? extends IndexDataSource> implementation,
+            GraphDatabaseService graphDb, IndexIdentifier identifier );
+
+    protected abstract RelationshipIndex instantiateRelationshipIndex( AbstractIndexImplementation<? extends IndexDataSource> implementation,
+            GraphDatabaseService graphDb, IndexIdentifier identifier );
+    
+    private void markIndexAsDeleted( IndexIdentifier identifier )
+    {
+        Index<? extends PropertyContainer> index = indexes.remove( identifier );
+        if ( index != null )
+            ((AbstractIndex)index).markAsDeleted();
+    }
+    
     @Override
     public final void close()
     {
@@ -184,7 +242,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         {
             xaContainer.close();
             store.close();
-            actualClose();
+            doClose();
             closed = true;
         }
     }
@@ -194,7 +252,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         return closed;
     }
 
-    protected abstract void actualClose();
+    protected abstract void doClose();
 
     @Override
     public XaConnection getXaConnection()
@@ -325,9 +383,25 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         return new File( getIndexDirectory( identifier.getEntityType() ), identifier.getIndexName() );
     }
     
-    public abstract void createIndex( IndexIdentifier identifier, Map<String, String> config );
+    public void createIndex( IndexIdentifier identifier, Map<String, String> config )
+    {
+        getIndexStore().setIfNecessary( identifier.getEntityType().getType(), identifier.getIndexName(), config );
+        doCreateIndex( identifier, config );
+    }
     
-    public abstract void deleteIndex( IndexIdentifier identifier, boolean recovered );
+    protected abstract void doCreateIndex( IndexIdentifier identifier, Map<String, String> config );
+
+    public void deleteIndex( IndexIdentifier identifier, boolean recovered )
+    {
+        boolean removeFromIndexStore = !recovered || (recovered &&
+                getIndexStore().has( identifier.getEntityType().getType(), identifier.getIndexName() ));
+        if ( removeFromIndexStore )
+            getIndexStore().remove( identifier.getEntityType().getType(), identifier.getIndexName() );
+        markIndexAsDeleted( identifier );
+        doDeleteIndex( identifier, recovered );
+    }
+
+    protected abstract void doDeleteIndex( IndexIdentifier identifier, boolean recovered );
 
     protected void assertNotClosed()
     {

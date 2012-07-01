@@ -19,22 +19,26 @@
  */
 package org.neo4j.index.base.example;
 
-import org.neo4j.graphdb.DependencyResolver;
-import org.neo4j.graphdb.index.IndexImplementation;
-import org.neo4j.graphdb.index.IndexProvider;
+import java.util.Map;
 
-public class ExampleIndexProvider extends IndexProvider
+import org.neo4j.index.base.AbstractIndexProvider;
+import org.neo4j.index.base.IndexDataSource;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.impl.index.IndexStore;
+import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
+
+public class ExampleIndexProvider extends AbstractIndexProvider
 {
-    public ExampleIndexProvider( String identifier )
+    public ExampleIndexProvider()
     {
-        super( identifier );
-        // TODO Auto-generated constructor stub
+        super( ExampleIndexDataSource.DATA_SOURCE_NAME );
     }
 
     @Override
-    public IndexImplementation load( DependencyResolver dependencyResolver ) throws Exception
+    protected IndexDataSource newDataSource( Map<String, String> params, IndexStore indexStore,
+            FileSystemAbstraction fileSystemAbstraction, XaFactory xaFactory )
     {
-        // TODO Auto-generated method stub
-        return null;
+        return new ExampleIndexDataSource( new Config( params ), indexStore, fileSystemAbstraction, xaFactory );
     }
 }

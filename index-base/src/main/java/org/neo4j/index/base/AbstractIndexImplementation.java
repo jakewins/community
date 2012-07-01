@@ -20,14 +20,18 @@
 package org.neo4j.index.base;
 
 import java.io.File;
+import java.util.Map;
 
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexImplementation;
+import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.configuration.Config;
 
-public abstract class AbstractIndexImplementation<DS extends IndexDataSource> implements IndexImplementation
+public class AbstractIndexImplementation<DS extends IndexDataSource> implements IndexImplementation
 {
     public interface Configuration
     {
@@ -39,7 +43,7 @@ public abstract class AbstractIndexImplementation<DS extends IndexDataSource> im
     private DS dataSource;
     private final Config config;
     
-    protected AbstractIndexImplementation( GraphDatabaseAPI db, Config config, DS dataSource )
+    public AbstractIndexImplementation( GraphDatabaseAPI db, Config config, DS dataSource )
     {
         this.graphDb = db;
         this.dataSource = dataSource;
@@ -49,7 +53,7 @@ public abstract class AbstractIndexImplementation<DS extends IndexDataSource> im
 
     private IndexConnectionBroker<IndexBaseXaConnection> newBroker( GraphDatabaseAPI db, DS dataSource )
     {
-        return config.getBoolean( GraphDatabaseSettings.read_only ) ?
+        return config.get( GraphDatabaseSettings.read_only ) ?
                 new ReadOnlyConnectionBroker<IndexBaseXaConnection>( db.getTxManager() ) :
                 new ConnectionBroker( db.getTxManager(), dataSource );
     }
@@ -94,5 +98,53 @@ public abstract class AbstractIndexImplementation<DS extends IndexDataSource> im
     public String getDataSourceName()
     {
         return dataSource.getName();
+    }
+
+    @Override
+    public Index<Node> nodeIndex( String indexName, Map<String, String> config )
+    {
+        return dataSource().nodeIndex( indexName, graphDb(), this );
+    }
+
+    @Override
+    public RelationshipIndex relationshipIndex( String indexName, Map<String, String> config )
+    {
+        return dataSource().relationshipIndex( indexName, graphDb(), this );
+    }
+    
+    protected boolean matchConfig( Map<String, String> storedConfig, Map<String, String> config, String key, String defaultValue )
+    {
+        String value1 = storedConfig.get( key );
+        String value2 = config.get( key );
+        if ( value1 == null || value2 == null )
+        {
+            if ( value1 == value2 )
+            {
+                return true;
+            }
+            if ( defaultValue != null )
+            {
+                value1 = value1 != null ? value1 : defaultValue;
+                value2 = value2 != null ? value2 : defaultValue;
+                return value1.equals( value2 );
+            }
+        }
+        else
+        {
+            return value1.equals( value2 );
+        }
+        return false;
+    }
+    
+    @Override
+    public Map<String, String> fillInDefaults( Map<String, String> config )
+    {
+        return config;
+    }
+    
+    @Override
+    public boolean configMatches( Map<String, String> storedConfig, Map<String, String> config )
+    {
+        return storedConfig.equals( config );
     }
 }

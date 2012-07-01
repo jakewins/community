@@ -124,7 +124,7 @@ class LuceneTransaction extends IndexTransaction
     private void addAbandonedEntitiesToTheTx()
     {
         IndexDefininitionsCommand def = getDefinitions( true );
-        for ( Map.Entry<IndexIdentifier, TxDataBoth> entry : txData.entrySet() )
+        for ( Map.Entry<IndexIdentifier, TransactionChangeSet> entry : txData.entrySet() )
         {
             Collection<Long> abandonedIds = ((LuceneIndex)entry.getValue().getIndex()).abandonedIds;
             if ( !abandonedIds.isEmpty() )

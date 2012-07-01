@@ -43,8 +43,8 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 
 public abstract class IndexTransaction extends XaTransaction
 {
-    protected final Map<IndexIdentifier, TxDataBoth> txData =
-            new HashMap<IndexIdentifier, TxDataBoth>();
+    protected final Map<IndexIdentifier, TransactionChangeSet> txData =
+            new HashMap<IndexIdentifier, TransactionChangeSet>();
     
     private IndexDefininitionsCommand definitions;
     protected final Map<IndexIdentifier,Collection<IndexCommand>> commandMap = 
@@ -60,7 +60,7 @@ public abstract class IndexTransaction extends XaTransaction
     protected <T extends PropertyContainer> void add( AbstractIndex<T> index, T entity,
             String key, Object value )
     {
-        TxDataBoth data = getTxData( index, true );
+        TransactionChangeSet data = getTxData( index, true );
         insert( index, entity, key, value, data.added( true ), data.removed( false ) );
         queueCommand( index.getIdentifier(), getDefinitions( true ).add( index.getName(), index.getEntityTypeEnum(),
                 getEntityId( entity ), key, value ) );
@@ -69,7 +69,7 @@ public abstract class IndexTransaction extends XaTransaction
     protected <T extends PropertyContainer> void remove( AbstractIndex<T> index, T entity,
             String key, Object value )
     {
-        TxDataBoth data = getTxData( index, true );
+        TransactionChangeSet data = getTxData( index, true );
         insert( index, entity, key, value, data.removed( true ), data.added( false ) );
         queueCommand( index.getIdentifier(), getDefinitions( true ).remove( index.getName(), index.getEntityTypeEnum(),
                 getEntityId( entity ), key, value ) );
@@ -84,7 +84,7 @@ public abstract class IndexTransaction extends XaTransaction
     
     protected <T extends PropertyContainer> void deleteIndex( AbstractIndex<T> index )
     {
-        txData.put( index.getIdentifier(), new DeletedTxDataBoth( index ) );
+        txData.put( index.getIdentifier(), new DeletedTxData( index ) );
         queueCommand( index.getIdentifier(), getDefinitions( true ).delete( index.getName(), index.getEntityTypeEnum() ) );
     }
     
@@ -99,7 +99,7 @@ public abstract class IndexTransaction extends XaTransaction
                 EntityId.entityId( (Relationship) entity );
     }
     
-    protected Map<IndexIdentifier, TxDataBoth> getTxData()
+    protected Map<IndexIdentifier, TransactionChangeSet> getTxData()
     {
         return this.txData;
     }
@@ -109,19 +109,19 @@ public abstract class IndexTransaction extends XaTransaction
         return this.commandMap;
     }
     
-    protected <T extends PropertyContainer> TxDataBoth getTxData( IndexIdentifier identifier )
+    protected <T extends PropertyContainer> TransactionChangeSet getTxData( IndexIdentifier identifier )
     {
         return txData.get( identifier );
     }
     
-    protected <T extends PropertyContainer> TxDataBoth getTxData( AbstractIndex<T> index,
+    protected <T extends PropertyContainer> TransactionChangeSet getTxData( AbstractIndex<T> index,
             boolean createIfNotExists )
     {
         IndexIdentifier identifier = index.getIdentifier();
-        TxDataBoth data = txData.get( identifier );
+        TransactionChangeSet data = txData.get( identifier );
         if ( data == null && createIfNotExists )
         {
-            data = new TxDataBoth( index );
+            data = new TransactionChangeSet( index );
             txData.put( identifier, data );
         }
         return data;
@@ -184,7 +184,8 @@ public abstract class IndexTransaction extends XaTransaction
             String key, Object value )
     {
         TxData removed = removedTxDataOrNull( index );
-        if ( removed == null ) return Collections.emptySet();
+        if ( removed == null )
+            return Collections.emptySet();
         return merge( removed.get( key, value ), removed.getOrphans( key ) );
     }
     
@@ -199,10 +200,9 @@ public abstract class IndexTransaction extends XaTransaction
             String key, Object value )
     {
         TxData added = addedTxDataOrNull( index );
-        if ( added == null ) return Collections.emptySet();
-        Collection<EntityId> ids = added.get( key, value );
-        
-        return ids;
+        if ( added == null )
+            return Collections.emptySet();
+        return added.get( key, value );
     }
     
     public <T extends PropertyContainer> EntityId getSingleAddedId( AbstractIndex<T> index,
@@ -214,21 +214,17 @@ public abstract class IndexTransaction extends XaTransaction
     
     protected <T extends PropertyContainer> TxData addedTxDataOrNull( AbstractIndex<T> index )
     {
-        TxDataBoth data = getTxData( index, false );
+        TransactionChangeSet data = getTxData( index, false );
         if ( data == null )
-        {
             return null;
-        }
         return data.added( false );
     }
     
     protected <T extends PropertyContainer> TxData removedTxDataOrNull( AbstractIndex<T> index )
     {
-        TxDataBoth data = getTxData( index, false );
+        TransactionChangeSet data = getTxData( index, false );
         if ( data == null )
-        {
             return null;
-        }
         return data.removed( false );
     }
     
@@ -278,7 +274,7 @@ public abstract class IndexTransaction extends XaTransaction
 
     protected void closeTxData()
     {
-        for ( TxDataBoth data : this.txData.values() )
+        for ( TransactionChangeSet data : this.txData.values() )
         {
             data.close();
         }
@@ -371,7 +367,7 @@ public abstract class IndexTransaction extends XaTransaction
             return false;
         }
         
-        for ( TxDataBoth data : txData.values() )
+        for ( TransactionChangeSet data : txData.values() )
         {
             if ( data.isDeleted() || data.add != null || data.remove != null )
             {
@@ -389,14 +385,13 @@ public abstract class IndexTransaction extends XaTransaction
         REMOVE;
     }
     
-    // Bad name
-    public class TxDataBoth
+    public class TransactionChangeSet
     {
         private TxData add;
         private TxData remove;
         private final AbstractIndex index;
         
-        public TxDataBoth( AbstractIndex index )
+        public TransactionChangeSet( AbstractIndex index )
         {
             this.index = index;
         }
@@ -444,9 +439,9 @@ public abstract class IndexTransaction extends XaTransaction
         }
     }
 
-    private class DeletedTxDataBoth extends TxDataBoth
+    private class DeletedTxData extends TransactionChangeSet
     {
-        public DeletedTxDataBoth( AbstractIndex index )
+        public DeletedTxData( AbstractIndex index )
         {
             super( index );
         }

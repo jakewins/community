@@ -23,10 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
-import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.index.base.AbstractIndexImplementation;
 import org.neo4j.kernel.GraphDatabaseAPI;
@@ -64,18 +61,6 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation<Lucen
     }
 
     @Override
-    public Index<Node> nodeIndex( String indexName, Map<String, String> config )
-    {
-        return dataSource().nodeIndex( indexName, graphDb(), this );
-    }
-
-    @Override
-    public RelationshipIndex relationshipIndex( String indexName, Map<String, String> config )
-    {
-        return dataSource().relationshipIndex( indexName, graphDb(), this );
-    }
-
-    @Override
     public Map<String, String> fillInDefaults( Map<String, String> source )
     {
         Map<String, String> result = source != null ?
@@ -104,34 +89,9 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation<Lucen
     @Override
     public boolean configMatches( Map<String, String> storedConfig, Map<String, String> config )
     {
-        return  match( storedConfig, config, KEY_TYPE, null ) &&
-                match( storedConfig, config, KEY_TO_LOWER_CASE, "true" ) &&
-                match( storedConfig, config, KEY_ANALYZER, null ) &&
-                match( storedConfig, config, KEY_SIMILARITY, null );
-    }
-
-    private boolean match( Map<String, String> storedConfig, Map<String, String> config,
-            String key, String defaultValue )
-    {
-        String value1 = storedConfig.get( key );
-        String value2 = config.get( key );
-        if ( value1 == null || value2 == null )
-        {
-            if ( value1 == value2 )
-            {
-                return true;
-            }
-            if ( defaultValue != null )
-            {
-                value1 = value1 != null ? value1 : defaultValue;
-                value2 = value2 != null ? value2 : defaultValue;
-                return value1.equals( value2 );
-            }
-        }
-        else
-        {
-            return value1.equals( value2 );
-        }
-        return false;
+        return  matchConfig( storedConfig, config, KEY_TYPE, null ) &&
+                matchConfig( storedConfig, config, KEY_TO_LOWER_CASE, "true" ) &&
+                matchConfig( storedConfig, config, KEY_ANALYZER, null ) &&
+                matchConfig( storedConfig, config, KEY_SIMILARITY, null );
     }
 }
