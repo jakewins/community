@@ -6,7 +6,7 @@ The following cookbook aims to provide a few snippets, examples and use-cases an
 For the Cypher reference documentation, see <<cypher-query-lang>>.
 
 [[cypher-cookbook-hyperedges]]
-== Hyperedges and Cypher ==
+== Hyperedges ==
 
 Imagine a user being part of different groups.
 A group can have different roles, and a user can be part of different groups.
@@ -29,7 +29,7 @@ include::find-common-groups-based-on-shared-roles.txt[]
 [[cypher-cookbook-friend-finding]]
 == Basic Friend finding based on social neighborhood ==
 
-Imagine an example graph like
+Imagine an example graph like the following one:
 
 include::cypher-collabfiltering-graph.txt[]
 
@@ -119,12 +119,9 @@ include::calculating-the-clustering-coefficient-of-a-friend-network.txt[]
 :leveloffset: 1
 
 [[cypher-cookbook-pretty-graphs]]
-== Pretty graphs in Cypher ==
+== Pretty graphs ==
 
 This section is showing how to create some of the http://en.wikipedia.org/wiki/Gallery_of_named_graphs[named pretty graphs on Wikipedia].
-
-The graph visualizations look best using a Force Directed Layout, while the current layout below is different. For better results,
-use the live demos in http://docs.neo4j.org[the online version of this manual].
 
 :leveloffset: 2
 
@@ -159,9 +156,7 @@ This section is showing some graph-related update operations that require advanc
 
 :leveloffset: 2
 
-include::insert-a-new-value-into-a-linked-list.txt[]
-
-include::cypher-linkedlist-graph.txt[]
+include::linked-list.txt[]
 
 :leveloffset: 1
 
