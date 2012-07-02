@@ -164,4 +164,10 @@ public class ExactTxData extends LuceneTxData
         if ( context != null && context.getTradeCorrectnessForSpeed() ) return null;
         return getFullTxData().asSearcher( context );
     }
+    
+    @Override
+    public Map<String, Map<Object, Set<EntityId>>> raw()
+    {
+        return data;
+    }
 }

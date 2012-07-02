@@ -19,17 +19,9 @@
  */
 package org.neo4j.index.base;
 
-import java.io.IOException;
-
-public interface CommitContext
+public interface ChangeSet
 {
-    void add( EntityId id, String key, Object value ) throws IOException;
+    TxData added();
     
-    void remove( EntityId id, String key, Object value ) throws IOException;
-
-    void remove( EntityId id, String key ) throws IOException;
-
-    void remove( EntityId id ) throws IOException;
-    
-    void close() throws IOException;
+    TxData removed();
 }

@@ -418,4 +418,10 @@ class FullTxData extends LuceneTxData
     {
         return emptyList();
     }
+    
+    @Override
+    public Map<String, Map<Object, Set<EntityId>>> raw()
+    {
+        throw new UnsupportedOperationException();
+    }
 }

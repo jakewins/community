@@ -62,10 +62,17 @@ import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
+import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
 import org.neo4j.index.base.AbstractIndexImplementation;
+import org.neo4j.index.base.ChangeSet;
 import org.neo4j.index.base.EntityType;
+import org.neo4j.index.base.IndexCommand;
+import org.neo4j.index.base.IndexDefininitionsCommand;
+import org.neo4j.index.base.IndexCommand.AddCommand;
+import org.neo4j.index.base.IndexCommand.AddRelationshipCommand;
+import org.neo4j.index.base.IndexCommand.RemoveCommand;
 import org.neo4j.index.base.IndexDataSource;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.configuration.Config;
@@ -424,6 +431,50 @@ public class LuceneDataSource extends IndexDataSource
         catch ( IOException e )
         {
             return false;
+        }
+    }
+    
+    @Override
+    public void applyChangeSet( IndexDefininitionsCommand definitions,
+            Map<IndexIdentifier, Pair<ChangeSet, Collection<IndexCommand>>> changeset, boolean recovered )
+            throws IOException
+    {
+        for ( Map.Entry<IndexIdentifier, Pair<ChangeSet, Collection<IndexCommand>>> change : changeset.entrySet() )
+        {
+            IndexIdentifier identifier = change.getKey();
+            IndexReference searcher = getIndexSearcher( identifier );
+            IndexWriter writer = searcher.getWriter();
+            IndexType indexType = getType( identifier );
+            LuceneCommitContext context = new LuceneCommitContext( this, identifier, indexType, isClosed() );
+            try
+            {
+                for ( IndexCommand command : change.getValue().other() )
+                {
+                    if ( command instanceof AddCommand || command instanceof AddRelationshipCommand )
+                    {
+                        context.add( command.getEntityId(), definitions.getKey( command.getKeyId() ), command.getValue() );
+                    }
+                    else if ( command instanceof RemoveCommand )
+                    {
+                        String key = definitions.getKey( command.getKeyId() );
+                        Object value = command.getValue();
+                        if ( key == null )
+                            context.remove( command.getEntityId() );
+                        else if ( value == null )
+                            context.remove( command.getEntityId(), key );
+                        else
+                            context.remove( command.getEntityId(), key, value );
+                    }
+                    else
+                    {
+                        throw new IllegalArgumentException( command + ", " + command.getClass().getName() );
+                    }
+                }
+            }
+            finally
+            {
+                context.close();
+            }
         }
     }
 

@@ -86,4 +86,10 @@ public class OneToOneTxData implements TxData
         Map<Object, EntityId> keyMap = keyMap( key, false );
         return keyMap != null ? keyMap.get( value ) : null;
     }
+    
+    @Override
+    public Map<String, Map<Object, Set<EntityId>>> raw()
+    {
+        throw new UnsupportedOperationException();
+    }
 }

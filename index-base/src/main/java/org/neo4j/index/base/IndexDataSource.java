@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,6 +41,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexProvider;
 import org.neo4j.graphdb.index.RelationshipIndex;
+import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
@@ -335,8 +337,10 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         lock.writeLock().unlock();
     }
     
-    protected abstract XaTransaction createTransaction( int identifier,
-        XaLogicalLog logicalLog );
+    protected XaTransaction createTransaction( int identifier, XaLogicalLog logicalLog )
+    {
+        return new IndexTransaction( identifier, logicalLog, this );
+    }
 
     @Override
     public long getCreationTime()
@@ -408,4 +412,7 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
         if ( closed )
             throw new IllegalStateException( "Lucene index provider has been shut down" );
     }
+
+    public abstract void applyChangeSet( IndexDefininitionsCommand definitions,
+            Map<IndexIdentifier, Pair<ChangeSet, Collection<IndexCommand>>> changeset, boolean recovered ) throws IOException;
 }

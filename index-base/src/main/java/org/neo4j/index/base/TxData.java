@@ -20,6 +20,8 @@
 package org.neo4j.index.base;
 
 import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
 public interface TxData
 {
@@ -34,4 +36,6 @@ public interface TxData
     Collection<EntityId> getOrphans( String key );
     
     EntityId getSingle( String key, Object value );
+    
+    Map<String, Map<Object, Set<EntityId>>> raw();
 }

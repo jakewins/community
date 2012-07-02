@@ -27,7 +27,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.index.base.AbstractIndex;
-import org.neo4j.index.base.CommitContext;
 import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.IndexCommand;
 import org.neo4j.index.base.IndexCommand.DeleteCommand;
@@ -93,13 +92,6 @@ class LuceneTransaction extends IndexTransaction
         return ids != null ? ids : Collections.<EntityId>emptySet();
     }
     
-    @Override
-    protected CommitContext newCommitContext( IndexIdentifier identifier )
-    {
-        LuceneDataSource dataSource = (LuceneDataSource) getDataSource();
-        return new LuceneCommitContext( dataSource, identifier, dataSource.getType( identifier ), isRecovered() );
-    }
-
     // This is all for the abandoned ids
     @Override
     protected void doPrepare()
@@ -124,7 +116,7 @@ class LuceneTransaction extends IndexTransaction
     private void addAbandonedEntitiesToTheTx()
     {
         IndexDefininitionsCommand def = getDefinitions( true );
-        for ( Map.Entry<IndexIdentifier, TransactionChangeSet> entry : txData.entrySet() )
+        for ( Map.Entry<IndexIdentifier, TxDataBoth> entry : txData.entrySet() )
         {
             Collection<Long> abandonedIds = ((LuceneIndex)entry.getValue().getIndex()).abandonedIds;
             if ( !abandonedIds.isEmpty() )

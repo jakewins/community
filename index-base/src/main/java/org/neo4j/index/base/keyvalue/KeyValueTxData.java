@@ -105,7 +105,7 @@ public class KeyValueTxData implements TxData
                 merge( idCollection( null, null, false ), idCollection( keyOrNull, null, false ) );
     }
     
-    public Map<String, Map<Object, Set<EntityId>>> rawMap()
+    public Map<String, Map<Object, Set<EntityId>>> raw()
     {
         return this.data;
     }

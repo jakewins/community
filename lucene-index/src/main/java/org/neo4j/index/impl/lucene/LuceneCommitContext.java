@@ -25,7 +25,6 @@ import java.util.Map;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
-import org.neo4j.index.base.CommitContext;
 import org.neo4j.index.base.EntityId;
 import org.neo4j.index.base.IndexIdentifier;
 
@@ -33,7 +32,7 @@ import org.neo4j.index.base.IndexIdentifier;
  * This presents a context for each {@link LuceneCommand} when they are
  * committing its data.
  */
-class LuceneCommitContext implements CommitContext
+class LuceneCommitContext
 {
     final LuceneDataSource dataSource;
     final IndexIdentifier identifier;
@@ -41,8 +40,8 @@ class LuceneCommitContext implements CommitContext
     final Map<Long, DocumentContext> documents = new HashMap<Long, DocumentContext>();
     final boolean recovery;
 
-    IndexReference searcher;
-    IndexWriter writer;
+    final IndexReference searcher;
+    final IndexWriter writer;
 
     LuceneCommitContext( LuceneDataSource dataSource, IndexIdentifier identifier, IndexType indexType, boolean recovery )
     {
@@ -50,45 +49,32 @@ class LuceneCommitContext implements CommitContext
         this.identifier = identifier;
         this.indexType = indexType;
         this.recovery = recovery;
+        this.searcher = dataSource.getIndexSearcher( identifier );
+        this.writer = searcher.getWriter();
     }
     
-    @Override
     public void add( EntityId id, String key, Object value ) throws IOException
     {
-        ensureWriterInstantiated();
         indexType.addToDocument( getDocument( id, true ).document, key, value );
     }
     
-    @Override
     public void remove( EntityId id, String key, Object value ) throws IOException
     {
-        ensureWriterInstantiated();
         DocumentContext document = getDocument( id, false );
         if ( document != null )
             indexType.removeFromDocument( document.document, key, value );
     }
     
-    @Override
     public void remove( EntityId id, String key ) throws IOException
     {
         remove( id, key, null );
     }
     
-    @Override
     public void remove( EntityId id ) throws IOException
     {
         remove( id, null, null );
     }
 
-    private void ensureWriterInstantiated()
-    {
-        if ( searcher == null )
-        {
-            searcher = dataSource.getIndexSearcher( identifier );
-            writer = searcher.getWriter();
-        }
-    }
-    
     private DocumentContext getDocument( EntityId entityId, boolean allowCreate )
     {
         long id = entityId.getId();
@@ -138,12 +124,9 @@ class LuceneCommitContext implements CommitContext
     
     public void close() throws IOException
     {
-        if ( searcher != null )
-        {
-            applyDocuments( writer, indexType, documents );
-            dataSource.invalidateIndexSearcher( identifier );
-            searcher.close();
-        }
+        applyDocuments( writer, indexType, documents );
+        dataSource.invalidateIndexSearcher( identifier );
+        searcher.close();
     }
 
     private static class DocumentContext

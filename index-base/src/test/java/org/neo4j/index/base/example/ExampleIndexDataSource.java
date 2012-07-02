@@ -19,21 +19,25 @@
  */
 package org.neo4j.index.base.example;
 
+import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.RelationshipIndex;
+import org.neo4j.helpers.Pair;
 import org.neo4j.index.base.AbstractIndexImplementation;
+import org.neo4j.index.base.ChangeSet;
+import org.neo4j.index.base.IndexCommand;
 import org.neo4j.index.base.IndexDataSource;
+import org.neo4j.index.base.IndexDefininitionsCommand;
 import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
-import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
-import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 
 public class ExampleIndexDataSource extends IndexDataSource
 {
@@ -57,12 +61,6 @@ public class ExampleIndexDataSource extends IndexDataSource
     }
 
     @Override
-    protected XaTransaction createTransaction( int identifier, XaLogicalLog logicalLog )
-    {
-        return new ExampleIndexTransaction( identifier, logicalLog, this );
-    }
-    
-    @Override
     protected void doCreateIndex( IndexIdentifier identifier, Map<String, String> config )
     {
     }
@@ -70,6 +68,15 @@ public class ExampleIndexDataSource extends IndexDataSource
     @Override
     protected void doDeleteIndex( IndexIdentifier identifier, boolean recovered )
     {
+    }
+    
+    @Override
+    public void applyChangeSet( IndexDefininitionsCommand definitions,
+            Map<IndexIdentifier, Pair<ChangeSet, Collection<IndexCommand>>> changeset, boolean recovered )
+            throws IOException
+    {
+        // TODO Auto-generated method stub
+        
     }
 
     @Override
