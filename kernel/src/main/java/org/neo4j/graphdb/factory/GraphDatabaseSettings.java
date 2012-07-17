@@ -24,6 +24,8 @@ import static org.neo4j.graphdb.factory.GraphDatabaseSetting.ANY;
 import static org.neo4j.graphdb.factory.GraphDatabaseSetting.FALSE;
 import static org.neo4j.graphdb.factory.GraphDatabaseSetting.TRUE;
 
+import java.io.File;
+
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.BooleanSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.DefaultValue;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting.FloatSetting;
@@ -141,6 +143,8 @@ public abstract class GraphDatabaseSettings
     @Description( "Tell Neo4j to use memory mapped buffers for accessing the native storage layer." )
     public static final UseMemoryMappedBuffers use_memory_mapped_buffers = new UseMemoryMappedBuffers();
 
+    // TODO: Why are do all the settings below start with "nodestore"?
+
     @Description( "The size to allocate for memory mapping the node store." )
     @Default("20M")
     public static final NumberOfBytesSetting nodestore_mapped_memory = new NumberOfBytesSetting("neostore.nodestore.db.mapped_memory");
@@ -213,10 +217,30 @@ public abstract class GraphDatabaseSettings
 
     @Description("The directory where the database files are located.")
     public static final GraphDatabaseSetting.DirectorySetting store_dir = new GraphDatabaseSetting.DirectorySetting( "store_dir", true, true);
-    
-    @Description("The base name for the Neo4j Store files, either an absolute path or relative to the store_dir setting. This should generally not be changed.")
+
+    @Deprecated
+    @Description("The base name for the Neo4j Store files, either an absolute path or relative to the store_dir setting. This is deprecated, please use the individual store file settings instead.")
     @Default("neostore")
     public static final GraphDatabaseSetting.FileSetting neo_store = new GraphDatabaseSetting.FileSetting( "neo_store", store_dir, true, true);
+
+    @Description("Path to the node store file. For backwards compatibility reasons, this is relative to the neo_store setting. In 1.11, this will change to be relative to store_dir instead. To future-proof your usage of this setting, you should use absolute paths if you want to set a non-default value here.")
+    @Default(".nodestore.db")
+    public static GraphDatabaseSetting<String> nodestore_location = new GraphDatabaseSetting.FileSetting( "nodestore.location",neo_store, true, true );
+
+    @Description("Path to the relationship store file. For backwards compatibility reasons, this is relative to the neo_store setting. In 1.11, this will change to be relative to store_dir instead. To future-proof your usage of this setting, you should use absolute paths if you want to set a non-default value here.")
+    @Default(".relationshipstore.db")
+    public static GraphDatabaseSetting<String> relationshipstore_location = new GraphDatabaseSetting.FileSetting( "relationshipstore.location", neo_store, true, true );
+
+    @Default(".propertystore.db")
+    public static GraphDatabaseSetting<String> propertystore_location = new GraphDatabaseSetting.FileSetting( "propertystore.location", neo_store, true, true );
+
+    @Default( ".propertystore.db.strings" )
+    public static GraphDatabaseSetting<String> propertystore_strings_location = new GraphDatabaseSetting.FileSetting( "propertystore.strings.location", neo_store, true, true);
+
+    @Default( ".propertystore.db.arrays" )
+    public static GraphDatabaseSetting<String> propertystore_arrays_location = new GraphDatabaseSetting.FileSetting( "propertystore.arrays.location", neo_store, true, true );
+
+
     
     @Description("The base name for the logical log files, either an absolute path or relative to the store_dir setting. This should generally not be changed.")
     @Default("nioneo_logical.log")

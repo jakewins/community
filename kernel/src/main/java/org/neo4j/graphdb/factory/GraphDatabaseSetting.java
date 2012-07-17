@@ -417,7 +417,7 @@ public abstract class GraphDatabaseSetting<T>
     public static class AbstractPathSetting
     extends StringSetting
     {
-        private DirectorySetting relativeTo;
+        private AbstractPathSetting relativeTo;
         private boolean makeCanonical;
         private boolean fixIncorrectPathSeparators;
     
@@ -442,7 +442,7 @@ public abstract class GraphDatabaseSetting<T>
          * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
          * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
          */
-        public AbstractPathSetting( String name, DirectorySetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
+        public AbstractPathSetting( String name, AbstractPathSetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
             super( name, ".*", "Must be a valid file path.");
             this.relativeTo = relativeTo;
             this.makeCanonical = makeCanonical;
@@ -468,8 +468,13 @@ public abstract class GraphDatabaseSetting<T>
 
             if(!path.isAbsolute() && relativeTo != null)
             {
-                File baseDir = new File(config.get(relativeTo));
-                path = new File(baseDir, rawValue);
+                if(relativeTo instanceof DirectorySetting)
+                {
+                    File baseDir = new File(config.get(relativeTo));
+                    path = new File(baseDir, rawValue);
+                } else {
+                    path = new File( config.get( relativeTo ) + rawValue );
+                }
             }
 
             if(makeCanonical)
@@ -521,7 +526,7 @@ public abstract class GraphDatabaseSetting<T>
          * @param makeCanonical Resolve symbolic links and clean up the path string before returning it.
          * @param fixIncorrectPathSeparators Ensure that path separators are correct for the current platform.
          */
-        public FileSetting( String name, DirectorySetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
+        public FileSetting( String name, AbstractPathSetting relativeTo, boolean makeCanonical, boolean fixIncorrectPathSeparators) {
             super( name, relativeTo, makeCanonical, fixIncorrectPathSeparators);
         }
     

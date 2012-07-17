@@ -20,6 +20,7 @@
 
 package org.neo4j.graphdb.factory;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -55,7 +56,7 @@ public class GraphDatabaseFactory
     {
         return newEmbeddedDatabaseBuilder( path ).newGraphDatabase();
     }
-    
+
     public GraphDatabaseBuilder newEmbeddedDatabaseBuilder(final String path)
     {
         return new GraphDatabaseBuilder(new GraphDatabaseBuilder.DatabaseCreator()

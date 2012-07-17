@@ -88,9 +88,9 @@ public class StoreFactory
         return new NeoStore( fileName, config,
                 lastCommittedTxIdSetter, idGeneratorFactory, fileSystemAbstraction, stringLogger, txHook,
                 newRelationshipTypeStore(fileName + ".relationshiptypestore.db"),
-                newPropertyStore(fileName + ".propertystore.db"),
-                newRelationshipStore(fileName + ".relationshipstore.db"),
-                newNodeStore(fileName + ".nodestore.db"));
+                newPropertyStore(config.get( GraphDatabaseSettings.propertystore_location) ),
+                newRelationshipStore(config.get( GraphDatabaseSettings.relationshipstore_location) ),
+                newNodeStore(config.get( GraphDatabaseSettings.nodestore_location )));
     }
 
     private void tryToUpgradeStores( String fileName )
@@ -113,9 +113,9 @@ public class StoreFactory
 
     private PropertyStore newPropertyStore(String s)
     {
-        DynamicStringStore stringPropertyStore = newDynamicStringStore(s + ".strings", IdType.STRING_BLOCK);
+        DynamicStringStore stringPropertyStore = newDynamicStringStore(config.get( GraphDatabaseSettings.propertystore_strings_location ), IdType.STRING_BLOCK);
         PropertyIndexStore propertyIndexStore = newPropertyIndexStore(s + ".index");
-        DynamicArrayStore arrayPropertyStore = newDynamicArrayStore( s + ".arrays" );
+        DynamicArrayStore arrayPropertyStore = newDynamicArrayStore( config.get( GraphDatabaseSettings.propertystore_arrays_location ) );
         return new PropertyStore( s, config, idGeneratorFactory, fileSystemAbstraction, stringLogger,
                 stringPropertyStore, propertyIndexStore, arrayPropertyStore);
     }
@@ -149,9 +149,9 @@ public class StoreFactory
     public NeoStore createNeoStore(String fileName, StoreId storeId)
     {
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( NeoStore.TYPE_DESCRIPTOR ) );
-        createNodeStore(fileName + ".nodestore.db");
-        createRelationshipStore(fileName + ".relationshipstore.db");
-        createPropertyStore(fileName + ".propertystore.db");
+        createNodeStore(config.get( GraphDatabaseSettings.nodestore_location) );
+        createRelationshipStore(config.get( GraphDatabaseSettings.relationshipstore_location) );
+        createPropertyStore(config.get( GraphDatabaseSettings.propertystore_location) );
         createRelationshipTypeStore(fileName + ".relationshiptypestore.db");
 /*
         if ( !config.containsKey( "neo_store" ) )
@@ -222,12 +222,12 @@ public class StoreFactory
     private void createPropertyStore( String fileName )
     {
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( PropertyStore.TYPE_DESCRIPTOR ));
-        int stringStoreBlockSize = config.getInteger( Configuration.string_block_size );
-        int arrayStoreBlockSize = config.getInteger( Configuration.array_block_size );
+        int stringStoreBlockSize = config.get( Configuration.string_block_size );
+        int arrayStoreBlockSize = config.get( Configuration.array_block_size );
 
-        createDynamicStringStore(fileName + ".strings", stringStoreBlockSize, IdType.STRING_BLOCK);
+        createDynamicStringStore(config.get( GraphDatabaseSettings.propertystore_strings_location ), stringStoreBlockSize, IdType.STRING_BLOCK);
         createPropertyIndexStore(fileName + ".index");
-        createDynamicArrayStore(fileName + ".arrays", arrayStoreBlockSize);
+        createDynamicArrayStore(config.get( GraphDatabaseSettings.propertystore_arrays_location ), arrayStoreBlockSize);
     }
 
     /**
