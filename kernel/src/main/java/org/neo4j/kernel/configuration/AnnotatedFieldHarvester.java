@@ -42,6 +42,7 @@ public class AnnotatedFieldHarvester {
         {
             try
             {
+                field.setAccessible( true );
                 Object fieldValue = field.get( null );
                 if(type.isInstance(fieldValue) && 
                 		(annotation == null || field.getAnnotation(annotation) != null)) 

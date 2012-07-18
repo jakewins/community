@@ -42,10 +42,26 @@ import org.neo4j.kernel.impl.util.FileUtils;
  */
 public abstract class GraphDatabaseSetting<T>
 {
+    // Deprecated because we want to move this out of the public API
+    @Deprecated
     public static final String TRUE = "true";
+
+    // Deprecated because we want to move this out of the public API
+    @Deprecated
     public static final String FALSE = "false";
-    
+
+    // Deprecated because we want to move this out of the public API
+    @Deprecated
     public static final String ANY = ".+";
+
+    // Deprecated because this is to be removed
+    @Deprecated
+    public static final String SIZE = "\\d+[kmgKMG]";
+
+    // Deprecated because this is to be removed
+    @Deprecated
+    public static final String DURATION = "\\d+(ms|s|m)";
+
 
     public interface DefaultValue
     {
@@ -76,11 +92,11 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
 
             if (!regex.matcher( value ).matches())
             {
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             }
         }
         
@@ -120,6 +136,13 @@ public abstract class GraphDatabaseSetting<T>
             	throw illegalValue(locale, value+"", "Maximum allowed value is: %s", new String[]{max+""} );
         }
 
+        @Deprecated
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        protected void rangeCheck(Comparable value)
+        {
+            rangeCheck( Locale.getDefault(), value );
+        }
+
         public T getMin()
         {
             return min;
@@ -148,7 +171,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
 
             int val;
             try
@@ -157,7 +180,7 @@ public abstract class GraphDatabaseSetting<T>
             }
             catch( Exception e )
             {
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             }
 
             rangeCheck(locale, val );
@@ -187,7 +210,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
 
             long val;
             try
@@ -196,7 +219,7 @@ public abstract class GraphDatabaseSetting<T>
             }
             catch( Exception e )
             {
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             }
 
             rangeCheck(locale, val );
@@ -226,7 +249,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
 
             float val;
             try
@@ -235,7 +258,7 @@ public abstract class GraphDatabaseSetting<T>
             }
             catch( Exception e )
             {
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             }
 
             rangeCheck(locale, val );
@@ -265,7 +288,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
 
             double val;
             try
@@ -274,7 +297,7 @@ public abstract class GraphDatabaseSetting<T>
             }
             catch( Exception e )
             {
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             }
 
             rangeCheck(locale, val );
@@ -312,11 +335,11 @@ public abstract class GraphDatabaseSetting<T>
             throws IllegalArgumentException
         {
             if(value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             
             if (!timeSpanRegex.matcher( value ).matches())
             {
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             }
         }
         
@@ -349,7 +372,7 @@ public abstract class GraphDatabaseSetting<T>
                     return;
             }
             
-            throw illegalValue( locale, value, Arrays.asList( options() ).toString() );
+            throw illegalValue( locale, value, new String[]{Arrays.asList( options() ).toString()} );
         }
 
         public String[] options()
@@ -453,7 +476,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
         }
         
         @Override
@@ -529,11 +552,11 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             
             File file = new File(value);
             if(file.exists() && !file.isFile())
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
         }
     }
     
@@ -570,11 +593,11 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             
             File dir = new File(value);
             if(dir.exists() && !dir.isDirectory())
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
         }
     }
     
@@ -593,10 +616,10 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             
             if(!sizeRegex.matcher(value).matches())
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
         }
         
         @Override
@@ -646,7 +669,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if (value == null)
-                throw illegalValue( locale, value );
+                throw illegalValue( locale, value, new String[0] );
             
             if( value.length() == 0)
                 return;
@@ -684,7 +707,7 @@ public abstract class GraphDatabaseSetting<T>
         }
         
         public URISetting( String name, boolean normalize) {
-            super( name, "'%s' does not validate as a proper URI.");
+            super( name, "Value given does not validate as a proper URI.");
             this.normalize = normalize;
         }
     
@@ -692,7 +715,7 @@ public abstract class GraphDatabaseSetting<T>
         public void validate( Locale locale, String value )
         {
             if(value == null)
-                throw illegalValue(locale,"");
+                throw illegalValue(locale, null, new String[0]);
             
             try
             {
@@ -700,7 +723,7 @@ public abstract class GraphDatabaseSetting<T>
             }
             catch ( URISyntaxException e )
             {
-                throw illegalValue(locale, value);
+                throw illegalValue(locale, value, new String[0]);
             }
         }
         
@@ -772,12 +795,20 @@ public abstract class GraphDatabaseSetting<T>
     /**
      * Create a typed value from a raw string value. This is to be called
      * when a value is fetched from configuration.
+     *
+     * When implementing subclasses of {@link GraphDatabaseSetting}, you should
+     * always override this method.
      * 
      * @param rawValue The raw string value stored in configuration
      * @param config The config instance, allows having config values that depend on each other.
      * @return
      */
-    public abstract T valueOf(String rawValue, Config config);
+    public T valueOf(String rawValue, Config config)
+    {
+        // We expect child classes to override this, but for backwards compatibility reasons, we can't
+        // make this method abstract.
+        return (T)rawValue;
+    }
     
     protected String getMessage(Locale locale, String defaultMessage)
     {
@@ -795,7 +826,13 @@ public abstract class GraphDatabaseSetting<T>
         }
     }
 
-    protected IllegalArgumentException illegalValue(Locale locale, String value, Object... args)
+    @Deprecated
+    protected IllegalArgumentException illegalValue(Locale locale, String... args)
+    {
+        return illegalValue( locale, "<unknown>" , args);
+    }
+
+    protected IllegalArgumentException illegalValue(Locale locale, String value, Object [] args)
         throws IllegalArgumentException
     {
         return illegalValue(locale, value, validationMessage, args);

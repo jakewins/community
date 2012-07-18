@@ -422,6 +422,7 @@ public abstract class CommonAbstractStore
      * @param config Map of configuration parameters
      * @param storageFileName Name of the file on disk
      */
+    // TODO: This should use the type-safe config API, rather than this magic stuff
     private long calculateMappedMemory( Map<?, ?> config, String storageFileName )
     {
         String convertSlash = storageFileName.replace( '\\', '/' );

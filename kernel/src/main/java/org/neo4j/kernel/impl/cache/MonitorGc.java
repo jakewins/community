@@ -30,8 +30,8 @@ public class MonitorGc implements Lifecycle
 {
     public static class Configuration
     {
-        public static final GraphDatabaseSetting.TimeSpanSetting gc_monitor_wait_time = GraphDatabaseSettings.gc_monitor_wait_time;
-        public static final GraphDatabaseSetting.TimeSpanSetting gc_monitor_threshold = GraphDatabaseSettings.gc_monitor_threshold;
+        public static final GraphDatabaseSetting<Long> gc_monitor_wait_time = GraphDatabaseSettings.gc_monitor_interval;
+        public static final GraphDatabaseSetting<Long> gc_monitor_threshold = GraphDatabaseSettings.gc_monitor_block_threshold;
     }
     
     private final Config config;
