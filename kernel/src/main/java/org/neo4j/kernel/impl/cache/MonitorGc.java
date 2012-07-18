@@ -20,6 +20,7 @@
 
 package org.neo4j.kernel.impl.cache;
 
+import org.neo4j.graphdb.config.Setting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.configuration.Config;
@@ -30,8 +31,8 @@ public class MonitorGc implements Lifecycle
 {
     public static class Configuration
     {
-        public static final GraphDatabaseSetting.TimeSpanSetting gc_monitor_wait_time = GraphDatabaseSettings.gc_monitor_wait_time;
-        public static final GraphDatabaseSetting.TimeSpanSetting gc_monitor_threshold = GraphDatabaseSettings.gc_monitor_threshold;
+        public static final Setting<Long> gc_monitor_wait_time = GraphDatabaseSettings.gc_monitor_interval;
+        public static final Setting<Long> gc_monitor_threshold = GraphDatabaseSettings.gc_monitor_block_threshold;
     }
     
     private final Config config;

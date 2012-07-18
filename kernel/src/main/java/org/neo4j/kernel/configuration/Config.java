@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.neo4j.graphdb.config.Setting;
 import org.neo4j.graphdb.factory.GraphDatabaseSetting;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.TimeUtil;
@@ -48,7 +49,8 @@ import org.neo4j.kernel.logging.BufferingLogger;
  * UI's can change configuration by calling applyChanges. Any listener, such as services that use
  * this configuration, can be notified of changes by implementing the {@link ConfigurationChangeListener} interface.
  */
-public class Config implements DiagnosticsProvider
+// TODO: This should be renamed something like ConfigImpl or similar
+public class Config implements DiagnosticsProvider, org.neo4j.graphdb.config.Config
 {
     private final List<ConfigurationChangeListener> listeners = new ArrayList<ConfigurationChangeListener>(  );
     private final Map<String, String> params = new HashMap<String, String>();
@@ -93,8 +95,8 @@ public class Config implements DiagnosticsProvider
     {
         return params.keySet();
     }
-    
-    public boolean isSet( GraphDatabaseSetting<?> graphDatabaseSetting )
+
+    public boolean isSet( Setting<?> graphDatabaseSetting )
     {
         return params.containsKey( graphDatabaseSetting.name() ) && params.get( graphDatabaseSetting.name() ) != null;
     }
@@ -105,7 +107,7 @@ public class Config implements DiagnosticsProvider
      * @param setting
      * @return
      */
-    public <T> T get(GraphDatabaseSetting<T> setting)
+    public <T> T get(Setting<T> setting)
     {
         String string = params.get( setting.name() );
         if (string != null)
