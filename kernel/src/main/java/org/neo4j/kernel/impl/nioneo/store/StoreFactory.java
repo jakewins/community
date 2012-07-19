@@ -70,34 +70,34 @@ public class StoreFactory
         this.txHook = txHook;
     }
 
-    public NeoStore newNeoStore(String fileName)
+    public NeoStore newNeoStore( )
     {
         try
         {
-            return attemptNewNeoStore( fileName );
+            return attemptNewNeoStore(  );
         }
         catch ( NotCurrentStoreVersionException e )
         {
-            tryToUpgradeStores( fileName );
-            return attemptNewNeoStore( fileName );
+            tryToUpgradeStores(  );
+            return attemptNewNeoStore(  );
         }
     }
 
-    NeoStore attemptNewNeoStore( String fileName )
+    NeoStore attemptNewNeoStore(  )
     {
-        return new NeoStore( fileName, config,
+        return new NeoStore( config.get( GraphDatabaseSettings.neo_store ), config,
                 lastCommittedTxIdSetter, idGeneratorFactory, fileSystemAbstraction, stringLogger, txHook,
-                newRelationshipTypeStore(fileName + ".relationshiptypestore.db"),
+                newRelationshipTypeStore(config.get( GraphDatabaseSettings.relationshiptypestore_location)),
                 newPropertyStore(config.get( GraphDatabaseSettings.propertystore_location) ),
                 newRelationshipStore(config.get( GraphDatabaseSettings.relationshipstore_location) ),
                 newNodeStore(config.get( GraphDatabaseSettings.nodestore_location )));
     }
 
-    private void tryToUpgradeStores( String fileName )
+    private void tryToUpgradeStores(  )
     {
         new StoreUpgrader(config, stringLogger, new ConfigMapUpgradeConfiguration(config),
                 new UpgradableDatabase(), new StoreMigrator( new VisibleMigrationProgressMonitor( System.out ) ),
-                new DatabaseFiles(), idGeneratorFactory, fileSystemAbstraction ).attemptUpgrade( fileName );
+                new DatabaseFiles(), idGeneratorFactory, fileSystemAbstraction ).attemptUpgrade( config.get( GraphDatabaseSettings.neo_store ) );
     }
 
     private DynamicStringStore newDynamicStringStore(String s, IdType nameIdType)
@@ -141,28 +141,21 @@ public class StoreFactory
         return new NodeStore( s, config, idGeneratorFactory, fileSystemAbstraction, stringLogger );
     }
 
-    public NeoStore createNeoStore(String fileName)
+    public NeoStore createNeoStore()
     {
-        return createNeoStore( fileName, new StoreId() );
+        return createNeoStore( new StoreId() );
     }
 
-    public NeoStore createNeoStore(String fileName, StoreId storeId)
+    public NeoStore createNeoStore(StoreId storeId)
     {
-        createEmptyStore( fileName, buildTypeDescriptorAndVersion( NeoStore.TYPE_DESCRIPTOR ) );
+        createEmptyStore( config.get( GraphDatabaseSettings.neo_store ), buildTypeDescriptorAndVersion( NeoStore.TYPE_DESCRIPTOR ) );
         createNodeStore(config.get( GraphDatabaseSettings.nodestore_location) );
         createRelationshipStore(config.get( GraphDatabaseSettings.relationshipstore_location) );
         createPropertyStore(config.get( GraphDatabaseSettings.propertystore_location) );
-        createRelationshipTypeStore(fileName + ".relationshiptypestore.db");
-/*
-        if ( !config.containsKey( "neo_store" ) )
-        {
-            // TODO Ugly
-            Map<String, Object> newConfig = new HashMap<String, Object>( config );
-            newConfig.put( "neo_store", fileName );
-            config = newConfig;
-        }
-*/
-        NeoStore neoStore = newNeoStore( fileName );
+        createRelationshipTypeStore(config.get( GraphDatabaseSettings.relationshiptypestore_location ));
+
+        NeoStore neoStore = newNeoStore(  );
+
         /*
         *  created time | random long | backup version | tx id | store version | next prop
         */

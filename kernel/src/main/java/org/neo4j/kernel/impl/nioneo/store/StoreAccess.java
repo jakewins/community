@@ -97,7 +97,7 @@ public class StoreAccess
                                               .apply( requiredParams( params, path ) ) ), new DefaultIdGeneratorFactory(),
                               new DefaultFileSystemAbstraction(),
                               new DefaultLastCommittedTxIdSetter(), initLogger( path ),
-                              new DefaultTxHook() ).attemptNewNeoStore( new File( path, "neostore" ).getAbsolutePath() ) );
+                              new DefaultTxHook() ).attemptNewNeoStore() );
         this.closeable = true;
     }
 

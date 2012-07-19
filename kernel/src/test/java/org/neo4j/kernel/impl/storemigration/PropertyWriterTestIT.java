@@ -58,7 +58,7 @@ public class PropertyWriterTestIT
         File fileName = new File( outputDir, "neostore" );
         StoreFactory storeFactory = new StoreFactory( config, defaultIdGeneratorFactory(), defaultFileSystemAbstraction(),
                 defaultLastCommittedTxIdSetter(), StringLogger.DEV_NULL, defaultTxHook() );
-        neoStore = storeFactory.createNeoStore( fileName.getAbsolutePath() );
+        neoStore = storeFactory.createNeoStore( );
         return neoStore.getPropertyStore();
     }
 

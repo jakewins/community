@@ -114,7 +114,7 @@ public class BatchInserterImpl implements BatchInserter
             dumpConfiguration( params );
         }
         msgLog.logMessage( Thread.currentThread() + " Starting BatchInserter(" + this + ")" );
-        neoStore = sf.newNeoStore(store);
+        neoStore = sf.newNeoStore();
         if ( !neoStore.isStoreOk() )
         {
             throw new IllegalStateException( storeDir + " store is not cleanly shutdown." );
@@ -929,7 +929,7 @@ public class BatchInserterImpl implements BatchInserter
         String store = dir + fileSeparator + NeoStore.DEFAULT_NAME;
         if ( !new File( store ).exists() )
         {
-            sf.createNeoStore(store).close();
+            sf.createNeoStore().close();
         }
         return store;
     }

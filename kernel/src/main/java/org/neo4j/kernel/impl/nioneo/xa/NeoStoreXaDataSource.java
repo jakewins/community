@@ -197,7 +197,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         {
             msgLog.logMessage( "Creating new db @ " + store, true );
             autoCreatePath( store );
-            sf.createNeoStore(store).close();
+            sf.createNeoStore().close();
         }
 
         final TransactionFactory tf;
@@ -210,7 +210,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         {
             tf = new TransactionFactory();
         }
-        neoStore = sf.newNeoStore(store);
+        neoStore = sf.newNeoStore();
         
         xaContainer = xaFactory.newXaContainer(this, conf.get( Configuration.logical_log ), new CommandFactory( neoStore ), tf,
                 shouldIntercept && !providers.isEmpty() ? providers : null, dependencyResolver );

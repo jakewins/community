@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
@@ -43,6 +44,7 @@ import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -68,10 +70,13 @@ public class StoreMigratorTestIT
         FileUtils.deleteRecursively( outputDir );
         assertTrue( outputDir.mkdirs() );
 
-        String storeFileName = "target/outputDatabase/neostore";
+        Map<String,String> params = config.getParams();
+        params.put( GraphDatabaseSettings.neo_store.name(), "target/outputDatabase/neostore");
+        config.applyChanges( params );
+
         StoreFactory factory = new StoreFactory( config, defaultIdGeneratorFactory(),
                 defaultFileSystemAbstraction(), defaultLastCommittedTxIdSetter(), StringLogger.DEV_NULL, defaultTxHook() );
-        NeoStore neoStore = factory.createNeoStore( storeFileName );
+        NeoStore neoStore = factory.createNeoStore( );
 
         ListAccumulatorMigrationProgressMonitor monitor = new ListAccumulatorMigrationProgressMonitor();
 

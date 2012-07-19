@@ -111,12 +111,18 @@ public class IdGeneratorRebuildFailureEmulationTest
     private void performTest() throws Exception
     {
         String file = prefix + File.separator + Thread.currentThread().getStackTrace()[2].getMethodName().replace( '_', '.' );
+
+        Map<String, String> config = new HashMap<String, String>();
+        config.put( GraphDatabaseSettings.rebuild_idgenerators_fast.name(), GraphDatabaseSetting.FALSE );
+        config.put( GraphDatabaseSettings.neo_store.name(), prefix + File.separator + "neostore" );
+        StoreFactory factory = new StoreFactory( new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fs, null, StringLogger.SYSTEM, null );
+
         // emulate the need for rebuilding id generators by deleting it
         fs.deleteFile( file + ".id" );
         NeoStore neostore = null;
         try
         {
-            neostore = factory.newNeoStore( prefix + File.separator + "neostore" );
+            neostore = factory.newNeoStore( );
             // emulate a failure during rebuild:
             emulateFailureOnRebuildOf( neostore );
         }
@@ -138,7 +144,6 @@ public class IdGeneratorRebuildFailureEmulationTest
     }
 
     private FileSystem fs;
-    private StoreFactory factory;
     private String prefix;
 
     @Before
@@ -149,9 +154,7 @@ public class IdGeneratorRebuildFailureEmulationTest
         prefix = graphdb.getStoreDir();
         createInitialData( graphdb );
         graphdb.shutdown();
-        Map<String, String> config = new HashMap<String, String>();
-        config.put( GraphDatabaseSettings.rebuild_idgenerators_fast.name(), GraphDatabaseSetting.FALSE );
-        factory = new StoreFactory( new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fs, null, StringLogger.SYSTEM, null );
+
     }
 
     @After

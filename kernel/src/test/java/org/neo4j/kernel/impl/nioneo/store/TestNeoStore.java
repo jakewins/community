@@ -107,9 +107,11 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         deleteFileOrDirectory( path() );
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        Config config = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( new HashMap<String,String>(  ) ));
+        Map<String,String> params = new HashMap<String, String>(  );
+        params.put( GraphDatabaseSettings.neo_store.name(), file( "neo" )  );
+        Config config = new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( params ));
         StoreFactory sf = new StoreFactory(config, new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null);
-        sf.createNeoStore(file( "neo" )).close();
+        sf.createNeoStore().close();
     }
 
     private static class MyPropertyIndex extends
@@ -1034,9 +1036,10 @@ public class TestNeoStore extends AbstractNeo4jTestCase
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
         Config config = new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(MapUtil.stringMap( "string_block_size", "62",
-                                                                           "array_block_size", "302" )));
+                                                                           "array_block_size", "302",
+                                                                           GraphDatabaseSettings.neo_store.name(), file( "neo" ))));
         StoreFactory sf = new StoreFactory(config, new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null);
-        sf.createNeoStore(file( "neo" )).close();
+        sf.createNeoStore().close();
 
 
         initializeStores();
@@ -1057,10 +1060,12 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         assertEquals( 10, NeoStore.setVersion( storeDir, 12 ) );
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( new HashMap<String, String>(  )  )),
+        Map<String,String> params = new HashMap<String, String>(  );
+        params.put( GraphDatabaseSettings.neo_store.name(), new File( storeDir, NeoStore.DEFAULT_NAME ).getAbsolutePath()  );
+        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(params)),
                 new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null);
 
-        NeoStore neoStore = sf.newNeoStore(new File( storeDir, NeoStore.DEFAULT_NAME ).getAbsolutePath());
+        NeoStore neoStore = sf.newNeoStore();
         assertEquals( 12, neoStore.getVersion() );
         neoStore.close();
     }

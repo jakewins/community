@@ -27,7 +27,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import org.junit.After;
@@ -191,7 +193,9 @@ public class TestGraphProperties
         db.shutdown();
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        NeoStore neoStore = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(Collections.<String,String>emptyMap())), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null).newNeoStore(new File( storeDir, NeoStore.DEFAULT_NAME ).getAbsolutePath());
+        Map<String,String> params = new HashMap<String, String>(  );
+        params.put( GraphDatabaseSettings.neo_store.name(), new File( storeDir, NeoStore.DEFAULT_NAME ).getAbsolutePath() );
+        NeoStore neoStore = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply(params)), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.DEV_NULL, null).newNeoStore();
         long prop = neoStore.getGraphNextProp();
         assertTrue( prop != 0 );
         neoStore.close();

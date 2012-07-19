@@ -110,6 +110,9 @@ public class Config implements DiagnosticsProvider
         String string = params.get( setting.name() );
         if (string != null)
             string = string.trim();
+
+//        setting.validate( string );
+
         return setting.valueOf(string, this);
     }
 

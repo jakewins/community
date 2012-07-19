@@ -53,7 +53,7 @@ public class StoreVersionTest
         config.put( "neo_store", storeFileName );
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
         StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null);
-        NeoStore neoStore = sf.createNeoStore(storeFileName);
+        NeoStore neoStore = sf.createNeoStore();
 
         CommonAbstractStore[] stores = {
                 neoStore.getNodeStore(),
@@ -108,7 +108,7 @@ public class StoreVersionTest
         config.put( "neo_store", storeFileName );
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
         StoreFactory sf = new StoreFactory(new Config(new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null);
-        NeoStore neoStore = sf.createNeoStore(storeFileName);
+        NeoStore neoStore = sf.createNeoStore();
         // The first checks the instance method, the other the public one
         assertEquals( CommonAbstractStore.ALL_STORES_VERSION,
                 NeoStore.versionLongToString( neoStore.getStoreVersion() ) );

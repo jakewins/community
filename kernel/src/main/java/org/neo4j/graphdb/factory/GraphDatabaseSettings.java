@@ -39,6 +39,12 @@ import org.neo4j.kernel.configuration.ConfigurationMigrator;
 
 /**
  * Settings for the Community edition of Neo4j. Use this with GraphDatabaseBuilder.
+ *
+ * A note on backwards compatibility: This class contains a number of different {@link GraphDatabaseSetting}
+ * instances. Each has a generic type that defines what type of value that config setting is converted into.
+ *
+ * We reserve the right to change those generic types without notice. That means that if you want to assign any
+ * of the fields in here to a variable, that variable should be of type GraphDatabaseSetting< ? >
  */
 @Description( "Settings for the Community edition of Neo4j" )
 public abstract class GraphDatabaseSettings
@@ -231,12 +237,19 @@ public abstract class GraphDatabaseSettings
     @Default(".relationshipstore.db")
     public static GraphDatabaseSetting<String> relationshipstore_location = new GraphDatabaseSetting.FileSetting( "relationshipstore.location", neo_store, true, true );
 
+    @Description("Path to the relationship type store. For backwards compatibility reasons, this is relative to the neo_store setting. In 1.11, this will change to be relative to store_dir instead. To future-proof your usage of this setting, you should use absolute paths if you want to set a non-default value here.")
+    @Default( ".relationshiptypestore.db" )
+    public static final GraphDatabaseSetting<String> relationshiptypestore_location = new GraphDatabaseSetting.FileSetting( "relationshiptypestore.location", neo_store, true, true);
+
+    @Description("Path to the property store file. For backwards compatibility reasons, this is relative to the neo_store setting. In 1.11, this will change to be relative to store_dir instead. To future-proof your usage of this setting, you should use absolute paths if you want to set a non-default value here.")
     @Default(".propertystore.db")
     public static GraphDatabaseSetting<String> propertystore_location = new GraphDatabaseSetting.FileSetting( "propertystore.location", neo_store, true, true );
 
+    @Description("Path to the property strings store file. For backwards compatibility reasons, this is relative to the neo_store setting. In 1.11, this will change to be relative to store_dir instead. To future-proof your usage of this setting, you should use absolute paths if you want to set a non-default value here.")
     @Default( ".propertystore.db.strings" )
     public static GraphDatabaseSetting<String> propertystore_strings_location = new GraphDatabaseSetting.FileSetting( "propertystore.strings.location", neo_store, true, true);
 
+    @Description("Path to the property arrays store file. For backwards compatibility reasons, this is relative to the neo_store setting. In 1.11, this will change to be relative to store_dir instead. To future-proof your usage of this setting, you should use absolute paths if you want to set a non-default value here.")
     @Default( ".propertystore.db.arrays" )
     public static GraphDatabaseSetting<String> propertystore_arrays_location = new GraphDatabaseSetting.FileSetting( "propertystore.arrays.location", neo_store, true, true );
 

@@ -109,7 +109,7 @@ public class StoreUpgrader
 
         Config upgradeConfiguration = new Config( upgradeConfig );
         
-        NeoStore neoStore = new StoreFactory(upgradeConfiguration, idGeneratorFactory, fileSystemAbstraction, null, StringLogger.DEV_NULL, null).createNeoStore(upgradeFileName);
+        NeoStore neoStore = new StoreFactory(upgradeConfiguration, idGeneratorFactory, fileSystemAbstraction, null, StringLogger.DEV_NULL, null).createNeoStore();
         try
         {
             storeMigrator.migrate( new LegacyStore( storageFileName ), neoStore );

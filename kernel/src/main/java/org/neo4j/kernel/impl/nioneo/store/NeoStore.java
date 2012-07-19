@@ -69,8 +69,7 @@ public class NeoStore extends AbstractStore
     private long lastCommittedTx = -1;
 
     private final int REL_GRAB_SIZE;
-    private final String fileName;
-    private final Config conf;
+
     private final LastCommittedTxIdSetter lastCommittedTxIdSetter;
 
     public NeoStore(String fileName, Config conf,
@@ -80,8 +79,7 @@ public class NeoStore extends AbstractStore
                     RelationshipTypeStore relTypeStore, PropertyStore propStore, RelationshipStore relStore, NodeStore nodeStore)
     {
         super( fileName, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, fileSystemAbstraction, stringLogger);
-        this.fileName = fileName;
-        this.conf = conf;
+
         this.lastCommittedTxIdSetter = lastCommittedTxIdSetter;
         this.relTypeStore = relTypeStore;
         this.propStore = propStore;
