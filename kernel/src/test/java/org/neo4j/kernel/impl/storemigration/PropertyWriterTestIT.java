@@ -29,10 +29,14 @@ import static org.neo4j.kernel.CommonFactories.defaultTxHook;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.After;
+import org.junit.Rule;
 import org.junit.Test;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -44,18 +48,22 @@ import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.test.TargetDirectory;
 
 public class PropertyWriterTestIT
 {
+    private final TargetDirectory target = TargetDirectory.forTest( PropertyWriterTestIT.class ) ;
+    @Rule
+    public final TargetDirectory.TestDirectory testDir = target.testDirectory();
+
     private NeoStore neoStore;
 
     private PropertyStore newPropertyStore() throws IOException
     {
-        Config config = MigrationTestUtils.defaultConfig();
-        File outputDir = new File( "target/outputDatabase" );
-        FileUtils.deleteRecursively( outputDir );
-        assertTrue( outputDir.mkdirs() );
-        File fileName = new File( outputDir, "neostore" );
+        Map<String,String> params = new HashMap<String,String>();
+        params.put( GraphDatabaseSettings.neo_store.name(), new File( testDir.directory(), "neostore" ).getAbsolutePath() );
+        Config config = MigrationTestUtils.defaultConfig(params);
+
         StoreFactory storeFactory = new StoreFactory( config, defaultIdGeneratorFactory(), defaultFileSystemAbstraction(),
                 defaultLastCommittedTxIdSetter(), StringLogger.DEV_NULL, defaultTxHook() );
         neoStore = storeFactory.createNeoStore( );

@@ -111,6 +111,7 @@ public class Config implements DiagnosticsProvider
         if (string != null)
             string = string.trim();
 
+        // TODO: Below line should be uncommented and implications of doing that should be fixed.
 //        setting.validate( string );
 
         return setting.valueOf(string, this);

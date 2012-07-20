@@ -468,12 +468,18 @@ public abstract class GraphDatabaseSetting<T>
 
             if(!path.isAbsolute() && relativeTo != null)
             {
-                if(relativeTo instanceof DirectorySetting)
+                if(config.isSet( relativeTo ))
                 {
-                    File baseDir = new File(config.get(relativeTo));
-                    path = new File(baseDir, rawValue);
-                } else {
-                    path = new File( config.get( relativeTo ) + rawValue );
+                    if(relativeTo instanceof DirectorySetting)
+                    {
+                        File baseDir = new File(config.get(relativeTo));
+                        path = new File(baseDir, rawValue);
+                    } else {
+                        path = new File( config.get( relativeTo ) + rawValue );
+                    }
+                } else
+                {
+                    throw new IllegalArgumentException( "Configuration problem: Value of '"+name()+"' is relative, and depends on '"+relativeTo.name()+"' to work, but '"+relativeTo.name()+"' has not been configured." );
                 }
             }
 
@@ -812,7 +818,7 @@ public abstract class GraphDatabaseSetting<T>
             String message = getMessage( locale, rawMessage );
             String errorMessage = new Formatter(locale).format( message, args ).toString();
             
-            String settingNameMessage = getMessage( locale, "Invalid value %s for config property '%s': " );
+            String settingNameMessage = getMessage( locale, "Configuration problem: Invalid value %s for config property '%s': " );
             String settingMessage = new Formatter(locale).format( settingNameMessage, value == null?"[null]":"'"+value+"'", name() ).toString();
             
             return new IllegalArgumentException( settingMessage + errorMessage );

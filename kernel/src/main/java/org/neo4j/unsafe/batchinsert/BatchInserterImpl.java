@@ -98,6 +98,7 @@ public class BatchInserterImpl implements BatchInserter
         msgLog = StringLogger.logger( storeDir );
         Map<String,String> params = getDefaultParams();
         params.put( GraphDatabaseSettings.use_memory_mapped_buffers.name(), GraphDatabaseSetting.BooleanSetting.FALSE );
+        params.put( GraphDatabaseSettings.store_dir.name(), storeDir );
         final FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
 
         params = new ConfigurationDefaults( GraphDatabaseSettings.class ).apply( params );

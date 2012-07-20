@@ -85,7 +85,7 @@ public class TestGraphDatabaseSetting
         catch( IllegalArgumentException e )
         {
             // Ok
-            assertThat( e.getMessage(), equalTo( "Invalid value '2' for config property 'foo_bar': Minimum allowed value is: 3" ) );
+            assertThat( e.getMessage(), equalTo( "Configuration problem: Invalid value '2' for config property 'foo_bar': Minimum allowed value is: 3" ) );
         }
         
         try
@@ -118,7 +118,7 @@ public class TestGraphDatabaseSetting
         catch( IllegalArgumentException e )
         {
             // Ok
-            assertThat( e.getMessage(), equalTo( "Invalid value 'option4' for config property 'foo_bar': Invalid option. Valid options are:[option1, option2, option3]" ) );
+            assertThat( e.getMessage(), equalTo( "Configuration problem: Invalid value 'option4' for config property 'foo_bar': Invalid option. Valid options are:[option1, option2, option3]" ) );
         }
         
     }
@@ -139,7 +139,7 @@ public class TestGraphDatabaseSetting
         catch( IllegalArgumentException e )
         {
             // Ok
-            assertThat( e.getMessage(), equalTo( "Invalid value [null] for config property 'myfile': Must be a valid file path." ) );
+            assertThat( e.getMessage(), equalTo( "Configuration problem: Invalid value [null] for config property 'myfile': Must be a valid file path." ) );
         }
     }
 

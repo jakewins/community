@@ -26,6 +26,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.DefaultFileSystemAbstraction;
@@ -35,26 +36,33 @@ import org.neo4j.kernel.configuration.ConfigurationDefaults;
 import org.neo4j.kernel.impl.storemigration.StoreMigrator;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.test.TargetDirectory;
 
 import static org.junit.Assert.*;
 import static org.junit.internal.matchers.StringContains.*;
 
 public class StoreVersionTest
 {
+
+    private final TargetDirectory target = TargetDirectory.forTest( StoreVersionTest.class );
+    @Rule
+    public final TargetDirectory.TestDirectory testDir = target.testDirectory();
+
     @Test
     public void allStoresShouldHaveTheCurrentVersionIdentifier() throws IOException
     {
-        File outputDir = new File( "target/var/" + StoreVersionTest.class.getSimpleName() );
-        FileUtils.deleteRecursively( outputDir );
-        assertTrue( outputDir.mkdirs() );
-        String storeFileName = new File( outputDir, NeoStore.DEFAULT_NAME ).getPath();
+        // Given
+        String storeFileName = new File( testDir.directory(), NeoStore.DEFAULT_NAME ).getAbsolutePath();
 
         Map<String,String> config = new HashMap<String, String>();
-        config.put( "neo_store", storeFileName );
+        config.put( GraphDatabaseSettings.neo_store.name(), storeFileName );
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
-        StoreFactory sf = new StoreFactory(new Config( new ConfigurationDefaults(GraphDatabaseSettings.class ).apply( config )), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null);
+        StoreFactory sf = new StoreFactory(new Config(config, GraphDatabaseSettings.class), new DefaultIdGeneratorFactory(), fileSystem, null, StringLogger.SYSTEM, null);
+
+        // When
         NeoStore neoStore = sf.createNeoStore();
 
+        // Then
         CommonAbstractStore[] stores = {
                 neoStore.getNodeStore(),
                 neoStore.getRelationshipStore(),
@@ -70,16 +78,13 @@ public class StoreVersionTest
         neoStore.close();
     }
 
+    // TODO: Please add a comment as to why a test is ignored, and when it will be un-ignored.
     @Test
     @Ignore
     public void shouldFailToCreateAStoreContainingOldVersionNumber() throws IOException
     {
-        File outputDir = new File( "target/var/" + StoreVersionTest.class.getSimpleName() );
-        FileUtils.deleteRecursively( outputDir );
-        assertTrue( outputDir.mkdirs() );
-
         URL legacyStoreResource = StoreMigrator.class.getResource( "legacystore/exampledb/neostore.nodestore.db" );
-        File workingFile = new File( outputDir, "neostore.nodestore.db" );
+        File workingFile = new File( testDir.directory(), "neostore.nodestore.db" );
         FileUtils.copyFile( new File( legacyStoreResource.getFile() ), workingFile );
 
         FileSystemAbstraction fileSystem = new DefaultFileSystemAbstraction();
@@ -96,13 +101,7 @@ public class StoreVersionTest
     @Test
     public void neoStoreHasCorrectStoreVersionField() throws IOException
     {
-        File outputDir = new File( "target/var/"
-                                   + StoreVersionTest.class.getSimpleName()
-                                   + "test2" );
-        FileUtils.deleteRecursively( outputDir );
-        assertTrue( outputDir.mkdirs() );
-
-        String storeFileName = new File( outputDir, NeoStore.DEFAULT_NAME ).getPath();
+        String storeFileName = new File( testDir.directory(), NeoStore.DEFAULT_NAME ).getPath();
 
         Map<String,String> config = new HashMap<String, String>();
         config.put( "neo_store", storeFileName );

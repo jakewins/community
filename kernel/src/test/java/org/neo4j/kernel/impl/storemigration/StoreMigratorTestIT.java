@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Rule;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -54,10 +55,16 @@ import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.kernel.impl.storemigration.monitoring.MigrationProgressMonitor;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.test.TargetDirectory;
 import org.neo4j.tooling.GlobalGraphOperations;
 
 public class StoreMigratorTestIT
 {
+
+    private final TargetDirectory target = TargetDirectory.forTest( StoreMigratorTestIT.class );
+    @Rule
+    public final TargetDirectory.TestDirectory testDir = target.testDirectory();
+
     @Test
     public void shouldMigrate() throws IOException
     {
@@ -66,12 +73,9 @@ public class StoreMigratorTestIT
         LegacyStore legacyStore = new LegacyStore( legacyStoreResource.getFile() );
 
         Config config = MigrationTestUtils.defaultConfig();
-        File outputDir = new File( "target/outputDatabase" );
-        FileUtils.deleteRecursively( outputDir );
-        assertTrue( outputDir.mkdirs() );
 
         Map<String,String> params = config.getParams();
-        params.put( GraphDatabaseSettings.neo_store.name(), "target/outputDatabase/neostore");
+        params.put( GraphDatabaseSettings.neo_store.name(), new File( testDir.directory(), "neostore").getAbsolutePath());
         config.applyChanges( params );
 
         StoreFactory factory = new StoreFactory( config, defaultIdGeneratorFactory(),
@@ -90,7 +94,7 @@ public class StoreMigratorTestIT
         assertTrue( monitor.started );
         assertTrue( monitor.finished );
 
-        GraphDatabaseService database = new EmbeddedGraphDatabase( outputDir.getPath() );
+        GraphDatabaseService database = new EmbeddedGraphDatabase( testDir.directory().getAbsolutePath() );
 
         DatabaseContentVerifier verifier = new DatabaseContentVerifier( database );
         verifier.verifyNodes();
